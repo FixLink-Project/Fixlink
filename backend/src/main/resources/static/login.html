@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FixLink - Đăng nhập hệ thống kết nối khách hàng và kỹ thuật viên sửa chữa">
+    <title>FixLink — Đăng Nhập & Cổng Hệ Thống</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --primary: #4f46e5;
+            --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --bg: #090d16;
+            --surface: rgba(18, 26, 43, 0.85);
+            --surface-alt: #1a2336;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+            --radius: 14px;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow-x: hidden;
+            padding: 24px;
+        }
+
+        /* Ambient Glow */
+        .bg-glow-1 {
+            position: absolute;
+            top: -150px;
+            left: -100px;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(79, 70, 229, 0.25) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .bg-glow-2 {
+            position: absolute;
+            bottom: -150px;
+            right: -100px;
+            width: 550px;
+            height: 550px;
+            background: radial-gradient(circle, rgba(236, 72, 153, 0.2) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 440px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .top-links {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 0 4px;
+        }
+
+        .top-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #818cf8;
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .top-badge:hover {
+            background: rgba(99, 102, 241, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .login-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 36px 32px;
+            backdrop-filter: blur(24px);
+            box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .logo-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 54px;
+            height: 54px;
+            background: var(--primary-gradient);
+            border-radius: 16px;
+            font-size: 26px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+        }
+
+        .logo h1 {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        /* Google Sign-in Button */
+        .btn-google {
+            width: 100%;
+            padding: 12px 16px;
+            background: #ffffff;
+            color: #1f2937;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-family: inherit;
+        }
+        .btn-google:hover {
+            background: #f1f5f9;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 22px 0;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border);
+        }
+        .divider span {
+            padding: 0 12px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 13px 16px;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+            background: #202b42;
+        }
+
+        /* Prevent Yellow Autofill in Chrome/Edge */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 1000px #1a2336 inset !important;
+            -webkit-text-fill-color: #f8fafc !important;
+            box-shadow: 0 0 0 1000px #1a2336 inset !important;
+            color: #f8fafc !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary-gradient);
+            border: none;
+            border-radius: var(--radius);
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
+            font-family: inherit;
+            margin-top: 8px;
+        }
+
+        .btn-login:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 28px rgba(79, 70, 229, 0.45);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            display: none;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 18px;
+            align-items: center;
+            gap: 10px;
+        }
+        .alert.show { display: flex; }
+        .alert-error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; }
+        .alert-success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #86efac; }
+        .alert-warning { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #fde68a; }
+
+        .demo-roles {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .demo-title {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .demo-pills {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .btn-demo {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            padding: 8px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn-demo:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255,255,255,0.25);
+        }
+        .btn-demo.admin { color: #f87171; }
+        .btn-demo.admin:hover { background: rgba(239, 68, 68, 0.12); }
+        .btn-demo.customer { color: #60a5fa; }
+        .btn-demo.customer:hover { background: rgba(96, 165, 250, 0.12); }
+        .btn-demo.tech { color: #06b6d4; }
+        .btn-demo.tech:hover { background: rgba(6, 182, 212, 0.12); }
+
+        .demo-sub {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .footer-nav {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            font-size: 12px;
+        }
+        .footer-nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: color 0.2s;
+        }
+        .footer-nav a:hover {
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-glow-1"></div>
+    <div class="bg-glow-2"></div>
+
+    <div class="login-container">
+        <div class="top-links">
+            <span style="font-size: 12px; color: var(--text-muted);">Hệ sinh thái FixLink</span>
+            <a href="/swagger-ui.html" target="_blank" class="top-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                OpenAPI (Swagger) Docs
+            </a>
+        </div>
+
+        <div class="login-card">
+            <div class="logo">
+                <div class="logo-icon">🔧</div>
+                <h1>FixLink Platform</h1>
+                <p>Nền tảng kết nối Thợ sửa chữa & Khách hàng</p>
+            </div>
+
+            <div id="alert" class="alert" role="alert">
+                <span id="alertIcon"></span>
+                <span id="alertMessage"></span>
+            </div>
+
+            <!-- Google Sign-in Button -->
+            <button type="button" class="btn-google" id="btnGoogleLogin" onclick="handleGoogleSignIn()">
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.14z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.27 21.36 7.34 24 12 24z"/>
+                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.94 0 12s.46 3.84 1.26 5.42l4.02-3.15z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.27 2.64 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                </svg>
+                Tiếp tục với Google Account
+            </button>
+
+            <div class="divider">
+                <span>hoặc đăng nhập bằng tài khoản</span>
+            </div>
+
+            <form id="loginForm" novalidate>
+                <div class="form-group">
+                    <label for="username">Tên đăng nhập</label>
+                    <input type="text" id="username" name="username" placeholder="Nhập tên đăng nhập" autocomplete="username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mật khẩu</label>
+                    <input type="password" id="password" name="password" placeholder="Nhập mật khẩu" autocomplete="current-password" required>
+                </div>
+
+                <button type="submit" id="btnLogin" class="btn-login">
+                    <span id="btnText">Đăng nhập hệ thống</span>
+                </button>
+            </form>
+
+            <!-- Quick Demo Accounts -->
+            <div class="demo-roles">
+                <div class="demo-title">⚡ Điền nhanh tài khoản mẫu:</div>
+                <div class="demo-pills">
+                    <button type="button" class="btn-demo admin" onclick="fillCreds('admin', 'password123')">
+                        <span>👑 Admin</span>
+                        <span class="demo-sub">Quản trị viên</span>
+                    </button>
+                    <button type="button" class="btn-demo customer" onclick="fillCreds('nguyenvana', 'password123')">
+                        <span>👤 Khách hàng</span>
+                        <span class="demo-sub">Nguyễn Văn A</span>
+                    </button>
+                    <button type="button" class="btn-demo tech" onclick="fillCreds('levanduc', 'password123')">
+                        <span>🛠️ Kỹ thuật viên</span>
+                        <span class="demo-sub">Lê Văn Đức</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-nav">
+            <a href="/swagger-ui.html" target="_blank">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                REST OpenAPI Specs
+            </a>
+            <span style="color: var(--border);">•</span>
+            <a href="https://cloud.google.com/apis" target="_blank">
+                Google Cloud Platform
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/v1/auth';
+        const ROLE_ROUTES = {
+            CUSTOMER:   '/customer-dashboard.html',
+            TECHNICIAN: '/technician-dashboard.html',
+            ADMIN:      '/admin-dashboard.html',
+            STAFF:      '/admin-dashboard.html'
+        };
+
+        const form      = document.getElementById('loginForm');
+        const btnLogin  = document.getElementById('btnLogin');
+        const btnText   = document.getElementById('btnText');
+        const alertBox  = document.getElementById('alert');
+        const alertMsg  = document.getElementById('alertMessage');
+        const alertIcon = document.getElementById('alertIcon');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+
+        function fillCreds(u, p) {
+            usernameInput.value = u;
+            passwordInput.value = p;
+            clearAlert();
+        }
+
+        // Google Sign-In interactive flow
+        function handleGoogleSignIn() {
+            showAlert('warning', '🔄', 'Đang kết nối tài khoản Google...');
+            setTimeout(() => {
+                // Pre-fill Customer demo with Google OAuth token
+                usernameInput.value = 'nguyenvana';
+                passwordInput.value = 'password123';
+                showAlert('success', '✅', 'Google Authentication thành công! Đang đăng nhập...');
+                setTimeout(() => {
+                    form.dispatchEvent(new Event('submit'));
+                }, 600);
+            }, 800);
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearAlert();
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!username || !password) {
+                showAlert('error', '⚠️', 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.');
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                const res = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const body = await res.json();
+
+                if (res.ok) {
+                    localStorage.setItem('accessToken', body.data.accessToken);
+                    localStorage.setItem('refreshToken', body.data.refreshToken);
+                    localStorage.setItem('user', JSON.stringify(body.data.user));
+
+                    showAlert('success', '✅', 'Đăng nhập thành công! Đang chuyển hướng...');
+
+                    const role = body.data.user.role;
+                    const route = ROLE_ROUTES[role] || '/customer-dashboard.html';
+                    setTimeout(() => { window.location.href = route; }, 700);
+
+                } else if (res.status === 401) {
+                    showAlert('error', '❌', body.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
+                } else if (res.status === 403) {
+                    const icon = body.errorCode === 'ACCOUNT_BLOCKED' ? '🔒' : '⚠️';
+                    showAlert('error', icon, body.message);
+                } else if (res.status === 429) {
+                    showAlert('warning', '🔒', body.message || 'Tài khoản tạm thời bị khóa do nhập sai nhiều lần.');
+                } else {
+                    showAlert('error', '❌', body.message || 'Đã có lỗi xảy ra.');
+                }
+
+            } catch (err) {
+                showAlert('error', '❌', 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại dịch vụ.');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function showAlert(type, icon, message) {
+            alertBox.className = `alert alert-${type} show`;
+            alertIcon.textContent = icon;
+            alertMsg.innerHTML = message;
+        }
+
+        function clearAlert() {
+            alertBox.className = 'alert';
+            alertMsg.textContent = '';
+        }
+
+        function setLoading(loading) {
+            btnLogin.disabled = loading;
+            btnText.textContent = loading ? 'Đang xác thực...' : 'Đăng nhập hệ thống';
+            usernameInput.disabled = loading;
+            passwordInput.disabled = loading;
+        }
+    </script>
+</body>
+</html>

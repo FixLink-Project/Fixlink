@@ -1,0 +1,93 @@
+# =============================================================================
+# FixLink Root .gitignore
+# =============================================================================
+
+# --- Environment & Sensitive Files ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# --- Build Artifacts & Output ---
+target/
+**/target/
+build/
+**/build/
+out/
+**/out/
+bin/
+**/bin/
+*.class
+*.jar
+*.war
+*.ear
+
+# --- Logs ---
+*.log
+logs/
+**/logs/
+
+# --- Maven & Gradle ---
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+.gradle/
+gradle-app.setting
+
+# --- IDEs & Editors ---
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+
+# NetBeans
+/nbproject/private/
+/build/
+/nbbuild/
+/dist/
+/nbdist/
+
+# Visual Studio Code (Keep shared settings, ignore local cache)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+*.code-workspace
+
+# --- Database & Storage ---
+*.db
+*.sqlite
+fixlink_data/
+fixlink_data/**
+
+# --- OS Specific Files ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# --- Node / Frontend (if any tools used) ---
+node_modules/
+dist/
+.npm/
+
+# --- Temporary & Scratch Files ---
+tmp/
+temp/
+*.swp
+*.swo
+*~

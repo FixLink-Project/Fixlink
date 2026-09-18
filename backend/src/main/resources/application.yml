@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/fixlink_db
+    username: fixlink
+    password: fixlink_secret_2024
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+
+# JWT Configuration
+app:
+  jwt:
+    secret: fixlink-jwt-secret-key-2024-must-be-at-least-512-bits-long-for-hs512-algorithm-security
+    expiration-ms: 86400000  # 24 hours

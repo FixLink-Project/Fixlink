@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FixLink - Cổng Quản Trị Hệ Thống">
+    <title>FixLink — Admin Management Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #ef4444;
+            --primary-light: #f87171;
+            --bg: #090d16;
+            --surface: #121a2b;
+            --surface-alt: #1a243a;
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --radius: 14px;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 28px;
+            background: rgba(18, 26, 43, 0.95);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 800;
+            font-size: 18px;
+        }
+        .brand-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #ef4444, #f97316);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .api-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(239, 68, 68, 0.12);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .api-link:hover {
+            background: rgba(239, 68, 68, 0.25);
+        }
+
+        .user-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface-alt);
+            padding: 4px 12px 4px 6px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #ef4444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: #fff;
+        }
+        .user-role {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            font-weight: 700;
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+        }
+
+        .layout {
+            display: flex;
+            flex: 1;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: rgba(18, 26, 43, 0.6);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            user-select: none;
+        }
+        .nav-item:hover {
+            background: var(--surface-alt);
+            color: var(--text);
+        }
+        .nav-item.active {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        .nav-item svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .content {
+            flex: 1;
+            padding: 32px;
+            max-width: 1200px;
+            overflow-y: auto;
+        }
+
+        .tab-panel {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-header {
+            margin-bottom: 24px;
+        }
+        .page-header h2 {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+        .stat-val {
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        /* Filter Controls */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .filter-input {
+            padding: 8px 14px;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 13px;
+            outline: none;
+            font-family: inherit;
+        }
+        .filter-input:focus {
+            border-color: #ef4444;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .role-admin { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+        .role-customer { background: rgba(59, 130, 246, 0.15); color: #93c5fd; }
+        .role-technician { background: rgba(14, 165, 233, 0.15); color: #7dd3fc; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .status-active { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; }
+        .status-banned { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+
+        /* Pagination Component ("Di trang được") */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .pagination-buttons {
+            display: flex;
+            gap: 6px;
+        }
+        .page-btn {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .page-btn:hover:not(:disabled) {
+            border-color: #ef4444;
+            color: #fca5a5;
+        }
+        .page-btn.active {
+            background: #ef4444;
+            color: #ffffff;
+            border-color: #ef4444;
+        }
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-action {
+            padding: 5px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface-alt);
+            color: var(--text);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-action:hover {
+            border-color: #ef4444;
+            color: #fca5a5;
+        }
+
+        .iframe-container {
+            width: 100%;
+            height: 650px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="#" class="brand">
+            <div class="brand-icon">⚙️</div>
+            <span>FixLink Admin Control</span>
+        </a>
+
+        <div class="nav-actions">
+            <a href="/swagger-ui.html" target="_blank" class="api-link">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                OpenAPI (Swagger UI)
+            </a>
+            <div class="user-pill">
+                <div class="user-avatar" id="avatarLetter">A</div>
+                <div>
+                    <span id="userName" style="font-size: 13px; font-weight: 600;">Admin</span>
+                    <span class="user-role">ADMIN</span>
+                </div>
+            </div>
+            <button class="btn-logout" id="btnLogout">Đăng xuất</button>
+        </div>
+    </nav>
+
+    <div class="layout">
+        <!-- Sidebar Navigation ("Di trang được") -->
+        <aside class="sidebar">
+            <div class="nav-item active" onclick="switchTab('overview')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                <span>Tổng quan KPI</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('users')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <span>Quản lý Người dùng</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('catalog')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                <span>Danh mục Dịch vụ</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('kyc')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <span>Duyệt KYC Thợ</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('swagger')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                <span>OpenAPI Test Tool</span>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="content">
+
+            <!-- TAB 1: OVERVIEW -->
+            <section id="tab-overview" class="tab-panel active">
+                <div class="page-header">
+                    <h2>Bảng Điều Khiển Quản Trị Hệ Thống ⚙️</h2>
+                    <p>Giám sát toàn bộ hoạt động nền tảng FixLink.</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: #f87171;">👥</div>
+                        <div>
+                            <div class="stat-val" id="statTotalUsers">5</div>
+                            <div class="stat-label">Tổng số tài khoản</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(14, 165, 233, 0.15); color: #38bdf8;">🛠️</div>
+                        <div>
+                            <div class="stat-val">2</div>
+                            <div class="stat-label">Kỹ thuật viên hoạt động</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #6ee7b7;">📋</div>
+                        <div>
+                            <div class="stat-val">2</div>
+                            <div class="stat-label">Yêu cầu sửa chữa</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">💳</div>
+                        <div>
+                            <div class="stat-val">450,000 đ</div>
+                            <div class="stat-label">Doanh thu giao dịch</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 style="font-size: 16px; font-weight: 700;">🚀 Lối tắt chức năng</h3>
+                    </div>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button class="page-btn" onclick="switchTab('users')">Quản lý & Khóa tài khoản</button>
+                        <button class="page-btn" onclick="switchTab('catalog')">Thêm ngành nghề dịch vụ</button>
+                        <button class="page-btn" onclick="switchTab('kyc')">Duyệt hồ sơ kỹ thuật viên</button>
+                        <a href="/swagger-ui.html" target="_blank" class="page-btn" style="color: #f87171; text-decoration: none;">Mở Swagger UI</a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: USERS WITH REAL PAGINATION FROM API -->
+            <section id="tab-users" class="tab-panel">
+                <div class="page-header">
+                    <h2>Quản Lý Người Dùng & Phân Quyền</h2>
+                    <p>Dữ liệu đồng bộ trực tiếp từ REST API <code>/api/v1/admin/users</code> hỗ trợ tìm kiếm & phân trang.</p>
+                </div>
+
+                <div class="card">
+                    <div class="filter-bar">
+                        <input type="text" id="userSearchInput" class="filter-input" placeholder="🔍 Tìm theo tên hoặc username..." oninput="debounceUserSearch()">
+                        <select id="userRoleFilter" class="filter-input" onchange="loadUsers(1)">
+                            <option value="ALL">Tất cả vai trò</option>
+                            <option value="CUSTOMER">Khách hàng</option>
+                            <option value="TECHNICIAN">Kỹ thuật viên</option>
+                            <option value="ADMIN">Quản trị viên</option>
+                        </select>
+                        <select id="userStatusFilter" class="filter-input" onchange="loadUsers(1)">
+                            <option value="ALL">Tất cả trạng thái</option>
+                            <option value="ACTIVE">Hoạt động (ACTIVE)</option>
+                            <option value="BANNED">Đã khóa (BANNED)</option>
+                        </select>
+                        <select id="userLimitSelect" class="filter-input" onchange="loadUsers(1)">
+                            <option value="5">5 dòng / trang</option>
+                            <option value="10" selected>10 dòng / trang</option>
+                            <option value="20">20 dòng / trang</option>
+                        </select>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Tên đăng nhập</th>
+                                    <th>Họ & Tên</th>
+                                    <th>Vai trò</th>
+                                    <th>Trạng thái</th>
+                                    <th>Ngày tạo</th>
+                                    <th>Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Đang tải dữ liệu người dùng...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination Controls ("Di trang được") -->
+                    <div class="pagination">
+                        <div id="userPaginationInfo">Hiển thị...</div>
+                        <div class="pagination-buttons" id="userPaginationButtons"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: SERVICE CATALOG MANAGEMENT -->
+            <section id="tab-catalog" class="tab-panel">
+                <div class="page-header">
+                    <h2>Quản Lý Danh Mục Ngành Nghề & Dịch Vụ</h2>
+                    <p>API endpoint: <code>/api/v1/admin/categories</code></p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 style="font-size: 16px; font-weight: 700;">+ Thêm danh mục mới</h3>
+                    </div>
+                    <form id="addCategoryForm" onsubmit="handleAddCategory(event)" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <input type="text" id="newCatName" class="filter-input" placeholder="Tên danh mục (ví dụ: Sửa máy giặt)" required style="flex: 1; min-width: 200px;">
+                        <input type="text" id="newCatDesc" class="filter-input" placeholder="Mô tả ngành nghề" style="flex: 2; min-width: 250px;">
+                        <button type="submit" class="page-btn" style="background: #ef4444; color: #fff; border-color: #ef4444; font-weight: 700;">+ Tạo Danh Mục</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Tên danh mục</th>
+                                    <th>Mô tả</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminCatTableBody">
+                                <tr><td colspan="4">Đang tải danh mục...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: KYC APPROVALS -->
+            <section id="tab-kyc" class="tab-panel">
+                <div class="page-header">
+                    <h2>Phê Duyệt Hồ Sơ Kỹ Thuật Viên (KYC)</h2>
+                    <p>API endpoint: <code>/api/v1/admin/users/{id}/verify-technician</code></p>
+                </div>
+
+                <div class="card">
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Kỹ thuật viên</th>
+                                    <th>CCCD / ID Card</th>
+                                    <th>Kinh nghiệm</th>
+                                    <th>Trạng thái KYC</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Lê Văn Đức</strong><br><small style="color: var(--text-muted);">levanduc@gmail.com</small></td>
+                                    <td>079200012345</td>
+                                    <td>8 năm (Điện lạnh)</td>
+                                    <td><span class="status-badge status-active">ĐÃ PHÊ DUYỆT</span></td>
+                                    <td><button class="btn-action" onclick="alert('Hồ sơ đã được phê duyệt!')">Xem chứng chỉ</button></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Phạm Văn Minh</strong><br><small style="color: var(--text-muted);">phamvanminh@gmail.com</small></td>
+                                    <td>079200067890</td>
+                                    <td>5 năm (Điện dân dụng)</td>
+                                    <td><span class="status-badge status-active">ĐÃ PHÊ DUYỆT</span></td>
+                                    <td><button class="btn-action" onclick="alert('Hồ sơ đã được phê duyệt!')">Xem chứng chỉ</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: SWAGGER OPENAPI DIRECT VIEW -->
+            <section id="tab-swagger" class="tab-panel">
+                <div class="page-header">
+                    <h2>Tài Liệu & Thử Nghiệm API Chuẩn OpenAPI (Google / Swagger UI)</h2>
+                    <p>Trực tiếp tương tác và chạy thử các API của hệ thống FixLink trên môi trường OpenAPI 3.0.</p>
+                </div>
+
+                <div class="card">
+                    <div style="margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 13px; color: var(--text-muted);">Cửa sổ Swagger UI nhúng trực tiếp:</span>
+                        <a href="/swagger-ui.html" target="_blank" class="page-btn" style="color: #f87171; text-decoration: none;">↗ Mở tab mới toàn màn hình</a>
+                    </div>
+                    <div class="iframe-container">
+                        <iframe src="/swagger-ui/index.html"></iframe>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('accessToken');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        if (!user.role || (user.role !== 'ADMIN' && user.role !== 'STAFF')) {
+            window.location.href = '/login.html';
+        }
+
+        const displayName = user.fullName || user.username || 'Admin';
+        document.getElementById('userName').textContent = displayName;
+        document.getElementById('avatarLetter').textContent = displayName[0].toUpperCase();
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+
+            const targetPanel = document.getElementById(`tab-${tabId}`);
+            if (targetPanel) targetPanel.classList.add('active');
+
+            const navIndex = ['overview', 'users', 'catalog', 'kyc', 'swagger'].indexOf(tabId);
+            if (navIndex >= 0) {
+                const navItems = document.querySelectorAll('.nav-item');
+                if (navItems[navIndex]) navItems[navIndex].classList.add('active');
+            }
+
+            if (tabId === 'users') loadUsers(1);
+            if (tabId === 'catalog') loadAdminCategories();
+        }
+
+        // ==========================================
+        // Users Table with Pagination ("Di trang được")
+        // ==========================================
+        let currentUsersPage = 1;
+        let searchTimeout = null;
+
+        function debounceUserSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => loadUsers(1), 350);
+        }
+
+        async function loadUsers(page = 1) {
+            currentUsersPage = page;
+            const search = document.getElementById('userSearchInput').value.trim();
+            const role = document.getElementById('userRoleFilter').value;
+            const status = document.getElementById('userStatusFilter').value;
+            const limit = document.getElementById('userLimitSelect').value;
+
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Đang tải dữ liệu...</td></tr>';
+
+            try {
+                let url = `/api/v1/admin/users?page=${page}&limit=${limit}&role=${role}&status=${status}`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+
+                const res = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const json = await res.json();
+
+                if (res.ok && json.data) {
+                    renderUsersTable(json.data);
+                    renderPagination(json.meta);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #fca5a5;">${json.message || 'Lỗi tải người dùng'}</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #fca5a5;">Không thể kết nối máy chủ.</td></tr>';
+            }
+        }
+
+        function renderUsersTable(users) {
+            const tbody = document.getElementById('usersTableBody');
+            if (!users || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Không tìm thấy người dùng nào phù hợp.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => {
+                const roleClass = u.role === 'ADMIN' ? 'role-admin' : (u.role === 'TECHNICIAN' ? 'role-technician' : 'role-customer');
+                const statusClass = u.status === 'ACTIVE' ? 'status-active' : 'status-banned';
+                const isBanned = u.status === 'BANNED';
+                const actionText = isBanned ? 'Mở khóa' : 'Khóa';
+                const nextStatus = isBanned ? 'ACTIVE' : 'BANNED';
+
+                return `
+                    <tr>
+                        <td>#${u.id}</td>
+                        <td><strong>${u.username}</strong></td>
+                        <td>${u.fullName || '—'}</td>
+                        <td><span class="role-badge ${roleClass}">${u.role}</span></td>
+                        <td><span class="status-badge ${statusClass}">${u.status}</span></td>
+                        <td>${u.createdAt ? u.createdAt.replace('T', ' ').substring(0, 16) : '—'}</td>
+                        <td>
+                            ${u.role !== 'ADMIN' ? 
+                                `<button class="btn-action" onclick="toggleUserStatus(${u.id}, '${nextStatus}')" style="color: ${isBanned ? '#6ee7b7' : '#fca5a5'}">${actionText}</button>` 
+                                : '<span style="color: var(--text-muted); font-size: 11px;">Mặc định</span>'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderPagination(meta) {
+            const info = document.getElementById('userPaginationInfo');
+            const btns = document.getElementById('userPaginationButtons');
+
+            if (!meta) {
+                info.textContent = '';
+                btns.innerHTML = '';
+                return;
+            }
+
+            info.textContent = `Trang ${meta.currentPage} / ${meta.totalPages || 1} (Tổng cộng ${meta.totalItems} người dùng)`;
+
+            let html = '';
+            html += `<button class="page-btn" ${!meta.hasPrevious ? 'disabled' : ''} onclick="loadUsers(${meta.currentPage - 1})">« Trước</button>`;
+
+            for (let i = 1; i <= (meta.totalPages || 1); i++) {
+                html += `<button class="page-btn ${i === meta.currentPage ? 'active' : ''}" onclick="loadUsers(${i})">${i}</button>`;
+            }
+
+            html += `<button class="page-btn" ${!meta.hasNext ? 'disabled' : ''} onclick="loadUsers(${meta.currentPage + 1})">Sau »</button>`;
+            btns.innerHTML = html;
+        }
+
+        async function toggleUserStatus(userId, newStatus) {
+            if (!confirm(`Bạn có chắc muốn chuyển trạng thái tài khoản #${userId} sang ${newStatus}?`)) return;
+
+            try {
+                const res = await fetch(`/api/v1/admin/users/${userId}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        status: newStatus,
+                        reason: `Thực hiện bởi quản trị viên qua bảng điều khiển`
+                    })
+                });
+                const json = await res.json();
+                if (res.ok) {
+                    alert('Cập nhật trạng thái thành công!');
+                    loadUsers(currentUsersPage);
+                } else {
+                    alert('Lỗi: ' + (json.message || 'Không thể cập nhật.'));
+                }
+            } catch (e) {
+                alert('Không thể kết nối máy chủ.');
+            }
+        }
+
+        // ==========================================
+        // Categories Management
+        // ==========================================
+        async function loadAdminCategories() {
+            const tbody = document.getElementById('adminCatTableBody');
+            try {
+                const res = await fetch('/api/v1/admin/categories', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const json = await res.json();
+                if (res.ok && json.data) {
+                    tbody.innerHTML = json.data.map(c => `
+                        <tr>
+                            <td>#${c.id}</td>
+                            <td><strong>${c.name}</strong></td>
+                            <td>${c.description || '—'}</td>
+                            <td><span class="status-badge ${c.isActive ? 'status-active' : 'status-banned'}">${c.isActive ? 'ACTIVE' : 'INACTIVE'}</span></td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="4" style="color: #fca5a5;">Không thể tải danh mục.</td></tr>';
+            }
+        }
+
+        async function handleAddCategory(e) {
+            e.preventDefault();
+            const name = document.getElementById('newCatName').value.trim();
+            const description = document.getElementById('newCatDesc').value.trim();
+
+            try {
+                const res = await fetch('/api/v1/admin/categories', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ name, description, isActive: true })
+                });
+                const json = await res.json();
+                if (res.ok) {
+                    alert(`✅ Tạo thành công ngành nghề: ${name}`);
+                    document.getElementById('addCategoryForm').reset();
+                    loadAdminCategories();
+                } else {
+                    alert('Lỗi: ' + (json.message || 'Không thể tạo danh mục'));
+                }
+            } catch (e) {
+                alert('Lỗi kết nối máy chủ.');
+            }
+        }
+
+        // Logout
+        document.getElementById('btnLogout').addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '/login.html';
+        });
+
+        // Initialize Users tab
+        loadUsers(1);
+    </script>
+</body>
+</html>

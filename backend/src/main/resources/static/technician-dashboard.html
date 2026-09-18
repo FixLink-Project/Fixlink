@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FixLink - Cổng Kỹ Thuật Viên">
+    <title>FixLink — Kỹ Thuật Viên Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #0ea5e9;
+            --primary-light: #38bdf8;
+            --bg: #090d16;
+            --surface: #121a2b;
+            --surface-alt: #1a243a;
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --radius: 14px;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 28px;
+            background: rgba(18, 26, 43, 0.95);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 800;
+            font-size: 18px;
+        }
+        .brand-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #0ea5e9, #6366f1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #ffffff;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .api-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(14, 165, 233, 0.12);
+            color: #38bdf8;
+            border: 1px solid rgba(14, 165, 233, 0.25);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .api-link:hover {
+            background: rgba(14, 165, 233, 0.25);
+        }
+
+        .user-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface-alt);
+            padding: 4px 12px 4px 6px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #0ea5e9;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .user-role {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: rgba(14, 165, 233, 0.18);
+            color: #7dd3fc;
+            font-weight: 700;
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+        }
+
+        .layout {
+            display: flex;
+            flex: 1;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: rgba(18, 26, 43, 0.6);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            user-select: none;
+        }
+        .nav-item:hover {
+            background: var(--surface-alt);
+            color: var(--text);
+        }
+        .nav-item.active {
+            background: rgba(14, 165, 233, 0.15);
+            color: #38bdf8;
+            border-color: rgba(14, 165, 233, 0.3);
+        }
+        .nav-item svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .content {
+            flex: 1;
+            padding: 32px;
+            max-width: 1100px;
+            overflow-y: auto;
+        }
+
+        .tab-panel {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-header {
+            margin-bottom: 24px;
+        }
+        .page-header h2 {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+        .stat-val {
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        .page-btn {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .page-btn:hover:not(:disabled) {
+            border-color: #0ea5e9;
+            color: #38bdf8;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0ea5e9, #6366f1);
+            color: #ffffff;
+            font-weight: 700;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);
+        }
+
+        .feed-item {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="#" class="brand">
+            <div class="brand-icon">🛠️</div>
+            <span>FixLink Pro Tech</span>
+        </a>
+
+        <div class="nav-actions">
+            <a href="/swagger-ui.html" target="_blank" class="api-link">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                OpenAPI Docs
+            </a>
+            <div class="user-pill">
+                <div class="user-avatar" id="avatarLetter">T</div>
+                <div>
+                    <span id="userName" style="font-size: 13px; font-weight: 600;">Kỹ thuật viên</span>
+                    <span class="user-role">TECHNICIAN</span>
+                </div>
+            </div>
+            <button class="btn-logout" id="btnLogout">Đăng xuất</button>
+        </div>
+    </nav>
+
+    <div class="layout">
+        <!-- Sidebar Navigation ("Di trang được") -->
+        <aside class="sidebar">
+            <div class="nav-item active" onclick="switchTab('overview')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                <span>Tổng quan công việc</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('feed')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                <span>Sàn đấu giá việc</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('appointments')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                <span>Lịch hẹn khảo sát</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('wallet')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                <span>Ví thu nhập</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('kyc')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <span>Hồ sơ KYC & Kỹ năng</span>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="content">
+
+            <!-- TAB 1: OVERVIEW -->
+            <section id="tab-overview" class="tab-panel active">
+                <div class="page-header">
+                    <h2 id="welcomeTitle">Chào mừng thợ chuyên nghiệp! 🛠️</h2>
+                    <p>Theo dõi năng suất, đơn hàng nhận và đánh giá uy tín từ khách hàng.</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(14, 165, 233, 0.15); color: #38bdf8;">⭐</div>
+                        <div>
+                            <div class="stat-val">4.8 / 5.0</div>
+                            <div class="stat-label">Đánh giá trung bình</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #6ee7b7;">✅</div>
+                        <div>
+                            <div class="stat-val">12 đơn</div>
+                            <div class="stat-label">Hoàn thành tháng này</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">💰</div>
+                        <div>
+                            <div class="stat-val">3,250,000 đ</div>
+                            <div class="stat-label">Số dư ví khả dụng</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px;">⚡ Nhận đơn ngay</h3>
+                    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Có 1 đơn sửa chữa điện mới trong khu vực Quận 1 đang chờ báo giá.</p>
+                    <button class="btn-primary" onclick="switchTab('feed')">Xem sàn đấu giá</button>
+                </div>
+            </section>
+
+            <!-- TAB 2: JOB FEED -->
+            <section id="tab-feed" class="tab-panel">
+                <div class="page-header">
+                    <h2>Sàn Đấu Giá Việc Làm Trực Tuyến</h2>
+                    <p>Nhận các yêu cầu sửa chữa gần bạn và gửi báo giá cạnh tranh trực tiếp đến khách hàng.</p>
+                </div>
+
+                <div class="card">
+                    <div class="feed-item">
+                        <div>
+                            <div style="font-weight: 700; font-size: 15px; margin-bottom: 4px;">⚡ Chập điện cầu dao tầng 2 (#REQ-002)</div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">📍 789 Võ Văn Ngân, Thủ Đức • Khách hàng: Trần Thị B</div>
+                            <div style="font-size: 13px;">Mô tả: Cầu dao nhảy liên tục khi cắm ấm đun nước, nghi ngờ chập âm tường.</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">Ngân sách dự kiến: <strong>300k - 500k</strong></div>
+                            <button class="btn-primary" onclick="handleBid('REQ-002')">Gửi báo giá ngay</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: APPOINTMENTS -->
+            <section id="tab-appointments" class="tab-panel">
+                <div class="page-header">
+                    <h2>Lịch Hẹn Khảo Sát & Thi Công</h2>
+                    <p>Quản lý thời gian di chuyển đến hiện trường khách hàng.</p>
+                </div>
+
+                <div class="card">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Khách hàng</th>
+                                <th>Địa chỉ</th>
+                                <th>Nội dung khảo sát</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Hôm nay 14:00</strong></td>
+                                <td>Trần Thị B (0912345678)</td>
+                                <td>789 Võ Văn Ngân, Thủ Đức</td>
+                                <td>Kiểm tra đo tải dòng điện cầu dao</td>
+                                <td><span style="color: #38bdf8; font-weight: 700; font-size: 11px;">SẮP DIỄN RA</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB 4: WALLET -->
+            <section id="tab-wallet" class="tab-panel">
+                <div class="page-header">
+                    <h2>Ví Kỹ Thuật Viên & Thu Nhập</h2>
+                    <p>Cơ chế thanh toán giữ tiền (Escrow) đảm bảo an toàn tuyệt đối cho thợ.</p>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <div style="font-size: 13px; color: var(--text-muted);">Số dư ví thợ:</div>
+                            <div style="font-size: 32px; font-weight: 800; color: #10b981;">3,250,000 đ</div>
+                        </div>
+                        <button class="btn-primary" onclick="alert('Đã tạo lệnh rút tiền 1,000,000 đ về tài khoản ngân hàng!')">Rút tiền về tài khoản</button>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Giao dịch</th>
+                                <th>Số tiền</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Hôm qua 16:30</td>
+                                <td>Hoàn thành đơn #REQ-001 (Sửa máy lạnh)</td>
+                                <td style="color: #6ee7b7; font-weight: 700;">+ 450,000 đ</td>
+                                <td>Thành công</td>
+                            </tr>
+                            <tr>
+                                <td>Tuần trước</td>
+                                <td>Rút tiền về Vietcombank (***888)</td>
+                                <td style="color: #fca5a5; font-weight: 700;">- 1,000,000 đ</td>
+                                <td>Thành công</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB 5: KYC -->
+            <section id="tab-kyc" class="tab-panel">
+                <div class="page-header">
+                    <h2>Xác Thực Danh Tính & Chứng Chỉ Nghề</h2>
+                    <p>Hồ sơ KYC đã được Admin phê duyệt giúp tăng 90% cơ hội nhận việc.</p>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+                        <div style="font-size: 28px;">🛡️</div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 16px; color: #6ee7b7;">Hồ sơ kỹ thuật viên: ĐÃ PHÊ DUYỆT (KYC APPROVED)</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">Chứng nhận đủ điều kiện thi công mạng điện và điện lạnh dân dụng.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!user.role || user.role !== 'TECHNICIAN') {
+            window.location.href = '/login.html';
+        }
+
+        const displayName = user.fullName || user.username || 'Kỹ thuật viên';
+        document.getElementById('userName').textContent = displayName;
+        document.getElementById('avatarLetter').textContent = displayName[0].toUpperCase();
+        document.getElementById('welcomeTitle').textContent = `Chào mừng thợ lành nghề, ${displayName}! 🛠️`;
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+
+            const targetPanel = document.getElementById(`tab-${tabId}`);
+            if (targetPanel) targetPanel.classList.add('active');
+
+            const navIndex = ['overview', 'feed', 'appointments', 'wallet', 'kyc'].indexOf(tabId);
+            if (navIndex >= 0) {
+                const navItems = document.querySelectorAll('.nav-item');
+                if (navItems[navIndex]) navItems[navIndex].classList.add('active');
+            }
+        }
+
+        function handleBid(reqId) {
+            const price = prompt("Nhập số tiền báo giá (VNĐ):", "350000");
+            if (price) {
+                alert(`✅ Đã gửi báo giá ${parseInt(price).toLocaleString('vi-VN')} đ cho đơn #${reqId}!\nKhách hàng sẽ phản hồi trong giây lát.`);
+                switchTab('appointments');
+            }
+        }
+
+        document.getElementById('btnLogout').addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '/login.html';
+        });
+    </script>
+</body>
+</html>

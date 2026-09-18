@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FixLink - Cổng dịch vụ Khách hàng">
+    <title>FixLink — Cổng Dịch Vụ Khách Hàng</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #6366f1;
+            --bg: #090d16;
+            --surface: #121a2b;
+            --surface-alt: #1a243a;
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --radius: 14px;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Navbar */
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 28px;
+            background: rgba(18, 26, 43, 0.95);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 800;
+            font-size: 18px;
+        }
+        .brand-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .api-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(99, 102, 241, 0.12);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .api-link:hover {
+            background: rgba(99, 102, 241, 0.25);
+        }
+
+        .user-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface-alt);
+            padding: 4px 12px 4px 6px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #3b82f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .user-role {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+            font-weight: 700;
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        /* Layout with Sidebar & Content */
+        .layout {
+            display: flex;
+            flex: 1;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: rgba(18, 26, 43, 0.6);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            user-select: none;
+        }
+        .nav-item:hover {
+            background: var(--surface-alt);
+            color: var(--text);
+        }
+        .nav-item.active {
+            background: rgba(79, 70, 229, 0.15);
+            color: #818cf8;
+            border-color: rgba(79, 70, 229, 0.3);
+        }
+        .nav-item svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Main Content Area */
+        .content {
+            flex: 1;
+            padding: 32px;
+            max-width: 1100px;
+            overflow-y: auto;
+        }
+
+        .tab-panel {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-header {
+            margin-bottom: 24px;
+        }
+        .page-header h2 {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        /* Metrics Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+        .stat-val {
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Cards & Tables */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        /* Form elements */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .form-full {
+            grid-column: 1 / -1;
+        }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+        }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: var(--primary-light);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: #ffffff;
+            font-weight: 700;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 6px 18px rgba(79, 70, 229, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* Table */
+        .table-responsive {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .status-bidding { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
+        .status-completed { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; }
+        .status-progress { background: rgba(59, 130, 246, 0.15); color: #93c5fd; }
+
+        /* Pagination Component */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .pagination-buttons {
+            display: flex;
+            gap: 6px;
+        }
+        .page-btn {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .page-btn:hover:not(:disabled) {
+            border-color: #6366f1;
+            color: #818cf8;
+        }
+        .page-btn.active {
+            background: #4f46e5;
+            color: #ffffff;
+            border-color: #4f46e5;
+        }
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Google Map Preview simulation */
+        .map-preview {
+            background: #151e33;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 180px;
+            position: relative;
+            overflow: hidden;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .map-pin {
+            font-size: 28px;
+            animation: bounce 1s infinite alternate;
+        }
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-8px); }
+        }
+        .map-coord {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #818cf8;
+            background: rgba(99, 102, 241, 0.15);
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        /* Category Card Grid */
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+        .category-card {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .category-card:hover {
+            border-color: #6366f1;
+            transform: translateY(-2px);
+        }
+        .cat-icon { font-size: 28px; margin-bottom: 8px; }
+        .cat-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+        .cat-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="#" class="brand">
+            <div class="brand-icon">🔧</div>
+            <span>FixLink Customer</span>
+        </a>
+
+        <div class="nav-actions">
+            <a href="/swagger-ui.html" target="_blank" class="api-link" title="Xem Swagger OpenAPI Documentation">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                OpenAPI (Swagger)
+            </a>
+            <div class="user-pill">
+                <div class="user-avatar" id="avatarLetter">C</div>
+                <div>
+                    <span id="userName" style="font-size: 13px; font-weight: 600;">Khách hàng</span>
+                    <span class="user-role">CUSTOMER</span>
+                </div>
+            </div>
+            <button class="btn-logout" id="btnLogout">Đăng xuất</button>
+        </div>
+    </nav>
+
+    <div class="layout">
+        <!-- Sidebar Navigation ("Di trang được") -->
+        <aside class="sidebar">
+            <div class="nav-item active" onclick="switchTab('overview')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                <span>Tổng quan</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('catalog')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                <span>Danh mục dịch vụ</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('new-request')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                <span>Tạo yêu cầu sửa chữa</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('my-requests')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                <span>Yêu cầu & Đấu giá</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('profile')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span>Hồ sơ & Địa chỉ</span>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="content">
+
+            <!-- TAB 1: OVERVIEW -->
+            <section id="tab-overview" class="tab-panel active">
+                <div class="page-header">
+                    <h2 id="welcomeTitle">Chào mừng trở lại! 👋</h2>
+                    <p>Theo dõi các yêu cầu sửa chữa và kết nối với kỹ thuật viên uy tín.</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">⚡</div>
+                        <div>
+                            <div class="stat-val">1</div>
+                            <div class="stat-label">Đơn đang đấu giá thợ</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #6ee7b7;">✅</div>
+                        <div>
+                            <div class="stat-val">1</div>
+                            <div class="stat-label">Đơn đã hoàn thành</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(139, 92, 246, 0.15); color: #c084fc;">🎁</div>
+                        <div>
+                            <div class="stat-val">150</div>
+                            <div class="stat-label">Điểm tích lũy (Loyalty)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🚀 Hành động nhanh</h3>
+                    </div>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button class="btn-primary" onclick="switchTab('new-request')">
+                            + Gửi yêu cầu sửa chữa mới
+                        </button>
+                        <button class="page-btn" onclick="switchTab('catalog')">
+                            Tra cứu bảng giá dịch vụ
+                        </button>
+                        <button class="page-btn" onclick="switchTab('my-requests')">
+                            Xem báo giá từ thợ
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: SERVICE CATALOG -->
+            <section id="tab-catalog" class="tab-panel">
+                <div class="page-header">
+                    <h2>Danh mục Dịch vụ FixLink</h2>
+                    <p>Dữ liệu đồng bộ trực tiếp từ REST API công khai <code>/api/v1/categories</code></p>
+                </div>
+
+                <div id="catalogLoading" style="color: var(--text-muted); margin-bottom: 16px;">Đang tải danh mục dịch vụ...</div>
+                <div class="category-grid" id="categoryContainer"></div>
+            </section>
+
+            <!-- TAB 3: NEW REPAIR REQUEST -->
+            <section id="tab-new-request" class="tab-panel">
+                <div class="page-header">
+                    <h2>Tạo Yêu Cầu Sửa Chữa Mới</h2>
+                    <p>Kỹ thuật viên xung quanh sẽ nhận thông báo và gửi báo giá cạnh tranh cho bạn.</p>
+                </div>
+
+                <div class="card">
+                    <form id="requestForm" onsubmit="handleCreateRequest(event)">
+                        <div class="form-grid">
+                            <div>
+                                <label class="form-label">Chọn ngành nghề dịch vụ</label>
+                                <select class="form-select" id="reqCategory" required>
+                                    <option value="">-- Chọn danh mục --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Tiêu đề yêu cầu</label>
+                                <input type="text" class="form-input" id="reqTitle" placeholder="Ví dụ: Máy lạnh không mát, chập điện cầu dao..." required>
+                            </div>
+
+                            <div class="form-full">
+                                <label class="form-label">Mô tả chi tiết sự cố</label>
+                                <textarea class="form-textarea" id="reqDesc" rows="3" placeholder="Mô tả hiện tượng sự cố, hãng sản xuất, thời gian xảy ra..." required></textarea>
+                            </div>
+
+                            <div class="form-full">
+                                <label class="form-label">Vị trí sửa chữa (Tích hợp Google Maps Geocoding)</label>
+                                <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                                    <input type="text" class="form-input" id="reqAddress" value="123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM" required>
+                                    <button type="button" class="page-btn" onclick="locateGoogleMap()">📍 Định vị</button>
+                                </div>
+                                <div class="map-preview">
+                                    <div class="map-pin">📍</div>
+                                    <div style="font-size: 13px; font-weight: 600; margin-top: 4px;">Google Maps Location Preview</div>
+                                    <div class="map-coord" id="mapCoords">Kinh độ: 106.7030000 | Vĩ độ: 10.7731000 (Quận 1)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
+                            <button type="submit" class="btn-primary">
+                                Gửi yêu cầu & Bắt đầu đấu giá
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- TAB 4: MY REQUESTS & BIDS -->
+            <section id="tab-my-requests" class="tab-panel">
+                <div class="page-header">
+                    <h2>Danh sách Yêu cầu & Báo giá của Thợ</h2>
+                    <p>Quản lý trạng thái đấu giá, thương lượng và chọn kỹ thuật viên phù hợp.</p>
+                </div>
+
+                <div class="card">
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Mã yêu cầu</th>
+                                    <th>Dịch vụ</th>
+                                    <th>Mô tả</th>
+                                    <th>Trạng thái</th>
+                                    <th>Báo giá từ Thợ</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestsTableBody">
+                                <tr>
+                                    <td><strong>#REQ-002</strong></td>
+                                    <td>Điện dân dụng</td>
+                                    <td>Chập điện cầu dao tầng 2, mất điện đột ngột</td>
+                                    <td><span class="status-badge status-bidding">ĐANG ĐẤU GIÁ (2 báo giá)</span></td>
+                                    <td>
+                                        <div style="font-size: 12px;">• Lê Văn Đức: <strong>350,000 đ</strong></div>
+                                        <div style="font-size: 12px;">• Phạm Văn Minh: <strong>320,000 đ</strong></div>
+                                    </td>
+                                    <td>
+                                        <button class="page-btn" style="color: #60a5fa;" onclick="alert('Đã chọn kỹ thuật viên Phạm Văn Minh (320,000đ). Phiên làm việc bắt đầu!')">Chọn thợ</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>#REQ-001</strong></td>
+                                    <td>Điện lạnh</td>
+                                    <td>Vệ sinh và bơm gas máy lạnh Daikin 1.5HP</td>
+                                    <td><span class="status-badge status-completed">ĐÃ HOÀN THÀNH</span></td>
+                                    <td>Lê Văn Đức: 450,000 đ</td>
+                                    <td>
+                                        <button class="page-btn" onclick="alert('Đã đánh giá 5 sao cho KTV Lê Văn Đức!')">⭐ Xem đánh giá</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="pagination">
+                        <div>Hiển thị trang 1 / 1 (Tổng số 2 yêu cầu)</div>
+                        <div class="pagination-buttons">
+                            <button class="page-btn" disabled>« Trước</button>
+                            <button class="page-btn active">1</button>
+                            <button class="page-btn" disabled>Sau »</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: PROFILE -->
+            <section id="tab-profile" class="tab-panel">
+                <div class="page-header">
+                    <h2>Hồ sơ Cá nhân & Sổ Địa chỉ</h2>
+                    <p>Quản lý thông tin liên lạc và các địa chỉ nhận dịch vụ thường dùng.</p>
+                </div>
+
+                <div class="card">
+                    <div class="form-grid">
+                        <div>
+                            <label class="form-label">Họ và tên</label>
+                            <input type="text" class="form-input" id="profName" value="Nguyễn Văn A">
+                        </div>
+                        <div>
+                            <label class="form-label">Số điện thoại</label>
+                            <input type="text" class="form-input" value="0901234567">
+                        </div>
+                        <div>
+                            <label class="form-label">Email liên hệ</label>
+                            <input type="email" class="form-input" value="nguyenvana@gmail.com">
+                        </div>
+                        <div>
+                            <label class="form-label">Điểm tích lũy thành viên</label>
+                            <input type="text" class="form-input" value="150 điểm (Hạng Bạc)" readonly>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!user.role || user.role !== 'CUSTOMER') {
+            window.location.href = '/login.html';
+        }
+
+        // Set user info
+        const displayName = user.fullName || user.username || 'Khách hàng';
+        document.getElementById('userName').textContent = displayName;
+        document.getElementById('avatarLetter').textContent = displayName[0].toUpperCase();
+        document.getElementById('welcomeTitle').textContent = `Chào mừng, ${displayName}! 👋`;
+        if (document.getElementById('profName')) document.getElementById('profName').value = displayName;
+
+        // Tab Switching ("Di trang được")
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+
+            const targetPanel = document.getElementById(`tab-${tabId}`);
+            if (targetPanel) targetPanel.classList.add('active');
+
+            const navIndex = ['overview', 'catalog', 'new-request', 'my-requests', 'profile'].indexOf(tabId);
+            if (navIndex >= 0) {
+                const navItems = document.querySelectorAll('.nav-item');
+                if (navItems[navIndex]) navItems[navIndex].classList.add('active');
+            }
+
+            if (tabId === 'catalog') {
+                loadCatalog();
+            }
+        }
+
+        // Load Categories from API
+        let categoriesLoaded = false;
+        async function loadCatalog() {
+            if (categoriesLoaded) return;
+            const container = document.getElementById('categoryContainer');
+            const loading = document.getElementById('catalogLoading');
+            const reqSelect = document.getElementById('reqCategory');
+
+            try {
+                const res = await fetch('/api/v1/categories');
+                const json = await res.json();
+                if (res.ok && json.data) {
+                    loading.style.display = 'none';
+                    container.innerHTML = '';
+                    json.data.forEach(cat => {
+                        const card = document.createElement('div');
+                        card.className = 'category-card';
+                        card.innerHTML = `
+                            <div class="cat-icon">🛠️</div>
+                            <div class="cat-title">${cat.name}</div>
+                            <div class="cat-desc">${cat.description || 'Dịch vụ sửa chữa chuyên nghiệp theo chuẩn FixLink.'}</div>
+                            <div style="margin-top: 10px; font-size: 11px; color: #818cf8;">Đơn giá tham khảo: 150k - 500k</div>
+                        `;
+                        card.onclick = () => {
+                            switchTab('new-request');
+                            reqSelect.value = cat.id;
+                        };
+                        container.appendChild(card);
+
+                        // Also populate select option
+                        const opt = document.createElement('option');
+                        opt.value = cat.id;
+                        opt.textContent = cat.name;
+                        reqSelect.appendChild(opt);
+                    });
+                    categoriesLoaded = true;
+                }
+            } catch (e) {
+                loading.textContent = 'Không thể tải danh mục từ API.';
+            }
+        }
+
+        // Google Map simulation
+        function locateGoogleMap() {
+            const addr = document.getElementById('reqAddress').value;
+            const coords = document.getElementById('mapCoords');
+            coords.textContent = `📍 Đã định vị qua Google Maps: 10.7731° N, 106.7030° E (${addr})`;
+        }
+
+        function handleCreateRequest(e) {
+            e.preventDefault();
+            const title = document.getElementById('reqTitle').value;
+            const desc = document.getElementById('reqDesc').value;
+            alert(`✅ Tạo yêu cầu thành công!\n\nTiêu đề: ${title}\nĐã mở phiên đấu giá cho các kỹ thuật viên trong khu vực!`);
+            switchTab('my-requests');
+        }
+
+        // Logout
+        document.getElementById('btnLogout').addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '/login.html';
+        });
+
+        // Initialize catalog in background
+        loadCatalog();
+    </script>
+</body>
+</html>
