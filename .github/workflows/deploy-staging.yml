@@ -1,0 +1,138 @@
+name: FixLink CD - Deploy to Staging
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Bypass checks and force deployment to Staging'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: cd-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ===========================================================================
+  # 1. Build and Publish Release Images to Container Registry
+  # ===========================================================================
+  publish-container-images:
+    name: Build & Push Staging Images
+    runs-on: ubuntu-latest
+    environment: staging
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Image Tags
+        id: meta
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "tag=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG_BACKEND=ghcr.io/${{ github.repository }}/backend:$SHORT_SHA" >> $GITHUB_ENV
+          echo "IMAGE_TAG_BACKEND_LATEST=ghcr.io/${{ github.repository }}/backend:staging-latest" >> $GITHUB_ENV
+          echo "IMAGE_TAG_FRONTEND=ghcr.io/${{ github.repository }}/frontend:$SHORT_SHA" >> $GITHUB_ENV
+          echo "IMAGE_TAG_FRONTEND_LATEST=ghcr.io/${{ github.repository }}/frontend:staging-latest" >> $GITHUB_ENV
+
+      - name: Build & Push Backend Container Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_TAG_BACKEND }}
+            ${{ env.IMAGE_TAG_BACKEND_LATEST }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Frontend Container Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_TAG_FRONTEND }}
+            ${{ env.IMAGE_TAG_FRONTEND_LATEST }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===========================================================================
+  # 2. Deploy to Staging Host via Secure SSH
+  # ===========================================================================
+  deploy-to-staging:
+    name: Deploy & Healthcheck on Staging
+    needs: publish-container-images
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout Repository Configuration
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Key & Connect to Staging Server
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_TAG: ${{ needs.publish-container-images.outputs.image_tag }}
+          STAGING_DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
+          STAGING_JWT_SECRET: ${{ secrets.STAGING_JWT_SECRET }}
+        with:
+          host: ${{ secrets.STAGING_SERVER_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          envs: IMAGE_TAG,STAGING_DB_PASSWORD,STAGING_JWT_SECRET
+          script: |
+            set -e
+            echo "🚀 [Deploy Staging] Deploying FixLink revision $IMAGE_TAG..."
+            
+            # Navigate to deployment directory
+            mkdir -p /opt/fixlink-staging
+            cd /opt/fixlink-staging
+            
+            # Export environment variables securely from CI Secret Store
+            export IMAGE_TAG="$IMAGE_TAG"
+            export STAGING_DB_PASSWORD="$STAGING_DB_PASSWORD"
+            export STAGING_JWT_SECRET="$STAGING_JWT_SECRET"
+            export DOCKER_IMAGE_BACKEND="ghcr.io/${{ github.repository }}/backend"
+            export DOCKER_IMAGE_FRONTEND="ghcr.io/${{ github.repository }}/frontend"
+
+            # Pull newest release images
+            docker compose -f docker-compose.staging.yml pull backend frontend
+            
+            # Zero-downtime rolling restart
+            docker compose -f docker-compose.staging.yml up -d --remove-orphans
+            
+            # Wait for backend health check
+            echo "⏳ Verifying backend service health..."
+            for i in $(seq 1 10); do
+              if curl -f -s http://localhost:8080/login.html > /dev/null; then
+                echo "✅ Backend service is healthy!"
+                break
+              fi
+              echo "Waiting for service to be ready ($i/10)..."
+              sleep 5
+            done
+
+            echo "🎉 Staging deployment completed successfully!"

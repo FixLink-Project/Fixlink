@@ -2,24 +2,34 @@
 
 [![Java](https://img.shields.io/badge/Java-21%20LTS-orange.svg?style=flat&logo=openjdk)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-brightgreen.svg?style=flat&logo=springboot)](https://spring.io/projects/spring-boot)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-green.svg?style=flat&logo=nodedotjs)](https://nodejs.org/)
+[![Vite](https://img.shields.io/badge/Frontend-Vite%20SPA-646CFF.svg?style=flat&logo=vite)](https://vitejs.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20Alpine-blue.svg?style=flat&logo=postgresql)](https://www.postgresql.org/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg?style=flat&logo=docker)](https://www.docker.com/)
+[![Docker](https://img.shields.io/badge/Docker-Multi--stage%20Containers-2496ED.svg?style=flat&logo=docker)](https://www.docker.com/)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF.svg?style=flat&logo=githubactions)](#-cicd-pipeline--staging-deployment)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0%20Swagger-green.svg?style=flat&logo=swagger)](http://localhost:8080/swagger-ui/index.html)
-[![Code Style](https://img.shields.io/badge/Code%20Style-Spotless%20%7C%20Checkstyle-blueviolet.svg)](#-code-quality--formatting)
 
 **FixLink** là nền tảng số kết nối khách hàng có nhu cầu sửa chữa với đội ngũ kỹ thuật viên lành nghề (Điện, Nước, Điện lạnh, Sơn, Điện tử,...). Hệ thống cung cấp cơ chế đấu giá minh bạch, quản lý tiến độ thời gian thực, bảo hành và thanh toán an toàn.
 
 ---
 
-## 📁 Cấu trúc Thư mục Dự án
+## 📁 Cấu trúc Thư mục Toàn diện (Repository Structure)
 
 ```
 FixLink/
 ├── .editorconfig                       # Quy chuẩn formatting đa IDE (UTF-8, LF, 4-space indent)
 ├── .env.example                        # Mẫu biến môi trường an toàn
 ├── .gitignore                          # Cấu hình bỏ qua file nhạy cảm, build artifacts, cache
-├── docker-compose.yml                  # Cấu hình container PostgreSQL 16
-├── README.md                           # Cẩm nang khởi chạy dự án (Definition of Done)
+├── docker-compose.yml                  # Khởi chạy fullstack cục bộ (Database + Backend + Frontend)
+├── docker-compose.staging.yml          # Cấu hình container điều phối môi trường Staging
+├── README.md                           # Cẩm nang dự án (Definition of Done)
+│
+├── .github/                            # CI/CD Workflows & GitHub Configurations
+│   ├── workflows/
+│   │   ├── ci.yml                      # CI: Build & Test Backend + Frontend + Container Image (mỗi PR)
+│   │   └── deploy-staging.yml          # CD: Tự động deploy Staging khi merge vào main
+│   ├── PULL_REQUEST_TEMPLATE.md        # Template chuẩn cho Pull Request
+│   └── branch-protection-rules.md      # Quy định Branch Protection bảo vệ nhánh main
 │
 ├── .githooks/                          # Git hooks tự động cho dự án
 │   └── pre-commit                      # Kiểm tra format (Spotless) trước khi cho phép commit
@@ -29,6 +39,7 @@ FixLink/
 │   └── settings.json                   # Tự động format khi lưu file
 │
 ├── backend/                            # Dịch vụ Spring Boot 3 Backend
+│   ├── Dockerfile                      # Multi-stage Dockerfile (Maven -> JRE 21 Alpine)
 │   ├── mvnw & mvnw.cmd                 # Maven Wrapper (chạy không cần cài sẵn Maven)
 │   ├── pom.xml                         # Quản lý dependencies, Spotless, Checkstyle
 │   ├── checkstyle.xml                  # Bộ quy tắc kiểm tra định dạng code
@@ -37,14 +48,26 @@ FixLink/
 │       ├── main/resources/             # Cấu hình application.yml, migrations Flyway, Static UI
 │       └── test/java/com/fixlink/      # Unit & Integration Tests (MockMvc, SpringBootTest)
 │
+├── frontend/                           # Ứng dụng Giao diện Người dùng (Vite SPA)
+│   ├── Dockerfile                      # Multi-stage Dockerfile (Node -> Nginx Alpine)
+│   ├── nginx.conf                      # Nginx config & reverse proxy /api/ về backend
+│   ├── package.json                    # Scripts: dev, build, lint, test
+│   ├── vite.config.js                  # Cấu hình Vite & Vitest
+│   ├── src/                            # Giao diện, API Client, Style
+│   └── tests/                          # Frontend Unit Tests (Vitest)
+│
 ├── docker/                             # Dữ liệu khởi tạo database
 │   └── init/
 │       ├── 01-schema.sql               # Định nghĩa 21+ bảng cơ sở dữ liệu
 │       └── 02-seed.sql                 # Dữ liệu mẫu hoàn chỉnh (users, categories, deals)
 │
-├── docs/                               # Tài liệu chi tiết
+├── docs/                               # Tài liệu thiết kế & vận hành chuyên sâu
 │   ├── architecture.md                 # Kiến trúc hệ thống, phân tầng & quy ước package
-│   └── local-development-setup.md      # Hướng dẫn chi tiết môi trường phát triển cục bộ
+│   ├── database-conceptual-model.md    # Mô hình ERD Phase 1 & kiến trúc mở rộng Phase 2+
+│   ├── local-development-setup.md      # Cẩm nang cài đặt chi tiết cho người mới
+│   ├── ci-secrets-and-security.md      # Hướng dẫn cấu hình GitHub Secrets an toàn
+│   ├── branch-protection-rules.md      # Thiết lập Branch Protection Rules trên GitHub
+│   └── staging-deployment-guide.md     # Hướng dẫn vận hành hạ tầng Staging
 │
 └── scripts/                            # Tiện ích tự động hóa
     ├── setup-hooks.bat                 # Kích hoạt git pre-commit hook trên Windows
@@ -55,81 +78,68 @@ FixLink/
 
 ## ⚡ Khởi chạy Nhanh (Quick Start)
 
-Dự án thỏa mãn tiêu chí: **Một kỹ sư mới có thể clone, build và chạy dịch vụ chỉ bằng file README này**.
+Dự án thỏa mãn tiêu chí **Definition of Done**: Một kỹ sư mới có thể clone, build và chạy toàn bộ service cục bộ chỉ bằng file README này.
 
 ### Yêu cầu tiên quyết
 - **JDK 21 LTS** ([Tải tại đây](https://adoptium.net/))
+- **Node.js 20+ & npm** ([Tải tại đây](https://nodejs.org/))
 - **Docker & Docker Compose** ([Tải Docker Desktop](https://www.docker.com/products/docker-desktop/))
 - **Git**
 
 ---
 
-### Bước 1: Thiết lập tệp môi trường `.env`
+### Cách 1: Chạy Toàn Bộ Stack Bằng Docker Compose (Khuyên dùng)
 
-Sao chép file mẫu `.env.example` thành `.env`:
-
-- **Windows (PowerShell):**
-  ```powershell
-  Copy-Item .env.example .env
-  ```
-- **macOS / Linux:**
-  ```bash
-  cp .env.example .env
-  ```
-
----
-
-### Bước 2: Khởi chạy Cơ sở dữ liệu (PostgreSQL Container)
-
-Khởi động container cơ sở dữ liệu PostgreSQL trong nền:
+Chỉ với 2 câu lệnh, toàn bộ Database, Backend và Frontend sẽ cùng khởi động:
 
 ```bash
-docker compose up -d
+# 1. Tạo tệp môi trường
+cp .env.example .env   # (Windows: Copy-Item .env.example .env)
+
+# 2. Khởi chạy toàn bộ hệ sinh thái
+docker compose up --build -d
 ```
 
-> 💡 *Database sẽ tự động nạp 21+ bảng và dữ liệu mẫu (seed data) trong thư mục `docker/init/`.*
+- **Frontend Web UI**: [http://localhost](http://localhost) (cổng 80)
+- **Backend REST API**: [http://localhost:8080](http://localhost:8080)
+- **Swagger Documentation**: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
 
 ---
 
-### Bước 3: Build & Chạy Backend Service
+### Cách 2: Chạy Từng Phần Cho Quá Trình Phát Triển (Local Dev Mode)
 
-Di chuyển vào thư mục `backend/` và khởi chạy với Maven Wrapper:
+#### 1. Khởi động PostgreSQL Database
+```bash
+docker compose up -d db
+```
 
-- **Trên Windows (PowerShell):**
-  ```powershell
-  cd backend
-  $env:JAVA_HOME = "C:\Program Files\Java\jdk-21.0.10"   # Đường dẫn JDK 21 của bạn
-  .\mvnw.cmd spring-boot:run
-  ```
-- **Trên macOS / Linux:**
-  ```bash
-  cd backend
-  ./mvnw spring-boot:run
-  ```
+#### 2. Khởi động Backend (Spring Boot 3)
+```bash
+cd backend
+# Windows:
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-21.0.10"
+.\mvnw.cmd spring-boot:run
 
-Khi thấy dòng log `Started FixLinkApplication in X seconds` trên cổng **8080**, hệ thống đã sẵn sàng!
+# macOS / Linux:
+./mvnw spring-boot:run
+```
+
+#### 3. Khởi động Frontend (Vite Dev Server)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+> Giao diện frontend sẽ chạy tại: **[http://localhost:5173](http://localhost:5173)** với tính năng Hot Module Replacement (HMR) và tự động proxy các request `/api/` về Backend cổng 8080.
 
 ---
 
 ### 🌐 Chế độ Chạy Không Cần Docker (In-memory H2 Profile)
 
-Nếu máy tính của bạn không có Docker hoặc cần chạy kiểm thử nhanh:
+Nếu máy tính của bạn không có Docker hoặc cần chạy kiểm thử nhanh offline:
 
 - **Windows:** `cd backend && .\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local`
 - **macOS/Linux:** `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
-
----
-
-## 🔗 Truy cập Ứng dụng & Tài liệu API
-
-Sau khi service khởi chạy tại cổng `8080`:
-
-| Thành phần | Đường dẫn URL | Mô tả |
-| :--- | :--- | :--- |
-| **Giao diện Web UI** | [http://localhost:8080/login.html](http://localhost:8080/login.html) | Màn hình đăng nhập & Dashboard người dùng |
-| **Swagger UI (Interactive)** | [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) | Thử nghiệm trực tiếp các REST API endpoints |
-| **OpenAPI Schema (JSON)** | [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs) | Schema kỹ thuật chuẩn OpenAPI 3.0 |
-| **H2 Database Console** | [http://localhost:8080/h2-console](http://localhost:8080/h2-console) | Bảng điều khiển H2 (khi bật profile `local`) |
 
 ---
 
@@ -145,57 +155,60 @@ Tất cả tài khoản mẫu đều sử dụng chung mật khẩu: **`password
 
 ---
 
-## 🛠️ Code Quality, Formatting & Git Hooks
+## 🚀 CI/CD Pipeline & Staging Deployment
 
-Dự án thiết lập tiêu chuẩn định dạng mã nguồn tự động thông qua **Spotless** và kiểm tra cú pháp bằng **Checkstyle**.
+Dự án áp dụng quy trình tự động hóa kiểm thử và triển khai chuẩn DevOps:
 
-### 1. Kích hoạt Git Pre-commit Hook
-Chỉ cần thực hiện 1 lần sau khi clone dự án:
-- **Windows**: Chạy file `scripts\setup-hooks.bat`
-- **macOS / Linux**: Chạy lệnh `./scripts/setup-hooks.sh` (hoặc `git config core.hooksPath .githooks`)
+```
+[ Pull Request to 'main' ]
+         │
+         ▼ Trigger .github/workflows/ci.yml
+   ┌───────────────────────────────────────────────┐
+   │ • Backend: Spotless, Checkstyle, Tests, JAR   │
+   │ • Frontend: Lint, Vitest Tests, Build Assets  │
+   │ • Docker: Build Backend & Frontend Images     │
+   └───────────────────────┬───────────────────────┘
+                           │ (All Checks Pass & Approved)
+                           ▼
+                 [ Merge to 'main' ]
+                           │
+                           ▼ Trigger .github/workflows/deploy-staging.yml
+   ┌───────────────────────────────────────────────┐
+   │ • Push Release Images to GHCR (ghcr.io)       │
+   │ • SSH Connect to Staging Host                 │
+   │ • Zero-Downtime Rolling Container Restart     │
+   │ • Automated Smoke Healthcheck Tests           │
+   └───────────────────────────────────────────────┘
+```
 
-Mỗi khi bạn thực hiện `git commit`, hook sẽ tự động chạy kiểm tra định dạng code.
+- **Definition of Done**: Mọi Pull Request tự động kích hoạt CI kiểm tra toàn diện; khi merge vào `main`, hệ thống tự động deploy lên môi trường Staging.
+- **Bảo mật Secret**: Mọi bí mật kết nối và mật khẩu được lưu trữ an toàn trong kho bí mật **GitHub Secrets Store** ([Xem hướng dẫn cấu hình](docs/ci-secrets-and-security.md)), cam kết tuyệt đối không commit vào mã nguồn.
+- **Branch Protection**: Nhánh `main` được bảo vệ bằng luật bắt buộc PR và bắt buộc toàn bộ CI jobs phải PASS trước khi merge ([Xem quy định Branch Protection](docs/branch-protection-rules.md)).
 
-### 2. Các lệnh hữu ích (chạy trong thư mục `backend/`)
+---
+
+## 🛠️ Code Quality, Formatting & Testing
 
 ```bash
-# Tự động căn chỉnh, xóa import thừa và format code
-./mvnw spotless:apply     # (Windows: .\mvnw.cmd spotless:apply)
+# Backend (chạy trong thư mục backend/)
+./mvnw spotless:apply     # Tự động căn chỉnh & format mã nguồn Java
+./mvnw spotless:check     # Kiểm tra format Spotless
+./mvnw checkstyle:check   # Kiểm tra cú pháp linter Checkstyle
+./mvnw test               # Chạy toàn bộ Unit & Integration Test
 
-# Kiểm tra định dạng code Spotless
-./mvnw spotless:check
-
-# Kiểm tra quy chuẩn linter Checkstyle
-./mvnw checkstyle:check
-
-# Chạy toàn bộ Unit & Integration Test
-./mvnw test
-
-# Đóng gói file JAR chạy production
-./mvnw clean package -DskipTests
+# Frontend (chạy trong thư mục frontend/)
+npm test                  # Chạy unit tests với Vitest
+npm run lint              # Kiểm tra linting code
+npm run build             # Đóng gói bản phân phối production
 ```
 
 ---
 
-## 🗄️ Quản lý Cơ sở Dữ liệu (Docker)
+## 📖 Tài liệu Chuyên Sâu Tham Khảo
 
-```bash
-# Kiểm tra trạng thái container
-docker compose ps
-
-# Xem logs container database
-docker compose logs -f db
-
-# Truy cập dòng lệnh psql
-docker compose exec db psql -U fixlink -d fixlink_db
-
-# Reset toàn bộ cơ sở dữ liệu về trạng thái ban đầu
-docker compose down -v && docker compose up -d
-```
-
----
-
-## 📖 Tài liệu Tham khảo Thêm
-
-- [Kiến trúc Phân tầng & Quy ước Base Packages (docs/architecture.md)](docs/architecture.md)
-- [Cẩm nang Chi tiết Cài đặt Môi trường Cục bộ (docs/local-development-setup.md)](docs/local-development-setup.md)
+- 📊 [Mô Hình Dữ Liệu Phase 1 & Khả Năng Mở Rộng Phase 2+ (docs/database-conceptual-model.md)](docs/database-conceptual-model.md)
+- 🏛️ [Kiến trúc Phân tầng & Quy ước Base Packages (docs/architecture.md)](docs/architecture.md)
+- 💻 [Cẩm nang Chi tiết Cài đặt Môi trường Cục bộ (docs/local-development-setup.md)](docs/local-development-setup.md)
+- 🔐 [Quản lý CI Secrets & Bảo Mật Kho Bí Mật (docs/ci-secrets-and-security.md)](docs/ci-secrets-and-security.md)
+- 🛡️ [Quy tắc Bảo vệ Nhánh Branch Protection (docs/branch-protection-rules.md)](docs/branch-protection-rules.md)
+- 🌐 [Cẩm nang Vận hành & Triển khai Staging (docs/staging-deployment-guide.md)](docs/staging-deployment-guide.md)
