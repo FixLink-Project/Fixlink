@@ -3,6 +3,7 @@ import CustomerRegisterPage from './pages/CustomerRegisterPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
+import TechnicianRegisterPage from './pages/TechnicianRegisterPage';
 
 export default function App() {
   return (
@@ -10,6 +11,7 @@ export default function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/dang-nhap" element={<LoginPage />} />
       <Route path="/dang-ky" element={<CustomerRegisterPage />} />
+      <Route path="/dang-ky-tho" element={<TechnicianRegisterPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
