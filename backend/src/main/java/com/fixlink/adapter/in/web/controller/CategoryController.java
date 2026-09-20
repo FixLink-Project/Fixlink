@@ -14,7 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
-@Tag(name = "Master Data", description = "Các API truy vấn danh mục ngành nghề và dịch vụ sửa chữa (Jira RC-8)")
+@Tag(name = "Master Data", description = "Các API truy vấn danh mục ngành nghề và dịch vụ sửa chữa")
 public class CategoryController {
 
     private final SpringDataServiceCategoryRepository categoryRepository;

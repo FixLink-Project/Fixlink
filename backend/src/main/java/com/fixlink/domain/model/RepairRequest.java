@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Thực thể lõi yêu cầu sửa chữa (Jira RC-8).
+ * Thực thể lõi yêu cầu sửa chữa.
  */
 @Getter
 @Setter

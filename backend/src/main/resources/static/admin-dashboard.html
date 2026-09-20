@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cổng Quản Trị Hệ Thống - FixLink Admin (RC-3)</title>
+    <title>Cổng Quản Trị Hệ Thống - FixLink Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -69,7 +69,6 @@
         }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
         .card-title { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
-        .jira-tag { background: #7c3aed; color: #fff; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; }
 
         /* Filter bar */
         .filter-bar {
@@ -185,7 +184,7 @@
     <header class="navbar">
         <a href="/dev-links.html" class="nav-brand">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            FixLink Admin Portal (RC-3 User Management)
+            FixLink Admin Portal
         </a>
         <div class="nav-user">
             <div>
@@ -209,15 +208,15 @@
             </div>
             <div class="stat-card">
                 <div class="stat-num" style="color: #34d399;">100%</div>
-                <div class="stat-label">Độ Phủ Nghiệp Vụ Epic RC-3</div>
+                <div class="stat-label">Độ phủ nghiệp vụ quản trị</div>
             </div>
         </div>
 
-        <!-- 1. PHÊ DUYỆT HỒ SƠ THỢ (RC-3 In-Scope: Admin verifies technician profiles) -->
+        <!-- 1. PHÊ DUYỆT HỒ SƠ THỢ -->
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">
-                    <span class="jira-tag">RC-3</span> Phê Duyệt Hồ Sơ Kỹ Thuật Viên (eKYC Verification)
+                    Phê Duyệt Hồ Sơ Kỹ Thuật Viên (eKYC Verification)
                 </h3>
                 <span style="font-size: 13px; color: var(--text-muted);">Thợ chỉ được nhận việc sau khi Admin phê duyệt</span>
             </div>
@@ -249,11 +248,11 @@
             </table>
         </div>
 
-        <!-- 2. QUẢN LÝ DANH SÁCH & KHÓA/MỞ KHÓA NGƯỜI DÙNG (RC-3 In-Scope: User List, Detail, Block/Unblock) -->
+        <!-- 2. QUẢN LÝ DANH SÁCH & KHÓA/MỞ KHÓA NGƯỜI DÙNG -->
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">
-                    <span class="jira-tag">RC-3</span> Quản Lý Danh Sách & Khóa / Mở Khóa Người Dùng (Admin Oversight)
+                    Quản Lý Danh Sách & Khóa / Mở Khóa Người Dùng (Admin Oversight)
                 </h3>
                 <button onclick="loadUsers()" class="btn-action btn-view">🔄 Làm Mới Danh Sách</button>
             </div>
@@ -303,7 +302,7 @@
         </div>
     </main>
 
-    <!-- Modal Xem Chi Tiết Người Dùng (RC-3 In-Scope: Open a user detail) -->
+    <!-- Modal Xem Chi Tiết Người Dùng -->
     <div id="detailModal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-header">

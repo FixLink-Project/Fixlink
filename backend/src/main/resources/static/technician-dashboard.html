@@ -126,7 +126,7 @@
             padding: 0 24px;
         }
 
-        /* STATUS BANNER (Crucial for AC 5) */
+        /* Dải trạng thái xác minh hồ sơ */
         .status-banner {
             border-radius: var(--radius-lg);
             padding: 24px 28px;
@@ -294,7 +294,7 @@
             color: #f1f5f9;
         }
 
-        /* Availability Mode Control (AC 5) */
+        /* Công tắc bật/tắt nhận yêu cầu */
         .switch-panel {
             background: rgba(15, 23, 42, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.08);
@@ -477,74 +477,6 @@
             line-height: 1.6;
         }
 
-        /* Interactive Simulation Toolbar (For Jira Evidence) */
-        .sim-toolbar {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(15, 23, 42, 0.95);
-            border: 1px solid rgba(59, 130, 246, 0.5);
-            backdrop-filter: blur(20px);
-            padding: 12px 24px;
-            border-radius: 9999px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(37, 99, 235, 0.3);
-            z-index: 100;
-        }
-
-        .sim-label {
-            font-size: 12px;
-            font-weight: 800;
-            color: #93c5fd;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-sim-action {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            border: none;
-            color: #fff;
-            padding: 8px 16px;
-            border-radius: 9999px;
-            font-size: 12.5px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
-        }
-
-        .btn-sim-action:hover {
-            transform: scale(1.03);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-        }
-
-        .btn-sim-reset {
-            background: rgba(245, 158, 11, 0.2);
-            border: 1px solid rgba(245, 158, 11, 0.4);
-            color: #fcd34d;
-            padding: 8px 16px;
-            border-radius: 9999px;
-            font-size: 12.5px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
-        }
-
-        .btn-sim-reset:hover {
-            background: rgba(245, 158, 11, 0.3);
-            transform: scale(1.03);
-        }
     </style>
 </head>
 <body>
@@ -566,7 +498,7 @@
     </header>
 
     <main class="container">
-        <!-- DYNAMIC VERIFICATION STATUS BANNER (Crucial for AC 5) -->
+        <!-- Dải trạng thái xác minh hồ sơ -->
         <section id="statusBanner" class="status-banner pending">
             <div class="status-icon-wrap" id="statusIconWrap">
                 <svg id="iconPending" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -582,7 +514,7 @@
                 </p>
                 <div class="status-warning-box" id="warningBox">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                    <span>TIÊU CHÍ AN TOÀN (AC 5): Bạn chưa thể nhận yêu cầu sửa chữa (Cannot receive repair requests) cho đến khi Admin phê duyệt danh tính.</span>
+                    <span>Bạn chưa thể nhận yêu cầu sửa chữa cho đến khi quản trị viên phê duyệt danh tính.</span>
                 </div>
                 <div class="status-success-box" id="successBox" style="display: none;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
@@ -624,7 +556,7 @@
                         </li>
                     </ul>
 
-                    <!-- Switch: Nhận Yêu Cầu Sửa Chữa (Gated by AC 5) -->
+                    <!-- Công tắc nhận yêu cầu, chỉ mở khi hồ sơ đã được duyệt -->
                     <div class="switch-panel">
                         <div class="switch-text">
                             <h4>Nhận Yêu Cầu Sửa Chữa</h4>
@@ -637,7 +569,7 @@
                     </div>
 
                     <button onclick="openEditTechModal()" style="width: 100%; margin-top: 14px; background: rgba(59, 130, 246, 0.18); border: 1px solid rgba(59, 130, 246, 0.4); color: #93c5fd; padding: 10px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
-                        ✏️ Chỉnh Sửa Hồ Sơ & Tay Nghề (RC-3)
+                        ✏️ Chỉnh Sửa Hồ Sơ & Tay Nghề
                     </button>
                 </div>
             </div>
@@ -657,7 +589,7 @@
                         </div>
                         <h4 class="locked-title">Yêu Cầu Sửa Chữa Đang Bị Khóa</h4>
                         <p class="locked-desc">
-                            Theo tiêu chí nghiệm thu <strong>RC-11 Acceptance Criteria 5</strong>, tài khoản thợ ở trạng thái <em>Pending</em> không được phép nhận yêu cầu sửa chữa.
+                            Theo quy định xác minh danh tính, tài khoản thợ ở trạng thái <em>Pending</em> không được phép nhận yêu cầu sửa chữa.
                         </p>
                         <p style="font-size: 12.5px; color: #fbbf24; font-weight: 600;">
                             👉 Vui lòng chờ Ban Quản Trị phê duyệt, hoặc dùng công cụ giả lập ở góc dưới để thử nghiệm!
@@ -703,19 +635,6 @@
         </div>
     </main>
 
-    <!-- FLOATING SIMULATION BAR (To easily take Jira Before/After screenshots) -->
-    <aside class="sim-toolbar">
-        <div class="sim-label">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Kiểm Thử RC-11 AC 5:
-        </div>
-        <button type="button" class="btn-sim-action" onclick="simulateAdminApproval()">
-            ⚡ [Admin] Phê Duyệt KYC Ngay
-        </button>
-        <button type="button" class="btn-sim-reset" onclick="simulateResetPending()">
-            🔄 Reset Về PENDING
-        </button>
-    </aside>
 
     <script>
         let currentUserId = 3; // Mặc định là tho_dien_lanh_01
@@ -804,7 +723,7 @@
                 jobCountBadge.style.background = 'rgba(16, 185, 129, 0.2)';
                 jobCountBadge.style.color = '#34d399';
             } else {
-                // Pending Mode (AC 5 Default)
+                // Mặc định: hồ sơ đang chờ duyệt
                 banner.className = 'status-banner pending';
                 iconPending.style.display = 'block';
                 iconApproved.style.display = 'none';
@@ -833,7 +752,7 @@
         async function toggleOnlineStatus(e) {
             if (currentKycStatus !== 'APPROVED') {
                 e.preventDefault();
-                alert('CHẶN THEO TIÊU CHÍ AC 5: Tài khoản đang ở trạng thái PENDING. Bạn không thể nhận yêu cầu sửa chữa cho đến khi được Admin phê duyệt!');
+                alert('Hồ sơ của bạn đang chờ duyệt. Bạn chưa thể nhận yêu cầu sửa chữa cho đến khi quản trị viên phê duyệt.');
                 document.getElementById('onlineToggle').checked = false;
                 return;
             }
@@ -856,51 +775,7 @@
             }
         }
 
-        // SIMULATE ADMIN APPROVAL FOR JIRA / DEMO
-        async function simulateAdminApproval() {
-            try {
-                const res = await fetch(`/api/v1/admin/technicians/${currentUserId}/verify`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + (localStorage.getItem('fixlink_token') || '')
-                    },
-                    body: JSON.stringify({
-                        verificationStatus: 'APPROVED',
-                        note: 'Đã xác thực CCCD gắn chip hợp lệ'
-                    })
-                });
-                alert('Admin đã phê duyệt hồ sơ thợ thành công! Dashboard sẽ chuyển sang trạng thái ĐÃ DUYỆT (APPROVED).');
-                currentKycStatus = 'APPROVED';
-                applyStatusUI('APPROVED', true);
-            } catch (err) {
-                console.error(err);
-                currentKycStatus = 'APPROVED';
-                applyStatusUI('APPROVED', true);
-            }
-        }
 
-        // RESET TO PENDING TO DEMO AGAIN
-        async function simulateResetPending() {
-            try {
-                await fetch(`/api/v1/admin/technicians/${currentUserId}/verify`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        verificationStatus: 'PENDING',
-                        note: 'Reset trạng thái chờ duyệt để test AC 5'
-                    })
-                });
-                alert('Đã reset trạng thái về CHỜ DUYỆT (PENDING). Chức năng nhận yêu cầu sửa chữa đã bị khóa lại.');
-                currentKycStatus = 'PENDING';
-                applyStatusUI('PENDING', false);
-            } catch (err) {
-                currentKycStatus = 'PENDING';
-                applyStatusUI('PENDING', false);
-            }
-        }
 
         function openEditTechModal() {
             document.getElementById('editTechFullName').value = document.getElementById('profFullName').innerText || '';
@@ -934,7 +809,7 @@
                 });
 
                 if (res.ok) {
-                    alert('Cập nhật hồ sơ kỹ thuật viên thành công! (RC-3 Profile Self-Service)');
+                    alert('Cập nhật hồ sơ kỹ thuật viên thành công!');
                     document.getElementById('profFullName').innerText = fullName;
                     document.getElementById('topFullName').innerText = fullName;
                     document.getElementById('profPhone').innerText = phone;
@@ -954,11 +829,11 @@
         }
     </script>
 
-    <!-- Modal Chỉnh Sửa Hồ Sơ Kỹ Thuật Viên (RC-3) -->
+    <!-- Modal Chỉnh Sửa Hồ Sơ Kỹ Thuật Viên -->
     <div id="editTechModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 1000;">
         <div style="background: #0f172a; border: 1px solid var(--card-border); border-radius: var(--radius-lg); padding: 28px; max-width: 500px; width: 90%;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="font-size: 17px; font-weight: 800; color: #fff;">✏️ Chỉnh Sửa Hồ Sơ Thợ (RC-3)</h3>
+                <h3 style="font-size: 17px; font-weight: 800; color: #fff;">✏️ Chỉnh Sửa Hồ Sơ Thợ</h3>
                 <button onclick="closeEditTechModal()" style="background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer;">✕</button>
             </div>
             <form onsubmit="handleTechProfileSubmit(event)">

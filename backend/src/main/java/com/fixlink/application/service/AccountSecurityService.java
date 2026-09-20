@@ -57,7 +57,7 @@ public class AccountSecurityService implements ChangePasswordUseCase, PasswordRe
     private final EmailService emailService;
 
     // =========================================================================
-    // RC-13: Change Password
+    // Đổi mật khẩu
     // =========================================================================
     @Override
     @Transactional
@@ -104,7 +104,7 @@ public class AccountSecurityService implements ChangePasswordUseCase, PasswordRe
     }
 
     // =========================================================================
-    // RC-14: Forgot & Reset Password
+    // Quên mật khẩu và đặt lại mật khẩu
     // =========================================================================
     @Override
     @Transactional
@@ -216,7 +216,7 @@ public class AccountSecurityService implements ChangePasswordUseCase, PasswordRe
     }
 
     // =========================================================================
-    // RC-15: Logout & Session Lifecycle (Token Rotation)
+    // Đăng xuất và vòng đời phiên đăng nhập (xoay vòng refresh token)
     // =========================================================================
     @Override
     @Transactional

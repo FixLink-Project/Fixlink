@@ -25,11 +25,11 @@
    - [POST /api/v1/auth/register/customer](#22-post-apiv1authregistercustomer)
    - [POST /api/v1/auth/register/technician](#23-post-apiv1authregistertechnician)
    - [GET /api/v1/auth/me](#24-get-apiv1authme)
-   - [PUT /api/v1/auth/change-password *(RC-13)*](#25-put-apiv1authchange-password)
-   - [POST /api/v1/auth/forgot-password *(RC-14)*](#26-post-apiv1authforgot-password)
-   - [POST /api/v1/auth/reset-password *(RC-14)*](#27-post-apiv1authreset-password)
-   - [POST /api/v1/auth/logout *(RC-15)*](#28-post-apiv1authlogout)
-   - [POST /api/v1/auth/refresh-token *(RC-15)*](#29-post-apiv1authrefresh-token)
+   - [PUT /api/v1/auth/change-password](#25-put-apiv1authchange-password)
+   - [POST /api/v1/auth/forgot-password](#26-post-apiv1authforgot-password)
+   - [POST /api/v1/auth/reset-password](#27-post-apiv1authreset-password)
+   - [POST /api/v1/auth/logout](#28-post-apiv1authlogout)
+   - [POST /api/v1/auth/refresh-token](#29-post-apiv1authrefresh-token)
 3. [Module 2: Quản Trị Người Dùng & Duyệt KYC (Admin Management)](#3-module-2-quản-trị-người-dùng--duyệt-kyc-admin-management)
    - [GET /api/v1/admin/users](#31-get-apiv1adminusers)
    - [GET /api/v1/admin/users/{id}](#32-get-apiv1adminusersid)
@@ -38,12 +38,12 @@
 4. [Module 3: Danh Mục Dịch Vụ & Địa Bàn (Master Data)](#4-module-3-danh-mục-dịch-vụ--địa-bàn-master-data)
    - [GET /api/v1/categories](#41-get-apiv1categories)
    - [POST /api/v1/admin/categories](#42-post-apiv1admincategories)
-   - [GET /api/v1/admin/categories/{id} *(RC-23)*](#43-get-apiv1admincategoriesid)
-   - [PUT /api/v1/admin/categories/{id} *(RC-23)*](#44-put-apiv1admincategoriesid)
-   - [DELETE /api/v1/admin/categories/{id} *(RC-23)*](#45-delete-apiv1admincategoriesid)
+   - [GET /api/v1/admin/categories/{id}](#43-get-apiv1admincategoriesid)
+   - [PUT /api/v1/admin/categories/{id}](#44-put-apiv1admincategoriesid)
+   - [DELETE /api/v1/admin/categories/{id}](#45-delete-apiv1admincategoriesid)
    - [GET /api/v1/areas](#46-get-apiv1areas)
 5. [Module 4: Quản Lý Hồ Sơ Kỹ Thuật Viên (Technician Profile Management)](#5-module-4-quản-lý-hồ-sơ-kỹ-thuật-viên-technician-profile-management)
-   - [PUT /api/v1/technicians/me/profile *(RC-18)*](#51-put-apiv1techniciansmeprofile)
+   - [PUT /api/v1/technicians/me/profile](#51-put-apiv1techniciansmeprofile)
 6. [Hướng Dẫn Dành Cho Frontend (Mock UI Guide)](#6-hướng-dẫn-dành-cho-frontend-mock-ui-guide)
 
 ---
@@ -380,7 +380,6 @@ Content-Type: application/json
 ---
 
 ### 2.5. PUT `/api/v1/auth/change-password`
-> **Jira Task:** `RC-13 — Change Password` (3 Story Points)  
 > **User Story:** *As an authenticated user, I want to change my own password, so that I can keep my account secure.*
 
 - **Mô tả:** Đổi mật khẩu tài khoản đang đăng nhập. Yêu cầu nhập đúng mật khẩu hiện tại, mật khẩu mới phải khớp xác nhận và tuân thủ Password Policy.
@@ -489,7 +488,6 @@ Authorization: Bearer <accessToken>
 ---
 
 ### 2.6. POST `/api/v1/auth/forgot-password`
-> **Jira Task:** `RC-14 — Forgot & Reset Password` (5 Story Points) — Bước 1/2  
 > **User Story:** *As a user who forgot my password, I want to request a password reset link, so that I can regain access to my account.*
 
 - **Mô tả:** Gửi yêu cầu đặt lại mật khẩu. Hệ thống sẽ gửi email chứa link reset kèm token một lần (single-use, time-limited).
@@ -561,7 +559,6 @@ Content-Type: application/json
 ---
 
 ### 2.7. POST `/api/v1/auth/reset-password`
-> **Jira Task:** `RC-14 — Forgot & Reset Password` (5 Story Points) — Bước 2/2  
 > **User Story:** *As a user with a valid reset link, I want to set a new password, so that I can access my account again.*
 
 - **Mô tả:** Đặt lại mật khẩu mới bằng token nhận được qua email. Token chỉ dùng được **một lần** và có hiệu lực **15 phút** kể từ lúc tạo.
@@ -663,7 +660,6 @@ Content-Type: application/json
 ---
 
 ### 2.8. POST `/api/v1/auth/logout`
-> **Jira Task:** `RC-15 — Logout & Session Lifecycle` (2 Story Points) — Bước 1/2  
 > **User Story:** *As a logged-in user, I want to log out, so that my session is invalidated and no one can reuse my token.*
 
 - **Mô tả:** Đăng xuất phiên hiện tại. Access token bị thêm vào blacklist phía server, refresh token bị xóa. Token sau khi logout không thể tái sử dụng.
@@ -727,7 +723,6 @@ Authorization: Bearer <accessToken>
 ---
 
 ### 2.9. POST `/api/v1/auth/refresh-token`
-> **Jira Task:** `RC-15 — Logout & Session Lifecycle` (2 Story Points) — Bước 2/2  
 > **User Story:** *As a logged-in user whose access token is about to expire, I want to refresh it, so that I can continue using the app without re-entering credentials.*
 
 - **Mô tả:** Làm mới (refresh) access token đã hết hạn bằng refresh token còn hiệu lực. Áp dụng cơ chế **Token Rotation** — mỗi lần refresh tạo cặp token mới hoàn toàn, hủy cặp cũ.
@@ -1093,7 +1088,6 @@ GET /api/v1/categories?page=1&limit=10&search=Điện&isActive=true&sortBy=name&
 ---
 
 ### 4.3. GET `/api/v1/admin/categories/{id}`
-> **Jira Task:** `RC-23 — Manage Service Categories` (3 Story Points)  
 > **User Story:** *As an admin, I want to view, update, and delete service categories, so that the service catalog stays accurate and up-to-date.*
 
 - **Mô tả:** Xem chi tiết một danh mục dịch vụ theo ID, bao gồm thông tin audit trail và số lượng thợ/yêu cầu đang sử dụng.
@@ -1141,7 +1135,6 @@ GET /api/v1/admin/categories/1
 ---
 
 ### 4.4. PUT `/api/v1/admin/categories/{id}`
-> **Jira Task:** `RC-23 — Manage Service Categories` (3 Story Points)
 
 - **Mô tả:** Admin cập nhật thông tin danh mục dịch vụ (tên, icon, mô tả, trạng thái kích hoạt).
 - **Yêu cầu Auth:** Bắt buộc quyền `ADMIN`.
@@ -1231,7 +1224,6 @@ Authorization: Bearer <ADMIN_TOKEN>
 ---
 
 ### 4.5. DELETE `/api/v1/admin/categories/{id}`
-> **Jira Task:** `RC-23 — Manage Service Categories` (3 Story Points)
 
 - **Mô tả:** Admin xóa một danh mục dịch vụ. Áp dụng cơ chế **Soft Delete** — danh mục không bị xóa vật lý mà được đánh dấu `deleted_at` và tự động `isActive = false`.
 - **Yêu cầu Auth:** Bắt buộc quyền `ADMIN`.
@@ -1339,7 +1331,6 @@ GET /api/v1/areas?page=1&limit=10&city=TP. Hồ Chí Minh&search=Quận 1&sortBy
 ## 5. MODULE 4: QUẢN LÝ HỒ SƠ KỸ THUẬT VIÊN (TECHNICIAN PROFILE MANAGEMENT)
 
 ### 5.1. PUT `/api/v1/technicians/me/profile`
-> **Jira Task:** `RC-18 — Technician Update Profile` (3 Story Points)  
 > **User Story:** *As a technician, I want to update my own profile (trade, service area, bio), so that customers can find me for the right jobs.*
 
 - **Mô tả:** Kỹ thuật viên tự cập nhật hồ sơ nghề nghiệp của mình, bao gồm thông tin cá nhân, danh mục kỹ năng và khu vực hoạt động. Chỉ owner mới được sửa record của chính mình.
@@ -1514,7 +1505,7 @@ Frontend căn cứ vào `meta.totalPages`, `meta.currentPage` để hiển thị
 ### 6.3. Mock UI
 Frontend có thể copy trực tiếp các đoạn JSON trong phần **Response 200 OK** ở trên để làm Mock Service (sử dụng MSW - Mock Service Worker hoặc Axios Interceptor) để thiết kế giao diện ngay mà không cần đợi Backend.
 
-### 6.4. Xử lý vòng đời Token (Token Lifecycle — RC-15)
+### 6.4. Xử lý vòng đời Token (Token Lifecycle)
 
 #### A. Khi Access Token hết hạn (nhận 401 từ API bất kỳ):
 ```

@@ -1,161 +1,172 @@
-# FixLink Platform - System Architecture & Package Guidelines
+# FixLink — Kiến trúc backend và quy ước package
 
-Tài liệu quy định cấu trúc mã nguồn, phân tầng trách nhiệm (Layered Architecture) và các quy ước kỹ thuật chung cho dự án **FixLink**.
-
----
-
-## 1. Kiến trúc phân tầng (Layered Architecture)
-
-Hệ thống FixLink Backend được xây dựng trên nền tảng **Spring Boot 3 (Java 21)** theo mô hình kiến trúc phân tầng tiêu chuẩn:
-
-```
-[ Client / Web / Mobile App ]
-             │
-             ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 1. Controller Layer (@RestController)                       │
-│    - Tiếp nhận HTTP Request, validate dữ liệu (Jakarta)     │
-│    - Đóng gói response với ApiResponse<T> & ErrorResponse   │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 2. Service Layer (@Service)                                 │
-│    - Xử lý nghiệp vụ chính, logic điều phối giao dịch       │
-│    - Quản lý Transaction (@Transactional)                   │
-│    - Chuyển đổi giữa Entity và DTO                          │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 3. Repository Layer (@Repository - Spring Data JPA)         │
-│    - Truy xuất dữ liệu PostgreSQL thông qua Hibernate JPA   │
-│    - Hỗ trợ Dynamic Query với JpaSpecificationExecutor      │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 4. Database Layer (PostgreSQL 16 / In-memory H2)            │
-│    - Quản lý phiên bản bảng bằng Flyway Database Migration  │
-└─────────────────────────────────────────────────────────────┘
-```
+Tài liệu quy định cách tổ chức mã nguồn backend và các quy ước kỹ thuật chung.
 
 ---
 
-## 2. Base Packages Structure
+## 1. Kiến trúc Hexagonal (Ports & Adapters)
 
-Toàn bộ mã nguồn backend nằm dưới package gốc: `com.fixlink`:
+Backend dựng trên Spring Boot 3 (Java 21) theo mô hình Ports & Adapters. Nguyên tắc
+cốt lõi: **phụ thuộc luôn hướng vào trong**. Tầng `domain` không biết gì về Spring,
+JPA hay HTTP; tầng `application` chỉ làm việc qua các interface (port); mọi chi tiết
+kỹ thuật nằm ở `adapter` và `infrastructure`.
+
+```
+        [ Trình duyệt / Ứng dụng di động ]
+                       │  HTTP
+                       ▼
+   ┌──────────────────────────────────────────────┐
+   │ adapter/in/web        Adapter vào             │
+   │   controller + DTO request/response           │
+   └───────────────────────┬──────────────────────┘
+                           │ gọi qua port in
+                           ▼
+   ┌──────────────────────────────────────────────┐
+   │ application           Use case               │
+   │   port/in   interface mô tả nghiệp vụ         │
+   │   service   hiện thực use case, @Transactional│
+   │   port/out  interface mô tả nhu cầu dữ liệu   │
+   └───────────────────────┬──────────────────────┘
+                           │ phụ thuộc hướng vào trong
+                           ▼
+   ┌──────────────────────────────────────────────┐
+   │ domain                Mô hình nghiệp vụ       │
+   │   model, exception, util — thuần Java         │
+   └──────────────────────────────────────────────┘
+                           ▲
+                           │ hiện thực port out
+   ┌───────────────────────┴──────────────────────┐
+   │ adapter/out           Adapter ra              │
+   │   persistence: JPA entity, repository, mapper │
+   │   security:    mã hoá mật khẩu, sinh JWT      │
+   └───────────────────────┬──────────────────────┘
+                           ▼
+        [ PostgreSQL 16 / H2 in-memory ]
+```
+
+Lợi ích thực tế: đổi PostgreSQL sang cơ sở dữ liệu khác, hay đổi cách sinh JWT, chỉ
+cần viết adapter mới — `domain` và `application` không phải sửa.
+
+---
+
+## 2. Cấu trúc package
+
+Toàn bộ mã nguồn backend nằm dưới `com.fixlink`:
 
 ```
 com.fixlink/
-├── FixLinkApplication.java        # Main Spring Boot Entrypoint
+├── FixLinkApplication.java         Điểm khởi động Spring Boot
 │
-├── config/                        # Shared System Configurations
-│   ├── SecurityConfig.java        # Spring Security Filter Chain & RBAC
-│   ├── OpenApiConfig.java         # Swagger / OpenAPI 3.0 Documentation
-│   ├── WebConfig.java             # Shared CORS & WebMvc Registry
-│   └── DataInitializer.java       # Database bootstrap & demo seeder
+├── domain/                         Nghiệp vụ thuần, không phụ thuộc framework
+│   ├── model/                      User, CustomerProfile, TechnicianProfile,
+│   │                               ServiceCategory, RepairRequest, các enum
+│   │                               Role / UserStatus / VerificationStatus
+│   ├── exception/                  Ngoại lệ nghiệp vụ: InvalidCredentials,
+│   │                               AccountBlocked, ResourceNotFound, ...
+│   └── util/                       Hàm thuần dùng chung (kiểm tra mật khẩu, ...)
 │
-├── controller/                    # REST API Controllers (v1)
-│   ├── AuthController.java        # Public Authentication (/api/v1/auth)
-│   ├── ServiceCategoryController  # Public Category Catalog (/api/v1/categories)
-│   ├── AdminUserController.java   # Admin User Management (/api/v1/admin/users)
-│   └── AdminServiceCatalogCtrl    # Admin Catalog Management (/api/v1/admin/catalog)
+├── application/                    Điều phối use case
+│   ├── port/in/                    Interface mô tả nghiệp vụ mà adapter vào gọi
+│   │                               AuthUseCase, ChangePasswordUseCase,
+│   │                               PasswordResetUseCase, SessionUseCase,
+│   │                               UserManagementUseCase, ...
+│   ├── port/out/                   Interface mô tả thứ application cần từ bên ngoài
+│   │                               UserRepositoryPort, TokenProviderPort,
+│   │                               PasswordEncoderPort, ...
+│   └── service/                    Hiện thực use case, quản lý @Transactional
+│                                   AuthService, AccountSecurityService,
+│                                   CustomerProfileService, ...
 │
-├── dto/                           # Data Transfer Objects
-│   ├── request/                   # Input payload DTOs with validation rules
-│   │   ├── LoginRequest.java
-│   │   ├── CreateCategoryRequest.java
-│   │   ├── UpdateUserStatusRequest.java
-│   │   └── ...
-│   └── response/                  # Output envelope & entity representations
-│       ├── ApiResponse.java       # Generic standard API envelope
-│       ├── ErrorResponse.java     # RFC-compliant error payload
-│       ├── PaginatedResponse.java # Pagination container
-│       ├── UserDto.java
-│       └── ...
+├── adapter/
+│   ├── in/web/                     Adapter vào: HTTP
+│   │   ├── controller/             REST controller theo module nghiệp vụ
+│   │   └── dto/request|response/   Payload vào/ra kèm ràng buộc validation
+│   └── out/                        Adapter ra
+│       ├── persistence/entity/     JPA entity (hậu tố JpaEntity)
+│       ├── persistence/repository/ Spring Data repository
+│       ├── persistence/mapper/     Chuyển đổi giữa entity JPA và model domain
+│       ├── persistence/adapter/    Hiện thực các port/out lưu trữ
+│       └── security/               Hiện thực port mã hoá mật khẩu và JWT
 │
-├── entity/                        # JPA Database Entities
-│   ├── User.java                  # Central accounts table (users)
-│   ├── CustomerProfile.java       # 1:1 customer details
-│   ├── TechnicianProfile.java     # 1:1 technician credentials & verification
-│   ├── ServiceCategory.java       # Service parent categories
-│   ├── ServiceItem.java           # Specific repair service catalog
-│   └── ...
-│
-├── enums/                         # System-wide Enums
-│   ├── UserRole.java              # ADMIN, CUSTOMER, TECHNICIAN, STAFF
-│   ├── UserStatus.java            # ACTIVE, INACTIVE, BANNED
-│   └── VerificationStatus.java    # PENDING, APPROVED, REJECTED
-│
-├── exception/                     # Centralized Error Handling
-│   ├── GlobalExceptionHandler.java# @RestControllerAdvice handling exceptions
-│   ├── ResourceNotFoundException  # 404 Not Found
-│   ├── InvalidOperationException  # 400 Bad Request
-│   └── TooManyRequestsException   # 429 Rate Limit
-│
-├── repository/                    # Data Access Interfaces
-│   ├── UserRepository.java
-│   ├── ServiceCategoryRepository
-│   ├── ServiceItemRepository
-│   └── ...
-│
-├── security/                      # Authentication & Authorization Engine
-│   ├── JwtTokenProvider.java      # Token generation, signing (HS512), parsing
-│   ├── JwtAuthenticationFilter    # OncePerRequestFilter extracting Bearer tokens
-│   └── CustomUserDetailsService   # Load user by username for Spring Security
-│
-├── service/                       # Business Logic Layer
-│   ├── AuthService.java           # Login, Token Issuance, Session Verification
-│   ├── AdminUserService.java     # Account lock/unlock, technician verification
-│   ├── ServiceCatalogService.java # Categories, services CRUD
-│   └── LoginAttemptService.java   # Brute-force protection & rate limiter
-│
-└── specification/                 # Dynamic Query Builders
-    └── UserSpecification.java     # JPA Criteria predicates (search, filter, role)
+└── infrastructure/                 Chi tiết hạ tầng và cấu hình Spring
+    ├── config/                     SecurityConfig, OpenApiConfig, DataInitializer
+    ├── exception/                  GlobalExceptionHandler (@RestControllerAdvice)
+    ├── security/                   Filter JWT, UserDetailsService
+    └── service/                    Dịch vụ hạ tầng (gửi email, chống brute-force)
 ```
+
+### Quy ước đặt tên
+
+| Loại | Quy ước | Ví dụ |
+| :--- | :--- | :--- |
+| Interface use case | `*UseCase` | `PasswordResetUseCase` |
+| Hiện thực use case | `*Service` | `AccountSecurityService` |
+| Interface cổng ra | `*Port` | `UserRepositoryPort` |
+| Hiện thực cổng ra | `*Adapter` | `UserRepositoryAdapter` |
+| Entity JPA | `*JpaEntity` | `PasswordResetTokenJpaEntity` |
+| Model domain | tên nghiệp vụ thuần | `User`, `TechnicianProfile` |
 
 ---
 
-## 3. Shared Configurations & Standards
+## 3. Quy ước dùng chung
 
-### 3.1. Chuẩn hóa API Response
-Mọi endpoint trả về thành công đều tuân theo cấu trúc bao bọc (envelope):
+### 3.1. Lớp bọc response API
+
+Mọi endpoint thành công trả về cùng một cấu trúc:
 
 ```json
 {
   "statusCode": 200,
   "message": "Thao tác thành công",
-  "data": { ... }
+  "data": { }
 }
 ```
 
-Khi có lỗi xảy ra (4xx, 5xx), `GlobalExceptionHandler` bắt và trả về định dạng chuẩn:
+Danh sách có thêm khối `meta` phân trang:
+
+```json
+{
+  "statusCode": 200,
+  "message": "Lấy danh sách thành công",
+  "meta": { "currentPage": 1, "limit": 10, "totalItems": 45, "totalPages": 5,
+            "hasNext": true, "hasPrevious": false },
+  "data": []
+}
+```
+
+Khi có lỗi (4xx, 5xx), `GlobalExceptionHandler` trả về:
 
 ```json
 {
   "statusCode": 400,
-  "errorCode": "INVALID_ARGUMENT",
+  "errorCode": "VALIDATION_FAILED",
   "message": "Chi tiết nguyên nhân lỗi",
-  "errors": {
-    "field": "Lý do không hợp lệ"
-  },
-  "timestamp": "2026-09-18T09:30:00"
+  "errors": { "field": "Lý do không hợp lệ" }
 }
 ```
 
-### 3.2. Bảo mật & Xác thực (JWT Stateless)
-- Sử dụng thuật toán ký `HS512` bảo đảm an toàn mật mã.
-- Thời gian sống mặc định của access token: **24 giờ** (86,400,000 ms).
-- Header yêu cầu: `Authorization: Bearer <token>`.
-- Phân quyền theo vai trò (RBAC) với các tiền tố `ROLE_ADMIN`, `ROLE_CUSTOMER`, `ROLE_TECHNICIAN`, `ROLE_STAFF`.
+Đường dẫn không tồn tại trả `404 RESOURCE_NOT_FOUND`. Lỗi ngoài dự kiến trả
+`500 INTERNAL_SERVER_ERROR` với thông báo chung, chi tiết chỉ ghi vào log server.
 
-### 3.3. Cross-Origin Resource Sharing (CORS)
-Được cấu hình tập trung tại `com.fixlink.config.WebConfig`:
-- Cho phép các nguồn client phổ biến trong môi trường dev: `http://localhost:3000`, `http://localhost:5173`, `http://localhost:8080`, `http://127.0.0.1:5500`.
-- Hỗ trợ đầy đủ các method: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`.
-- Cho phép gửi credentials và Authorization header.
+### 3.2. Xác thực JWT (stateless)
 
-### 3.4. Quản lý Cơ sở Dữ liệu (Flyway Migrations)
-- Mọi thay đổi schema DDL đều được tạo file migration tại `src/main/resources/db/migration/V{version}__{description}.sql`.
-- Tránh thay đổi cấu trúc bảng trực tiếp trên database server mà không qua migration script.
+- Thuật toán ký `HS512`.
+- Access token sống mặc định 24 giờ, refresh token 7 ngày.
+- Header: `Authorization: Bearer <token>`.
+- Phân quyền theo vai trò với tiền tố `ROLE_ADMIN`, `ROLE_CUSTOMER`, `ROLE_TECHNICIAN`.
+
+### 3.3. CORS
+
+Cấu hình tập trung tại `com.fixlink.infrastructure.config.SecurityConfig`
+(bean `corsConfigurationSource`): cho phép mọi origin ở môi trường phát triển, đủ các
+method `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, kèm credentials và header
+`Authorization`.
+
+> Trước khi lên production cần thu hẹp danh sách origin về đúng tên miền của hệ thống.
+
+### 3.4. Flyway migration
+
+- Mọi thay đổi schema đều qua file `src/main/resources/db/migration/V{n}__{mô_tả}.sql`.
+- Không sửa trực tiếp cấu trúc bảng trên server mà không qua migration.
+- Không sửa nội dung một migration đã chạy ở môi trường thật: Flyway đối chiếu
+  checksum và sẽ báo lỗi. Muốn đổi thì thêm migration mới.

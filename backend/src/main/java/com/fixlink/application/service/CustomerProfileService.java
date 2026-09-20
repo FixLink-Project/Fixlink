@@ -51,7 +51,7 @@ public class CustomerProfileService implements CustomerProfileUseCase {
     public CustomerProfile updateProfile(Long targetUserId, Long currentUserId, UpdateProfileCommand command) {
         // 1. Kiểm tra IDOR - AC 2: User chỉ được cập nhật hồ sơ chính mình
         if (currentUserId != null && !currentUserId.equals(targetUserId)) {
-            throw new AccessDeniedException("Bạn không có quyền chỉnh sửa hồ sơ của người dùng khác (Chặn theo tiêu chí RC-17 AC 2)");
+            throw new AccessDeniedException("Bạn không có quyền chỉnh sửa hồ sơ của người dùng khác");
         }
 
         // 2. Tìm hồ sơ khách hàng hiện tại
@@ -69,14 +69,14 @@ public class CustomerProfileService implements CustomerProfileUseCase {
             throw new DomainException("Email " + command.email() + " đã được sử dụng bởi người dùng khác");
         }
 
-        // 4. Lưu lại giá trị cũ để ghi Audit Trail (AC 4)
+        // 4. Lưu lại giá trị cũ để ghi Audit Trail
         Map<String, Object> oldValues = new LinkedHashMap<>();
         oldValues.put("fullName", entity.getFullName());
         oldValues.put("phone", entity.getPhone());
         oldValues.put("email", entity.getEmail());
         oldValues.put("avatarUrl", entity.getAvatarUrl());
 
-        // 5. Cập nhật các trường thông tin hồ sơ (AC 1)
+        // 5. Cập nhật các trường thông tin hồ sơ
         entity.setFullName(command.fullName().trim());
         entity.setPhone(command.phone().trim());
         entity.setEmail(command.email().trim().toLowerCase());
@@ -87,7 +87,7 @@ public class CustomerProfileService implements CustomerProfileUseCase {
 
         CustomerProfileJpaEntity savedEntity = customerProfileRepository.save(entity);
 
-        // 6. Ghi nhận thay đổi vào Audit Trail (AC 4)
+        // 6. Ghi nhận thay đổi vào Audit Trail
         Map<String, Object> newValues = new LinkedHashMap<>();
         newValues.put("fullName", savedEntity.getFullName());
         newValues.put("phone", savedEntity.getPhone());

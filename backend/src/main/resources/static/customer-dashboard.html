@@ -67,7 +67,6 @@
         .user-quick-info span { display: flex; align-items: center; gap: 6px; }
 
         .section-title { font-size: 18px; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
-        .jira-tag { background: #0284c7; color: #fff; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; }
 
         .rc17-container {
             display: grid;
@@ -101,51 +100,6 @@
         .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); }
         .field-error { color: #f87171; font-size: 12px; margin-top: 4px; display: none; }
 
-        .test-btn-group { display: flex; flex-direction: column; gap: 10px; }
-        .test-btn {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
-            border-radius: 10px;
-            border: 1px solid transparent;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 700;
-            text-align: left;
-            transition: all 0.2s;
-        }
-        .test-btn-ac1 { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7; }
-        .test-btn-ac1:hover { background: rgba(16, 185, 129, 0.25); }
-        .test-btn-ac2 { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; }
-        .test-btn-ac2:hover { background: rgba(239, 68, 68, 0.25); }
-        .test-btn-ac3 { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fcd34d; }
-        .test-btn-ac3:hover { background: rgba(245, 158, 11, 0.25); }
-        .test-btn-ac4 { background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.4); color: #c4b5fd; }
-        .test-btn-ac4:hover { background: rgba(139, 92, 246, 0.25); }
-
-        .test-result-box {
-            margin-top: 18px;
-            padding: 16px;
-            border-radius: 10px;
-            background: rgba(15, 23, 42, 0.9);
-            border: 1px solid var(--card-border);
-            font-size: 13px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .status-pill {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 12px;
-            margin-bottom: 8px;
-        }
-        .status-200 { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-        .status-403 { background: rgba(239, 68, 68, 0.2); color: #f87171; }
-        .status-400 { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
 
         /* Audit table */
         .audit-table {
@@ -200,7 +154,7 @@
                 <span id="navName" style="font-weight: 700; color: #fff;">Khách Hàng</span>
                 <span class="badge-role">CUSTOMER</span>
             </div>
-            <button class="btn-profile" onclick="scrollToProfile()">👤 Hồ Sơ Của Tôi (RC-17)</button>
+            <button class="btn-profile" onclick="scrollToProfile()">👤 Hồ Sơ Của Tôi</button>
             <button class="btn-logout" onclick="logout()">Đăng Xuất</button>
         </div>
     </header>
@@ -212,7 +166,7 @@
                 <h1 style="font-size: 22px; font-weight: 800; margin-bottom: 6px;">
                     Xin chào, <span id="welcomeName" style="color: #93c5fd;">Khách Hàng FixLink</span>! 👋
                 </h1>
-                <p style="color: #cbd5e1; font-size: 14px;">Bạn đang đăng nhập vào Cổng Khách Hàng (Role Home - RC-12 AC 1).</p>
+                <p style="color: #cbd5e1; font-size: 14px;">Bạn đang đăng nhập vào Cổng Khách Hàng.</p>
                 <div class="user-quick-info">
                     <span>📱 SĐT: <strong id="quickPhone" style="color: #fff;">0912345678</strong></span>
                     <span>✉️ Email: <strong id="quickEmail" style="color: #fff;">customer@fixlink.vn</strong></span>
@@ -220,21 +174,21 @@
                 </div>
             </div>
             <button onclick="scrollToProfile()" style="background: var(--primary); color: #fff; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(37,99,235,0.4);">
-                ✏️ Cập Nhật Hồ Sơ (RC-17)
+                ✏️ Cập Nhật Hồ Sơ
             </button>
         </div>
 
-        <!-- RC-17 SECTION: Quản lý hồ sơ & Test Nghiệm Thu -->
+        <!-- Quản lý hồ sơ cá nhân -->
         <div id="profileSection">
             <h2 class="section-title">
-                <span class="jira-tag">RC-17</span> Quản Lý Hồ Sơ & Nghiệm Thu Tiêu Chí (Jira Test Suite)
+                Quản Lý Hồ Sơ Cá Nhân
             </h2>
 
             <div class="rc17-container">
                 <!-- FORM CHỈNH SỬA HỒ SƠ -->
                 <div class="card">
                     <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #93c5fd; display: flex; align-items: center; gap: 8px;">
-                        📝 Chỉnh Sửa Hồ Sơ Cá Nhân (AC 1)
+                        📝 Chỉnh Sửa Hồ Sơ Cá Nhân
                     </h3>
                     <form id="profileForm" onsubmit="handleProfileSubmit(event)">
                         <div class="form-group">
@@ -262,43 +216,13 @@
                     </form>
                 </div>
 
-                <!-- TEST SUITE NGHIỆM THU 4 TIÊU CHÍ JIRA RC-17 -->
-                <div class="card">
-                    <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #a78bfa; display: flex; align-items: center; gap: 8px;">
-                        🧪 Bộ Công Cụ Test Nghiệm Thu RC-17 (Jira Verification)
-                    </h3>
-                    <div class="test-btn-group">
-                        <button class="test-btn test-btn-ac1" onclick="runTestAC1()">
-                            <span>✅ <strong>Test AC 1:</strong> Cập nhật hồ sơ chính mình (Hợp lệ)</span>
-                            <span>➔ Chạy</span>
-                        </button>
-                        <button class="test-btn test-btn-ac2" onclick="runTestAC2()">
-                            <span>🛡️ <strong>Test AC 2:</strong> Cố tình sửa user khác (IDOR ➔ 403)</span>
-                            <span>➔ Chạy</span>
-                        </button>
-                        <button class="test-btn test-btn-ac3" onclick="runTestAC3()">
-                            <span>⚠️ <strong>Test AC 3:</strong> Gửi dữ liệu không hợp lệ (Validation 400)</span>
-                            <span>➔ Chạy</span>
-                        </button>
-                        <button class="test-btn test-btn-ac4" onclick="runTestAC4()">
-                            <span>📜 <strong>Test AC 4:</strong> Tra cứu Nhật Ký Kiểm Toán (Audit Trail)</span>
-                            <span>➔ Xem Log</span>
-                        </button>
-                    </div>
-
-                    <!-- Hộp hiển thị kết quả kiểm thử trực tiếp -->
-                    <div id="testResultBox" class="test-result-box" style="display: none;">
-                        <div id="statusBadge" class="status-pill status-200">HTTP 200 OK</div>
-                        <pre id="jsonResult" style="color: #94a3b8; font-family: monospace; font-size: 12px; white-space: pre-wrap;"></pre>
-                    </div>
-                </div>
             </div>
 
-            <!-- BẢNG AUDIT TRAIL (RC-17 AC 4) -->
+            <!-- BẢNG AUDIT TRAIL -->
             <div class="card" style="margin-bottom: 32px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <h3 style="font-size: 16px; font-weight: 700; color: #c4b5fd;">
-                        📜 Lịch Sử Nhật Ký Kiểm Toán (Audit Trail - RC-17 AC 4)
+                        📜 Lịch Sử Nhật Ký Kiểm Toán (Audit Trail)
                     </h3>
                     <button onclick="loadAuditTrail()" style="background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4); color: #c4b5fd; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
                         🔄 Làm Mới Nhật Ký
@@ -439,114 +363,18 @@
 
                 const data = await res.json();
                 if (res.ok) {
-                    showToast("Cập nhật hồ sơ thành công! (RC-17 AC 1)", "success");
-                    showTestResult(res.status, data);
+                    showToast("Cập nhật hồ sơ thành công!", "success");
                     await loadCustomerProfile();
                     await loadAuditTrail();
                 } else if (res.status === 400 && data.errors) {
                     showValidationErrors(data.errors);
-                    showToast("Dữ liệu không hợp lệ! (RC-17 AC 3)", "warning");
-                    showTestResult(res.status, data);
+                    showToast("Dữ liệu không hợp lệ!", "warning");
                 } else {
                     showToast(data.message || "Thao tác thất bại", "danger");
-                    showTestResult(res.status, data);
                 }
             } catch (err) {
                 showToast("Lỗi kết nối máy chủ", "danger");
             }
-        }
-
-        // Test AC 1: Lưu hợp lệ hồ sơ của chính mình
-        async function runTestAC1() {
-            clearValidationErrors();
-            const originalName = document.getElementById('inputFullName').value || 'Khách Hàng Test';
-            const updatedName = originalName.includes('(Đã cập nhật)') ? originalName.replace(' (Đã cập nhật)', '') : originalName + ' (Đã cập nhật)';
-            const phone = document.getElementById('inputPhone').value || '0912345678';
-            const email = document.getElementById('inputEmail').value || 'khachhang@fixlink.vn';
-
-            document.getElementById('inputFullName').value = updatedName;
-
-            const res = await fetch(`/api/v1/customers/${currentUserId}/profile`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': token ? `Bearer ${token}` : '',
-                    'X-User-Id': currentUserId
-                },
-                body: JSON.stringify({
-                    fullName: updatedName,
-                    phone: phone,
-                    email: email,
-                    avatarUrl: "https://fixlink.vn/avatar.png"
-                })
-            });
-            const data = await res.json();
-            showTestResult(res.status, data);
-            if (res.ok) {
-                showToast("RC-17 AC 1: Cập nhật thành công hồ sơ của chính mình!", "success");
-                await loadCustomerProfile();
-                await loadAuditTrail();
-            } else {
-                showToast(data.message || "Lỗi cập nhật", "danger");
-            }
-        }
-
-        // Test AC 2: Cố tình sửa profile người khác (Chặn IDOR)
-        async function runTestAC2() {
-            clearValidationErrors();
-            const targetOtherUserId = "999999"; // User khác
-            const res = await fetch(`/api/v1/customers/${targetOtherUserId}/profile`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': token ? `Bearer ${token}` : '',
-                    'X-User-Id': currentUserId // Caller là current user, nhưng target là 999999
-                },
-                body: JSON.stringify({
-                    fullName: "Hacker Cố Tình Sửa Profile Người Khác",
-                    phone: "0999888777",
-                    email: "hacker@domain.com"
-                })
-            });
-            const data = await res.json();
-            showTestResult(res.status, data);
-            if (res.status === 403) {
-                showToast("RC-17 AC 2: Bị chặn 403 Forbidden thành công (Chống IDOR)!", "danger");
-            } else {
-                showToast("Kết quả: " + res.status, "warning");
-            }
-        }
-
-        // Test AC 3: Gửi dữ liệu không hợp lệ (per-field validation)
-        async function runTestAC3() {
-            clearValidationErrors();
-            const res = await fetch(`/api/v1/customers/${currentUserId}/profile`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': token ? `Bearer ${token}` : '',
-                    'X-User-Id': currentUserId
-                },
-                body: JSON.stringify({
-                    fullName: "", // Trống -> Báo lỗi
-                    phone: "12345", // Sai format VN -> Báo lỗi
-                    email: "email-sai-dinh-dang" // Sai format email -> Báo lỗi
-                })
-            });
-            const data = await res.json();
-            showTestResult(res.status, data);
-            if (res.status === 400 && data.errors) {
-                showValidationErrors(data.errors);
-                showToast("RC-17 AC 3: Hiển thị lỗi per-field validation và không lưu DB!", "warning");
-            } else {
-                showToast("Kết quả: " + res.status, "danger");
-            }
-        }
-
-        // Test AC 4: Tải và hiển thị Audit Trail
-        async function runTestAC4() {
-            await loadAuditTrail();
-            showToast("RC-17 AC 4: Đã tải toàn bộ lịch sử Audit Trail từ CSDL!", "purple");
         }
 
         async function loadAuditTrail() {
@@ -572,23 +400,13 @@
                         </tr>
                     `).join('');
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Chưa có bản ghi nhật ký kiểm toán nào cho hồ sơ này. Hãy thử bấm "Test AC 1" để cập nhật và ghi nhận!</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Chưa có bản ghi nhật ký kiểm toán nào cho hồ sơ này. Hãy cập nhật hồ sơ để hệ thống ghi nhận.</td></tr>`;
                 }
             } catch (err) {
                 document.getElementById('auditTableBody').innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--danger); padding: 20px;">Không thể tải lịch sử kiểm toán.</td></tr>`;
             }
         }
 
-        function showTestResult(status, data) {
-            const box = document.getElementById('testResultBox');
-            const badge = document.getElementById('statusBadge');
-            const pre = document.getElementById('jsonResult');
-
-            box.style.display = 'block';
-            badge.className = 'status-pill status-' + status;
-            badge.innerText = `HTTP ${status} ${status === 200 ? 'OK' : status === 403 ? 'FORBIDDEN (IDOR Blocked)' : status === 400 ? 'BAD REQUEST (Validation Error)' : 'RESPONSE'}`;
-            pre.innerText = JSON.stringify(data, null, 2);
-        }
 
         function showValidationErrors(errors) {
             if (errors.fullName) {

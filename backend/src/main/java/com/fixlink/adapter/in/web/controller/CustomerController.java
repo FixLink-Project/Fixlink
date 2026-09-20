@@ -19,7 +19,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/customers")
-@Tag(name = "Customer Management", description = "Các API quản lý và cập nhật hồ sơ khách hàng (RC-17)")
+@Tag(name = "Customer Management", description = "Các API quản lý và cập nhật hồ sơ khách hàng")
 public class CustomerController {
 
     private final CustomerProfileUseCase customerProfileUseCase;
@@ -46,7 +46,7 @@ public class CustomerController {
     }
 
     @PutMapping("/{userId}/profile")
-    @Operation(summary = "Cập nhật hồ sơ khách hàng", description = "Cập nhật thông tin hồ sơ cá nhân. Đảm bảo chống IDOR (AC 2) và ghi nhận Audit Trail (AC 4).")
+    @Operation(summary = "Cập nhật hồ sơ khách hàng", description = "Cập nhật thông tin hồ sơ cá nhân. Chặn sửa hồ sơ của người khác và ghi lại thay đổi vào nhật ký kiểm toán.")
     public ResponseEntity<ApiResponse<CustomerProfileResponseDto>> updateProfile(
             @PathVariable String userId,
             @Valid @RequestBody UpdateCustomerProfileRequest request,

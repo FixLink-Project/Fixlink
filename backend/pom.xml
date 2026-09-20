@@ -21,6 +21,7 @@
         <jwt.version>0.12.6</jwt.version>
         <springdoc.version>2.6.0</springdoc.version>
         <spotless.version>2.43.0</spotless.version>
+        <checkstyle.version>3.3.1</checkstyle.version>
     </properties>
 
     <dependencies>
@@ -155,6 +156,18 @@
                             <spacesPerTab>4</spacesPerTab>
                         </indent>
                     </java>
+                </configuration>
+            </plugin>
+            <!-- Linter theo bộ quy tắc checkstyle.xml; CI gọi checkstyle:check -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${checkstyle.version}</version>
+                <configuration>
+                    <configLocation>checkstyle.xml</configLocation>
+                    <consoleOutput>true</consoleOutput>
+                    <failsOnError>false</failsOnError>
+                    <linkXRef>false</linkXRef>
                 </configuration>
             </plugin>
         </plugins>

@@ -1,5 +1,5 @@
 -- =============================================================================
--- FIXLINK DATABASE SCHEMA BASELINE (JIRA RC-8)
+-- FIXLINK - SCHEMA CƠ SỞ DỮ LIỆU NỀN
 -- Phase 1 Core Entities with Standard Audit Columns & Extensible Architecture
 -- =============================================================================
 

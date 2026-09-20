@@ -213,7 +213,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(8)
-    @DisplayName("RC-11 AC 5a: Thợ mới đăng nhập thấy verificationStatus PENDING và isVerified false")
+    @DisplayName("Thợ mới đăng nhập thấy verificationStatus PENDING và isVerified false")
     void testTechnicianLogin_VerificationStatusPending() throws Exception {
         LoginRequest techLogin = new LoginRequest();
         techLogin.setUsername("tho_dien_lanh_01"); // Thợ mẫu mặc định ở trạng thái PENDING
@@ -231,7 +231,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(9)
-    @DisplayName("RC-11 AC 5b: Thợ chưa duyệt (PENDING) bị từ chối nhận yêu cầu sửa chữa (403 Forbidden)")
+    @DisplayName("Thợ chưa duyệt (PENDING) bị từ chối nhận yêu cầu sửa chữa (403 Forbidden)")
     void testTechnicianUnverified_CannotReceiveRepairRequests() throws Exception {
         // 1. Thử bật chế độ nhận việc online
         mockMvc.perform(patch("/api/v1/technicians/me/status/online")
@@ -252,7 +252,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(10)
-    @DisplayName("RC-11 AC 5c: Thợ sau khi được Admin phê duyệt (APPROVED) được phép nhận yêu cầu sửa chữa (200 OK)")
+    @DisplayName("Thợ sau khi được Admin phê duyệt (APPROVED) được phép nhận yêu cầu sửa chữa (200 OK)")
     void testTechnicianApproved_CanReceiveRepairRequests() throws Exception {
         Long techId = Long.parseLong(technicianUserId.replace("usr_", ""));
 
@@ -275,7 +275,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(11)
-    @DisplayName("RC-12 AC 3a: Tài khoản bị khóa (BLOCKED) từ chối đăng nhập với mã 403 và thông báo rõ ràng")
+    @DisplayName("Tài khoản bị khóa (BLOCKED) từ chối đăng nhập với mã 403 và thông báo rõ ràng")
     void testLoginBlockedAccount() throws Exception {
         LoginRequest blockedLogin = new LoginRequest();
         blockedLogin.setUsername("user_blocked");
@@ -292,7 +292,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(12)
-    @DisplayName("RC-12 AC 3b: Tài khoản ngừng hoạt động (INACTIVE) từ chối đăng nhập với mã 403")
+    @DisplayName("Tài khoản ngừng hoạt động (INACTIVE) từ chối đăng nhập với mã 403")
     void testLoginInactiveAccount() throws Exception {
         LoginRequest inactiveLogin = new LoginRequest();
         inactiveLogin.setUsername("user_inactive");
@@ -309,7 +309,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(13)
-    @DisplayName("RC-12 AC 2: Đăng nhập sai trả về Generic Error, không tiết lộ tài khoản có tồn tại hay không")
+    @DisplayName("Đăng nhập sai trả về Generic Error, không tiết lộ tài khoản có tồn tại hay không")
     void testLoginGenericError() throws Exception {
         LoginRequest nonExistent = new LoginRequest();
         nonExistent.setUsername("tai_khoan_hoan_toan_khong_ton_tai");
@@ -326,7 +326,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(14)
-    @DisplayName("RC-12 AC 4: Nhập sai mật khẩu liên tiếp đạt ngưỡng 5 lần thì tài khoản bị tạm khóa (429 Rate Limited)")
+    @DisplayName("Nhập sai mật khẩu liên tiếp đạt ngưỡng 5 lần thì tài khoản bị tạm khóa (429 Rate Limited)")
     void testLoginRateLimitingLocked() throws Exception {
         String testUser = "brute_force_victim";
         LoginRequest badLogin = new LoginRequest();
@@ -353,9 +353,9 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(15)
-    @DisplayName("RC-17 AC 1: Khách hàng cập nhật hồ sơ chính mình thành công và chỉ bản ghi của user đó được thay đổi")
+    @DisplayName("Khách hàng cập nhật hồ sơ chính mình thành công và chỉ bản ghi của user đó được thay đổi")
     void testCustomerUpdateOwnProfileSuccess() throws Exception {
-        // Đăng ký một khách hàng riêng cho test RC-17
+        // Đăng ký một khách hàng riêng cho test này
         RegisterCustomerRequest regRequest = new RegisterCustomerRequest();
         regRequest.setUsername("rc17_customer_test");
         regRequest.setPassword("Password@123");
@@ -395,7 +395,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(16)
-    @DisplayName("RC-17 AC 2: Cố tình chỉnh sửa hồ sơ người khác (IDOR) thì bị từ chối 403 Forbidden")
+    @DisplayName("Cố tình chỉnh sửa hồ sơ người khác (IDOR) thì bị từ chối 403 Forbidden")
     void testCustomerUpdateAnotherUserProfileForbidden() throws Exception {
         // User hiện tại là rc17CustomerId nhưng cố tình gọi sửa hồ sơ của user khác (ví dụ user ID 999999 hoặc 1)
         UpdateCustomerProfileRequest hackRequest = new UpdateCustomerProfileRequest();
@@ -417,7 +417,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(17)
-    @DisplayName("RC-17 AC 3: Gửi dữ liệu không hợp lệ hiển thị lỗi per-field validation và không lưu vào CSDL")
+    @DisplayName("Gửi dữ liệu không hợp lệ hiển thị lỗi per-field validation và không lưu vào CSDL")
     void testCustomerUpdateProfileInvalidData() throws Exception {
         UpdateCustomerProfileRequest invalidRequest = new UpdateCustomerProfileRequest();
         invalidRequest.setFullName(""); // Rỗng
@@ -438,7 +438,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(18)
-    @DisplayName("RC-17 AC 4: Cập nhật hồ sơ thành công được ghi nhận đầy đủ vào hệ thống Audit Trail")
+    @DisplayName("Cập nhật hồ sơ thành công được ghi nhận đầy đủ vào hệ thống Audit Trail")
     void testCustomerUpdateProfileAuditTrailRecorded() throws Exception {
         mockMvc.perform(get("/api/v1/customers/" + rc17CustomerId + "/audit-trail"))
                 .andExpect(status().isOk())
@@ -453,7 +453,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(19)
-    @DisplayName("RC-3 In-Scope 2: Admin mở và xem chi tiết hồ sơ người dùng (GET /api/v1/admin/users/{id})")
+    @DisplayName("Admin mở và xem chi tiết hồ sơ người dùng (GET /api/v1/admin/users/{id})")
     void testAdminGetUserDetail() throws Exception {
         mockMvc.perform(get("/api/v1/admin/users/" + rc17CustomerId)
                         .header("Authorization", "Bearer " + adminToken))
@@ -466,7 +466,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(20)
-    @DisplayName("RC-3 In-Scope 3: Admin khóa và mở khóa người dùng (PATCH /api/v1/admin/users/{id}/status)")
+    @DisplayName("Admin khóa và mở khóa người dùng (PATCH /api/v1/admin/users/{id}/status)")
     void testAdminBlockAndUnblockUser() throws Exception {
         // 1. Khóa tài khoản -> BLOCKED
         java.util.Map<String, String> blockBody = java.util.Map.of("status", "BLOCKED");
@@ -502,7 +502,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(21)
-    @DisplayName("RC-3 In-Scope 1b: Kỹ thuật viên tự cập nhật hồ sơ cá nhân và tay nghề (PUT /api/v1/technicians/me/profile)")
+    @DisplayName("Kỹ thuật viên tự cập nhật hồ sơ cá nhân và tay nghề (PUT /api/v1/technicians/me/profile)")
     void testTechnicianUpdateProfileSuccess() throws Exception {
         com.fixlink.adapter.in.web.dto.request.UpdateTechnicianProfileRequest req =
                 new com.fixlink.adapter.in.web.dto.request.UpdateTechnicianProfileRequest();
@@ -525,7 +525,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(22)
-    @DisplayName("RC-8: Flyway Master Data - Lấy danh mục dịch vụ (Service Categories) và gói dịch vụ (Services)")
+    @DisplayName("Flyway Master Data - Lấy danh mục dịch vụ (Service Categories) và gói dịch vụ (Services)")
     void testRC8_ServiceCategoriesMasterData() throws Exception {
         // 1. Kiểm tra API lấy danh mục dịch vụ (GET /api/v1/categories)
         mockMvc.perform(get("/api/v1/categories"))
@@ -543,7 +543,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(23)
-    @DisplayName("RC-8: Core Entity & BaseEntity Audit Columns - Tạo yêu cầu sửa chữa (RepairRequest) với đủ 6 cột audit")
+    @DisplayName("Core Entity & BaseEntity Audit Columns - Tạo yêu cầu sửa chữa (RepairRequest) với đủ 6 cột audit")
     void testRC8_RepairRequestAndAuditColumns() {
         com.fixlink.adapter.out.persistence.entity.RepairRequestJpaEntity req =
                 new com.fixlink.adapter.out.persistence.entity.RepairRequestJpaEntity();
@@ -566,7 +566,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(24)
-    @DisplayName("RC-13: Đổi mật khẩu (Change Password) - Kiểm tra lỗi mật khẩu cũ sai, mật khẩu mới trùng, mật khẩu yếu và đổi thành công")
+    @DisplayName("Đổi mật khẩu (Change Password) - Kiểm tra lỗi mật khẩu cũ sai, mật khẩu mới trùng, mật khẩu yếu và đổi thành công")
     void testRC13_ChangePassword() throws Exception {
         // Đăng nhập lấy token của test_customer
         LoginRequest loginReq = new LoginRequest();
@@ -631,7 +631,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(25)
-    @DisplayName("RC-14: Quên và đặt lại mật khẩu (Forgot/Reset Password) - Anti-enumeration & Token validation")
+    @DisplayName("Quên và đặt lại mật khẩu (Forgot/Reset Password) - Anti-enumeration & Token validation")
     void testRC14_ForgotAndResetPassword() throws Exception {
         // 1. Quên mật khẩu với email không tồn tại -> Vẫn trả về 200 (Anti-enumeration)
         com.fixlink.adapter.in.web.dto.request.ForgotPasswordRequest nonExistReq =
@@ -694,7 +694,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(26)
-    @DisplayName("RC-15: Refresh Token Rotation và Đăng xuất Blacklist Token")
+    @DisplayName("Refresh Token Rotation và Đăng xuất Blacklist Token")
     void testRC15_RefreshTokenAndLogout() throws Exception {
         // 1. Đăng nhập Admin lấy accessToken và refreshToken
         LoginRequest adminLogin = new LoginRequest();
@@ -744,7 +744,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(27)
-    @DisplayName("RC-18: Kỹ thuật viên xem hồ sơ, cập nhật danh mục dịch vụ và khu vực hoạt động")
+    @DisplayName("Kỹ thuật viên xem hồ sơ, cập nhật danh mục dịch vụ và khu vực hoạt động")
     void testRC18_TechnicianProfileAndAreas() throws Exception {
         // Xem hồ sơ kỹ thuật viên
         mockMvc.perform(get("/api/v1/technicians/me/profile?userId=3"))
@@ -780,7 +780,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(28)
-    @DisplayName("RC-23: Quản trị danh mục dịch vụ Admin CRUD & Đánh giá tác động (Impact Assessment)")
+    @DisplayName("Quản trị danh mục dịch vụ Admin CRUD & Đánh giá tác động (Impact Assessment)")
     void testRC23_AdminCategoryCRUDAndImpact() throws Exception {
         // 1. Đăng nhập Admin lấy token
         LoginRequest adminLogin = new LoginRequest();

@@ -1,6 +1,4 @@
 # FIXLINK - TÀI LIỆU THIẾT KẾ CƠ SỞ DỮ LIỆU (DATABASE DESIGN & ERD SPECIFICATION)
-> **Mã Jira Ticket:** `RC-8: Design Concept Database (extensible for future)`  
-> **Thuộc Epic / Parent:** `RC-1 Setup Project & Infra`  
 > **Hệ quản trị CSDL mục tiêu:** PostgreSQL 15+ (Môi trường Local: H2 Database chế độ PostgreSQL Compatibility Mode)  
 > **Công cụ Quản lý Migration:** Flyway Migration Tooling  
 > **Phiên bản:** v2.0 (Phase 1 Core Entities + Khung mở rộng tương lai)
@@ -63,7 +61,7 @@ deleted_by   BIGINT                   NULL
 
 ## 4. CHI TIẾT 8 THỰC THỂ CỐT LÕI (CORE ENTITIES - PHASE 1)
 
-Theo đúng yêu cầu của Jira Ticket RC-8:
+Theo yêu cầu thiết kế cơ sở dữ liệu:
 > *"Identify core entities: User, Role, Customer, Technician, TechnicianVerification, ServiceCategory, Service, RepairRequest"*
 
 ### 4.1. Bảng `users` (Tài khoản người dùng)

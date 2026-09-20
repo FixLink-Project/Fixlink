@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * Thực thể lưu lịch sử xét duyệt hồ sơ eKYC CCCD của thợ (Jira RC-8).
+ * Thực thể lưu lịch sử xét duyệt hồ sơ eKYC CCCD của thợ.
  */
 @Getter
 @Setter

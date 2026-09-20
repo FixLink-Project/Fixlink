@@ -51,7 +51,7 @@ public class AuthService implements AuthUseCase {
     public AuthResult login(LoginCommand command) {
         String username = command.username() != null ? command.username().trim() : "";
 
-        // RC-12 AC 4: Kiểm tra khóa tạm thời do brute-force nhập sai nhiều lần
+        // Kiểm tra khóa tạm thời do brute-force nhập sai nhiều lần
         if (loginAttemptService.isBlocked(username)) {
             long remainingSeconds = loginAttemptService.getRemainingLockSeconds(username);
             long minutes = Math.max(1, (remainingSeconds + 59) / 60);
@@ -69,11 +69,11 @@ public class AuthService implements AuthUseCase {
                         "Bạn đã nhập sai mật khẩu quá 5 lần liên tiếp. Tài khoản tạm thời bị khóa trong 15 phút để bảo vệ an toàn."
                 );
             }
-            // RC-12 AC 2: Generic error, không tiết lộ tài khoản có tồn tại hay không
+            // Generic error, không tiết lộ tài khoản có tồn tại hay không
             throw new InvalidCredentialsException("Tên đăng nhập hoặc mật khẩu không chính xác");
         }
 
-        // RC-12 AC 3: Kiểm tra tài khoản bị khóa hoặc ngừng hoạt động
+        // Kiểm tra tài khoản bị khóa hoặc ngừng hoạt động
         if (user.isBlocked()) {
             throw new AccountBlockedException("Tài khoản của bạn đã bị khóa do vi phạm chính sách");
         }

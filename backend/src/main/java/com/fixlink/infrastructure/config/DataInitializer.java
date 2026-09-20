@@ -128,7 +128,7 @@ public class DataInitializer implements CommandLineRunner {
             log.info(">>> Đã khởi tạo tài khoản Ngừng hoạt động: username=user_inactive / password=Password@123");
         }
 
-        // 6. Seed Service Areas (RC-18)
+        // 6. Khởi tạo danh sách khu vực hoạt động mẫu
         if (serviceAreaRepository.count() == 0) {
             List<ServiceAreaJpaEntity> areas = List.of(
                     ServiceAreaJpaEntity.builder().code("Q1_HCM").name("Quận 1").city("Hồ Chí Minh").isActive(true).build(),

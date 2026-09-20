@@ -1,5 +1,5 @@
 -- =============================================================================
--- FIXLINK MASTER DATA SEEDING (JIRA RC-8)
+-- FIXLINK - DỮ LIỆU DANH MỤC GỐC
 -- Initial categories, services, and default lookup data (ANSI SQL standard)
 -- =============================================================================
 

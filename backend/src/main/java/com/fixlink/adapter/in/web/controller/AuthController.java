@@ -108,7 +108,7 @@ public class AuthController {
     }
 
     // =========================================================================
-    // RC-13: Change Password
+    // Đổi mật khẩu
     // =========================================================================
     @PutMapping("/change-password")
     @Operation(summary = "Đổi mật khẩu tài khoản", description = "Đổi mật khẩu cho người dùng hiện tại và thu hồi các phiên đăng nhập khác.")
@@ -126,7 +126,7 @@ public class AuthController {
     }
 
     // =========================================================================
-    // RC-14: Forgot & Reset Password
+    // Quên mật khẩu và đặt lại mật khẩu
     // =========================================================================
     @PostMapping("/forgot-password")
     @Operation(summary = "Yêu cầu đặt lại mật khẩu", description = "Gửi email chứa liên kết đặt lại mật khẩu (chống User Enumeration, rate limit 3 lần/giờ).")
@@ -145,7 +145,7 @@ public class AuthController {
     }
 
     // =========================================================================
-    // RC-15: Logout & Session Lifecycle
+    // Đăng xuất và vòng đời phiên đăng nhập
     // =========================================================================
     @PostMapping("/logout")
     @Operation(summary = "Đăng xuất tài khoản", description = "Thu hồi token JWT (blacklist) và hủy refresh token.")

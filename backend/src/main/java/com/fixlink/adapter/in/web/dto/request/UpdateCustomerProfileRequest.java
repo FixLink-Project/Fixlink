@@ -14,7 +14,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Yêu cầu cập nhật hồ sơ khách hàng (RC-17)")
+@Schema(description = "Yêu cầu cập nhật hồ sơ khách hàng")
 public class UpdateCustomerProfileRequest {
 
     @NotBlank(message = "Họ và tên không được để trống")

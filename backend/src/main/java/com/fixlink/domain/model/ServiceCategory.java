@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Thực thể danh mục ngành nghề dịch vụ sửa chữa (Jira RC-8).
+ * Thực thể danh mục ngành nghề dịch vụ sửa chữa.
  */
 @Getter
 @Setter

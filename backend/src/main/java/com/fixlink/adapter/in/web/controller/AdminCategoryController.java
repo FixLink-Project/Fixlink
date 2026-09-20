@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "Admin Category Management", description = "Các API quản lý danh mục dịch vụ dành cho Quản trị viên (RC-23)")
+@Tag(name = "Admin Category Management", description = "Các API quản lý danh mục dịch vụ dành cho Quản trị viên")
 public class AdminCategoryController {
 
     private final CategoryAdminUseCase categoryAdminUseCase;

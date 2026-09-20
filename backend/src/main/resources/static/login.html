@@ -297,30 +297,30 @@
             <p class="brand-subtitle">Truy cập nền tảng kết nối thợ sửa chữa tại nhà</p>
         </div>
 
-        <!-- Quick 1-Click Role Testing Buttons for Jira/Evaluator -->
+        <!-- Nút đăng nhập nhanh bằng tài khoản mẫu, chỉ dùng khi chạy hồ sơ demo -->
         <div class="quick-roles">
             <div class="quick-roles-title">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                Chọn nhanh tài khoản thử nghiệm (RC-12):
+                Chọn nhanh tài khoản thử nghiệm:
             </div>
             <div class="role-btns" style="grid-template-columns: 1fr 1fr; gap: 8px;">
                 <button type="button" class="btn-role-quick" onclick="setCredentials('tho_dien_lanh_01', 'Password@123', 'Thợ chờ duyệt KYC')">
-                    🛠️ Thợ Pending (AC 5)
+                    🛠️ Thợ chờ duyệt
                 </button>
                 <button type="button" class="btn-role-quick" onclick="setCredentials('customer01', 'Password@123', 'Khách hàng')">
-                    👤 Khách Hàng (AC 1)
+                    👤 Khách hàng
                 </button>
                 <button type="button" class="btn-role-quick" onclick="setCredentials('admin', 'Admin@123', 'Quản trị viên')">
-                    🛡️ Quản Trị Admin (AC 1)
+                    🛡️ Quản trị viên
                 </button>
                 <button type="button" class="btn-role-quick" style="border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;" onclick="setCredentials('user_blocked', 'Password@123', 'Tài khoản bị khóa')">
-                    🚫 Thử TK Khóa (AC 3)
+                    🚫 Tài khoản bị khóa
                 </button>
                 <button type="button" class="btn-role-quick" style="border-color: rgba(245, 158, 11, 0.4); color: #fcd34d;" onclick="setCredentials('user_inactive', 'Password@123', 'TK ngừng hoạt động')">
-                    ⚠️ Thử TK Inactive (AC 3)
+                    ⚠️ Tài khoản ngừng hoạt động
                 </button>
                 <button type="button" class="btn-role-quick" style="border-color: rgba(168, 85, 247, 0.4); color: #d8b4fe;" onclick="triggerBruteForceFailures()">
-                    🔒 Thử Nhập Sai 5 Lần (AC 4)
+                    🔒 Nhập sai 5 lần liên tiếp
                 </button>
             </div>
         </div>
@@ -331,11 +331,11 @@
             <span id="errorMessage">Tên đăng nhập hoặc mật khẩu không chính xác</span>
         </div>
 
-        <!-- Rate Limit Countdown Banner (AC 4) -->
+        <!-- Rate Limit Countdown Banner -->
         <div id="alertLockout" style="display: none; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius: 10px; padding: 12px; margin-bottom: 20px; font-size: 13px; color: #fecaca; text-align: center;">
             <div style="font-weight: 800; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 6px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                TÀI KHOẢN TẠM THỜI BỊ KHÓA (AC 4)
+                TÀI KHOẢN TẠM THỜI BỊ KHÓA
             </div>
             <span id="lockoutText">Nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau: </span>
             <strong id="lockoutTimer" style="color: #fff; font-size: 14px;">15:00</strong>
@@ -369,8 +369,8 @@
 
         <div class="links-footer">
             Chưa có tài khoản? <br>
-            <a href="/customer-register.html">👉 Đăng ký Khách hàng (RC-10)</a> &nbsp;|&nbsp; 
-            <a href="/technician-register.html">👉 Đăng ký Thợ (RC-11)</a>
+            <a href="/customer-register.html">👉 Đăng ký Khách hàng</a> &nbsp;|&nbsp; 
+            <a href="/technician-register.html">👉 Đăng ký Thợ</a>
         </div>
     </div>
 
@@ -389,7 +389,7 @@
             const alertError = document.getElementById('alertError');
             const errorMessage = document.getElementById('errorMessage');
             alertError.style.display = 'flex';
-            errorMessage.innerText = 'Đang tự động gửi 5 lần đăng nhập sai mật khẩu để kích hoạt Rate Limit AC 4...';
+            errorMessage.innerText = 'Đang gửi 5 lần đăng nhập sai liên tiếp để kích hoạt cơ chế tạm khóa...';
 
             for (let i = 1; i <= 5; i++) {
                 try {
@@ -467,19 +467,19 @@
                     localStorage.setItem('fixlink_token', token);
                     localStorage.setItem('fixlink_user', JSON.stringify(user));
 
-                    // RC-12 AC 1: Điều hướng theo Role Home tương ứng
+                    // Điều hướng theo Role Home tương ứng
                     if (user.role === 'TECHNICIAN') {
-                        // Chuyển tới Bảng điều khiển Kỹ thuật viên (AC 5)
+                        // Chuyển tới Bảng điều khiển Kỹ thuật viên
                         window.location.href = '/technician-dashboard.html';
                     } else if (user.role === 'ADMIN') {
-                        // Chuyển tới Bảng điều khiển Quản trị viên (AC 1)
+                        // Chuyển tới Bảng điều khiển Quản trị viên
                         window.location.href = '/admin-dashboard.html';
                     } else {
-                        // Chuyển tới Bảng điều khiển Khách hàng (AC 1)
+                        // Chuyển tới Bảng điều khiển Khách hàng
                         window.location.href = '/customer-dashboard.html';
                     }
                 } else if (response.status === 429 || resData.statusCode === 429) {
-                    // RC-12 AC 4: Tạm khóa do quá số lần thử
+                    // Tạm khóa do quá số lần thử
                     showLockoutBanner(resData.remainingSeconds || 900);
                 } else {
                     errorMessage.innerText = resData.message || 'Tên đăng nhập hoặc mật khẩu không chính xác';
