@@ -37,7 +37,31 @@ public class TechnicianProfileService implements TechnicianProfileUseCase {
     public TechnicianProfileResponse getMyProfile(Long userId) {
         TechnicianProfileJpaEntity profile = technicianProfileRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ kỹ thuật viên"));
-        return mapToResponse(profile, Collections.emptyList(), Collections.emptyList());
+        return mapToResponse(profile, loadCategories(profile.getCategoryIds()), loadAreas(profile.getAreaIds()));
+    }
+
+    /** Đọc chi tiết nhóm việc từ danh sách id đã lưu ở bảng nối. */
+    private List<CategorySimpleResponse> loadCategories(Set<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return ids.stream()
+                .map(serviceCategoryRepository::findByIdAndDeletedAtIsNull)
+                .flatMap(Optional::stream)
+                .map(c -> new CategorySimpleResponse(c.getId(), c.getName(), c.getIconUrl()))
+                .toList();
+    }
+
+    /** Đọc chi tiết địa bàn từ danh sách id đã lưu ở bảng nối. */
+    private List<AreaSimpleResponse> loadAreas(Set<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return ids.stream()
+                .map(serviceAreaRepository::findByIdAndIsActiveTrue)
+                .flatMap(Optional::stream)
+                .map(a -> new AreaSimpleResponse(a.getId(), a.getCode(), a.getName(), a.getCity()))
+                .toList();
     }
 
     @Override
@@ -111,6 +135,14 @@ public class TechnicianProfileService implements TechnicianProfileUseCase {
         }
         if (request.getAvatarUrl() != null) {
             profile.setAvatarUrl(request.getAvatarUrl());
+        }
+
+        // Chỉ ghi đè khi client gửi lên, để request không kèm trường này không xoá mất lựa chọn cũ.
+        if (request.getCategoryIds() != null) {
+            profile.setCategoryIds(new LinkedHashSet<>(request.getCategoryIds()));
+        }
+        if (request.getAreaIds() != null) {
+            profile.setAreaIds(new LinkedHashSet<>(request.getAreaIds()));
         }
 
         profile.setUpdatedBy(userId);

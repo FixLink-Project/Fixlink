@@ -8,6 +8,7 @@ import com.fixlink.domain.exception.UserAlreadyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
@@ -124,6 +125,20 @@ public class GlobalExceptionHandler {
         error.put("errorCode", "ACCESS_DENIED");
         error.put("message", ex.getMessage() != null && !ex.getMessage().isBlank() ? ex.getMessage() : "Bạn không có quyền thực hiện hành động này");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    /**
+     * Body request không đọc được (JSON sai cú pháp, sai bảng mã, thiếu body):
+     * đây là lỗi của phía gọi nên trả 400, không phải 500 như handler tổng quát.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        log.warn("Không đọc được body request: {}", ex.getMessage());
+        Map<String, Object> error = new HashMap<>();
+        error.put("statusCode", HttpStatus.BAD_REQUEST.value());
+        error.put("errorCode", "MALFORMED_REQUEST_BODY");
+        error.put("message", "Nội dung gửi lên không đọc được. Kiểm tra JSON và bảng mã UTF-8.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
     /**

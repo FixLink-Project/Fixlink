@@ -5,6 +5,7 @@ import CustomerRegisterPage from './pages/CustomerRegisterPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
+import TechnicianDashboardPage from './pages/TechnicianDashboardPage';
 import TechnicianRegisterPage from './pages/TechnicianRegisterPage';
 
 export default function App() {
@@ -19,6 +20,14 @@ export default function App() {
         element={
           <RequireAuth roles={['CUSTOMER']}>
             <CustomerDashboardPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/tho"
+        element={
+          <RequireAuth roles={['TECHNICIAN']}>
+            <TechnicianDashboardPage />
           </RequireAuth>
         }
       />

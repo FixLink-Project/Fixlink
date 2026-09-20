@@ -809,6 +809,16 @@ class FixLinkApiIntegrationTest {
                 .andExpect(jsonPath("$.data.yearsExperience").value(8))
                 .andExpect(jsonPath("$.data.categories[0].id").value(1))
                 .andExpect(jsonPath("$.data.areas", hasSize(2)));
+
+        // Đọc lại từ máy chủ: trước đây service chỉ dựng response từ chính request
+        // rồi bỏ đi, nên chỉ kiểm tra response của PUT là không đủ để biết đã lưu hay chưa.
+        mockMvc.perform(get("/api/v1/technicians/me/profile")
+                        .header("Authorization", techToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.categories", hasSize(1)))
+                .andExpect(jsonPath("$.data.categories[0].id").value(1))
+                .andExpect(jsonPath("$.data.areas", hasSize(2)))
+                .andExpect(jsonPath("$.data.areas[*].id", containsInAnyOrder(1, 2)));
     }
 
     @Test
