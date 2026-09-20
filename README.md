@@ -11,6 +11,25 @@
 
 **FixLink** là nền tảng số kết nối khách hàng có nhu cầu sửa chữa với đội ngũ kỹ thuật viên lành nghề (Điện, Nước, Điện lạnh, Sơn, Điện tử,...). Hệ thống cung cấp cơ chế đấu giá minh bạch, quản lý tiến độ thời gian thực, bảo hành và thanh toán an toàn.
 
+> [!NOTE]
+> **Dự án đã tích hợp toàn bộ các Release Candidate (Sprint 0)** theo chuẩn Kiến trúc Lục giác (Hexagonal Architecture / Ports & Adapters) theo tài liệu thiết kế hệ thống (`FixLink_PhanTich_ThietKe.docx`):
+> - **RC-1, RC-8, RC-9**: Hạ tầng Monorepo, Database Flyway migration, BaseEntity 6 cột audit, API Contract & OpenAPI Swagger.
+> - **RC-10, RC-11, RC-29**: Đăng ký Khách hàng, Đăng ký Kỹ thuật viên & eKYC CCCD 2 mặt.
+> - **RC-12, RC-25**: Đăng nhập đa vai trò, Rate limiting chống Brute-force & Khóa tài khoản tạm thời.
+> - **RC-13**: Đổi mật khẩu (Change Password) & Chính sách mật khẩu mạnh (PasswordValidator regex).
+> - **RC-14**: Quên mật khẩu (Forgot/Reset Password) chống User Enumeration, Token UUID 15 phút, gửi email/URL reset.
+> - **RC-15**: Quản lý phiên, Refresh Token Rotation & Đăng xuất Blacklist JWT.
+> - **RC-17**: Hồ sơ Khách hàng & Nhật ký kiểm toán (Audit Trail).
+> - **RC-18**: Hồ sơ Kỹ thuật viên (Chuyên môn danh mục & Khu vực hoạt động Service Areas).
+> - **RC-23**: Quản trị Danh mục Dịch vụ Admin CRUD & Đánh giá mức độ ảnh hưởng (Impact Assessment).
+> - **RC-3**: Phê duyệt & Từ chối KYC Thợ dành cho Quản trị viên (Admin KYC Verification).
+
+### 🚀 Khởi chạy Nhanh Trong 1 Cú Click (Windows)
+- **Chạy toàn bộ Backend & Giao diện Web:** Double-click file `run-project.bat` trong thư mục gốc `FixLink/`. Hệ thống tự động thiết lập bộ nhớ, khởi động H2 database và Spring Boot server trên cổng **8080**.
+- **Chạy 31 bài kiểm thử tự động (Integration Tests):** Double-click file `run-test.bat`.
+- **Cổng thông tin Web trực tiếp:** [http://localhost:8080/index.html](http://localhost:8080/index.html)
+- **Tài liệu API Swagger:** [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+
 ---
 
 ## 📁 Cấu trúc Thư mục Toàn diện (Repository Structure)

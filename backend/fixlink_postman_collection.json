@@ -1,0 +1,325 @@
+{
+	"info": {
+		"_postman_id": "fixlink-collection-v1",
+		"name": "FixLink - Repair Platform API Collection",
+		"description": "Bộ sưu tập API Postman chính thức cho dự án FixLink (Spring Boot 3 + Hexagonal Architecture). Hỗ trợ kiểm thử và làm mock data cho Frontend.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "adminToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "customerToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "technicianToken",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Login - Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.accessToken) {",
+									"    pm.collectionVariables.set('adminToken', jsonData.data.accessToken);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Đăng nhập với tài khoản Admin mặc định"
+					},
+					"response": []
+				},
+				{
+					"name": "Login - Customer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.accessToken) {",
+									"    pm.collectionVariables.set('customerToken', jsonData.data.accessToken);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"customer01\",\n  \"password\": \"Password@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register - Customer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"nguyen_van_c\",\n  \"password\": \"Password@123\",\n  \"fullName\": \"Nguyễn Văn C\",\n  \"phone\": \"0933112233\",\n  \"email\": \"nguyenvanc@gmail.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/register/customer",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register",
+								"customer"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register - Technician (KYC)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"tho_dien_03\",\n  \"password\": \"Password@123\",\n  \"fullName\": \"Lê Văn D\",\n  \"phone\": \"0966778899\",\n  \"email\": \"levand@gmail.com\",\n  \"citizenId\": \"079099887766\",\n  \"idCardFrontUrl\": \"https://s3.fixlink.vn/temp/id_front_03.jpg\",\n  \"idCardBackUrl\": \"https://s3.fixlink.vn/temp/id_back_03.jpg\",\n  \"bio\": \"Thợ điện công nghiệp & dân dụng 6 năm kinh nghiệm\",\n  \"yearsExperience\": 6\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/register/technician",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register",
+								"technician"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Admin User Management",
+			"item": [
+				{
+					"name": "Get Users (Pagination, Filter, Search, Sort)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/users?page=1&limit=10&role=ALL&status=ALL&sortBy=createdAt&sortOrder=DESC",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"users"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Trang hiện tại (1-based)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Số bản ghi/trang"
+								},
+								{
+									"key": "search",
+									"value": "Trần",
+									"disabled": true,
+									"description": "Từ khóa tìm kiếm theo Tên, Email, SĐT, Username"
+								},
+								{
+									"key": "role",
+									"value": "ALL",
+									"description": "Lọc vai trò: ALL, CUSTOMER, TECHNICIAN, ADMIN"
+								},
+								{
+									"key": "status",
+									"value": "ALL",
+									"description": "Lọc trạng thái: ALL, ACTIVE, BLOCKED, PENDING"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt",
+									"description": "Trường sắp xếp: createdAt, username"
+								},
+								{
+									"key": "sortOrder",
+									"value": "DESC",
+									"description": "Hướng sắp xếp: ASC hoặc DESC"
+								}
+							]
+						},
+						"description": "Admin xem danh sách người dùng với đầy đủ bộ lọc, tìm kiếm, phân trang và sắp xếp."
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Technician - APPROVED",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"verificationStatus\": \"APPROVED\",\n  \"note\": \"Hồ sơ và CCCD hợp lệ\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/technicians/usr_3/verify",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"technicians",
+								"usr_3",
+								"verify"
+							]
+						},
+						"description": "Admin duyệt xác minh hồ sơ thợ (chuyển trạng thái sang APPROVED)"
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Technician - REJECTED",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"verificationStatus\": \"REJECTED\",\n  \"rejectionReason\": \"Ảnh CCCD mặt sau bị mờ, không rõ số nhận diện\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/technicians/usr_3/verify",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"technicians",
+								"usr_3",
+								"verify"
+							]
+						},
+						"description": "Admin từ chối xác minh thợ kèm lý do"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
