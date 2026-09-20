@@ -5,6 +5,7 @@ import Card from '../components/Card';
 import DashboardLayout from '../components/DashboardLayout';
 import Pagination from '../components/Pagination';
 import StatusChip from '../components/StatusChip';
+import Tabs from '../components/Tabs';
 import { ApiError, api } from '../lib/api';
 import type { PageMeta, Role, UserStatus, VerificationStatus } from '../lib/types';
 
@@ -47,14 +48,6 @@ const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'ADMIN', label: 'Quản trị viên' }
 ];
 
-const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: 'ALL', label: 'Mọi trạng thái' },
-  { value: 'ACTIVE', label: 'Đang hoạt động' },
-  { value: 'PENDING', label: 'Chờ duyệt' },
-  { value: 'BLOCKED', label: 'Bị khoá' },
-  { value: 'INACTIVE', label: 'Ngừng hoạt động' }
-];
-
 function formatDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -67,6 +60,19 @@ function formatDate(iso: string): string {
 
 const SELECT_CLASS =
   'min-h-[44px] w-full rounded-lg border border-line bg-card px-3 text-sm text-ink sm:w-auto';
+
+/**
+ * Mỗi tab là một bộ lọc đặt sẵn. Bộ lọc vai trò và từ khóa bên dưới vẫn áp thêm
+ * lên kết quả của tab đang chọn.
+ */
+type TabId = 'ALL' | 'PENDING' | 'ACTIVE' | 'BLOCKED';
+
+const TABS: Array<{ id: TabId; label: string; status: string }> = [
+  { id: 'ALL', label: 'Tất cả', status: 'ALL' },
+  { id: 'PENDING', label: 'Chờ duyệt KYC', status: 'PENDING' },
+  { id: 'ACTIVE', label: 'Đang hoạt động', status: 'ACTIVE' },
+  { id: 'BLOCKED', label: 'Đã khoá', status: 'BLOCKED' }
+];
 
 const ADMIN_NAV = [
   { to: '/quan-tri', label: 'Người dùng' },
@@ -85,7 +91,8 @@ export default function AdminUsersPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('ALL');
-  const [userStatus, setUserStatus] = useState('ALL');
+  const [tab, setTab] = useState<TabId>('ALL');
+  const [pendingCount, setPendingCount] = useState(0);
 
   const [detail, setDetail] = useState<AdminUser | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -98,11 +105,11 @@ export default function AdminUsersPage() {
       page: String(page),
       limit: '10',
       role,
-      status: userStatus
+      status: TABS.find((t) => t.id === tab)?.status ?? 'ALL'
     });
     if (search.trim()) params.set('search', search.trim());
     return params.toString();
-  }, [page, role, userStatus, search]);
+  }, [page, role, tab, search]);
 
   const load = useCallback(
     async (isRefresh = false) => {
@@ -128,6 +135,22 @@ export default function AdminUsersPage() {
   useEffect(() => {
     void load(true);
   }, [load]);
+
+  // Con số trên tab "Chờ duyệt KYC" phải đúng kể cả khi đang ở tab khác,
+  // nên đếm bằng một lượt gọi riêng thay vì lấy từ danh sách đang hiển thị.
+  const refreshPendingCount = useCallback(async () => {
+    try {
+      const res = await api.get<AdminUser[]>('/admin/users?page=1&limit=1&status=PENDING');
+      setPendingCount(res.meta?.totalItems ?? 0);
+    } catch {
+      // Không đếm được thì ẩn con số đi, không làm hỏng cả trang.
+      setPendingCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshPendingCount();
+  }, [refreshPendingCount, users]);
 
   function applyFilter(next: () => void) {
     setPage(1);
@@ -211,6 +234,17 @@ export default function AdminUsersPage() {
         {actionNote && <Alert tone="success">{actionNote}</Alert>}
         {actionError && <Alert tone="error">{actionError}</Alert>}
 
+        <Tabs
+          label="Lọc tài khoản theo trạng thái"
+          items={TABS.map((t) => ({
+            id: t.id,
+            label: t.label,
+            badge: t.id === 'PENDING' ? pendingCount : undefined
+          }))}
+          active={tab}
+          onChange={(next) => applyFilter(() => setTab(next))}
+        />
+
         <Card>
           <form
             className="flex flex-col gap-3 sm:flex-row sm:items-end"
@@ -244,24 +278,6 @@ export default function AdminUsersPage() {
                 className={SELECT_CLASS}
               >
                 {ROLE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="admin-status" className="mb-1.5 block text-sm font-medium">
-                Trạng thái
-              </label>
-              <select
-                id="admin-status"
-                value={userStatus}
-                onChange={(e) => applyFilter(() => setUserStatus(e.target.value))}
-                className={SELECT_CLASS}
-              >
-                {STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

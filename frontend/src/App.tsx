@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import TechnicianDashboardPage from './pages/TechnicianDashboardPage';
+import TechnicianProfilePage from './pages/TechnicianProfilePage';
 import TechnicianRegisterPage from './pages/TechnicianRegisterPage';
 
 export default function App() {
@@ -50,6 +51,14 @@ export default function App() {
         element={
           <RequireAuth roles={['ADMIN']}>
             <AdminCategoriesPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/tho/ho-so"
+        element={
+          <RequireAuth roles={['TECHNICIAN']}>
+            <TechnicianProfilePage />
           </RequireAuth>
         }
       />
