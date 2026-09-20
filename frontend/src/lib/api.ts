@@ -85,3 +85,16 @@ export function fetchAreas(): Promise<ApiResponse<ServiceArea[]>> {
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 }
+
+/**
+ * Chuẩn hoá khối `errors` của response lỗi về dạng { tên trường: thông báo }.
+ *
+ * <p>Backend có thể trả về một object, hoặc một mảng { field, message }.
+ */
+export function toFieldErrors(error: unknown): Record<string, string> {
+  if (!(error instanceof ApiError) || !error.fieldErrors) return {};
+  if (Array.isArray(error.fieldErrors)) {
+    return Object.fromEntries(error.fieldErrors.map((e) => [e.field, e.message]));
+  }
+  return error.fieldErrors;
+}

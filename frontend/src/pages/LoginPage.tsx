@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Alert from '../components/Alert';
+import AuthLayout from '../components/AuthLayout';
 import Button from '../components/Button';
 import TextField from '../components/TextField';
 import { ApiError } from '../lib/api';
@@ -12,11 +13,19 @@ function formatCountdown(totalSeconds: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
+interface LoginLocationState {
+  username?: string;
+  justRegistered?: boolean;
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
+  // Người vừa đăng ký xong được điền sẵn tên tài khoản.
+  const { username: prefilled, justRegistered } =
+    (useLocation().state as LoginLocationState | null) ?? {};
 
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(prefilled ?? '');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,73 +69,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface">
-      <header className="border-b border-line bg-card">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link to="/" className="font-display text-lg font-bold text-brand-ink">
-            FixLink
-          </Link>
-          <Link to="/" className="text-sm text-ink-soft hover:text-ink">
-            Về trang chủ
-          </Link>
-        </div>
-      </header>
-
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10 sm:px-6 sm:py-16">
-        <h1 className="font-display text-2xl font-semibold sm:text-3xl">Đăng nhập</h1>
-        <p className="mt-2 text-ink-soft">
-          Dùng chung một tài khoản cho khách hàng, thợ và quản trị viên.
-        </p>
-
-        <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
-          {locked && (
-            <Alert tone="warning" title="Tài khoản tạm thời bị khoá">
-              Bạn đã nhập sai mật khẩu quá số lần cho phép. Thử lại sau{' '}
-              <strong className="font-display text-ink">{formatCountdown(lockedSeconds)}</strong>,
-              hoặc đặt lại mật khẩu nếu bạn không nhớ.
-            </Alert>
-          )}
-
-          {error && !locked && <Alert tone="error">{error}</Alert>}
-
-          <TextField
-            label="Tên đăng nhập hoặc số điện thoại"
-            name="username"
-            autoComplete="username"
-            required
-            disabled={locked}
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Ví dụ: tho_dien_lanh_01"
-          />
-
-          <TextField
-            label="Mật khẩu"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            disabled={locked}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Nhập mật khẩu của bạn"
-          />
-
-          <div className="flex justify-end">
-            <Link
-              to="/quen-mat-khau"
-              className="rounded-lg py-1 text-sm text-brand hover:text-brand-strong hover:underline"
-            >
-              Quên mật khẩu?
-            </Link>
-          </div>
-
-          <Button type="submit" fullWidth loading={submitting} disabled={locked}>
-            {submitting ? 'Đang kiểm tra...' : 'Đăng nhập'}
-          </Button>
-        </form>
-
-        <div className="mt-8 border-t border-line pt-6">
+    <AuthLayout
+      title="Đăng nhập"
+      description="Dùng chung một tài khoản cho khách hàng, thợ và quản trị viên."
+      footer={
+        <>
           <p className="text-sm text-ink-soft">Chưa có tài khoản?</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Link
@@ -142,8 +89,62 @@ export default function LoginPage() {
               Đăng ký làm thợ
             </Link>
           </div>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
+        {justRegistered && !error && !locked && (
+          <Alert tone="success" title="Đã tạo tài khoản">
+            Đăng nhập bằng mật khẩu bạn vừa đặt để bắt đầu đăng yêu cầu sửa chữa.
+          </Alert>
+        )}
+
+        {locked && (
+          <Alert tone="warning" title="Tài khoản tạm thời bị khoá">
+            Bạn đã nhập sai mật khẩu quá số lần cho phép. Thử lại sau{' '}
+            <strong className="font-display text-ink">{formatCountdown(lockedSeconds)}</strong>,
+            hoặc đặt lại mật khẩu nếu bạn không nhớ.
+          </Alert>
+        )}
+
+        {error && !locked && <Alert tone="error">{error}</Alert>}
+
+        <TextField
+          label="Tên đăng nhập hoặc số điện thoại"
+          name="username"
+          autoComplete="username"
+          required
+          disabled={locked}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Ví dụ: tho_dien_lanh_01"
+        />
+
+        <TextField
+          label="Mật khẩu"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+          disabled={locked}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Nhập mật khẩu của bạn"
+        />
+
+        <div className="flex justify-end">
+          <Link
+            to="/quen-mat-khau"
+            className="rounded-lg py-1 text-sm text-brand hover:text-brand-strong hover:underline"
+          >
+            Quên mật khẩu?
+          </Link>
         </div>
-      </main>
-    </div>
+
+        <Button type="submit" fullWidth loading={submitting} disabled={locked}>
+          {submitting ? 'Đang kiểm tra...' : 'Đăng nhập'}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }
