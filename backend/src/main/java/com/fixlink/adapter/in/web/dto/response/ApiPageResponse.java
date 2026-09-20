@@ -34,6 +34,9 @@ public class ApiPageResponse<T> {
         private int limit;
         private long totalItems;
         private int totalPages;
+        /** Suy ra từ currentPage và totalPages để client không phải tự tính lại. */
+        private boolean hasNext;
+        private boolean hasPrevious;
 
         public PageMeta() {}
 
@@ -42,6 +45,8 @@ public class ApiPageResponse<T> {
             this.limit = limit;
             this.totalItems = totalItems;
             this.totalPages = totalPages;
+            this.hasNext = currentPage < totalPages;
+            this.hasPrevious = currentPage > 1;
         }
     }
 }

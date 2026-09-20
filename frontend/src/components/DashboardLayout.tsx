@@ -1,9 +1,16 @@
 import type { ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import StatusChip from './StatusChip';
 import { useAuth } from '../lib/auth';
 
+interface NavItem {
+  to: string;
+  label: string;
+}
+
 interface DashboardLayoutProps {
+  /** Liên kết giữa các màn hình cùng vai trò, ví dụ khu vực quản trị. */
+  nav?: NavItem[];
   title: string;
   description?: ReactNode;
   /** Nội dung phụ nằm bên phải tiêu đề, ví dụ nút hành động chính. */
@@ -12,6 +19,7 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({
+  nav,
   title,
   description,
   actions,
@@ -52,6 +60,29 @@ export default function DashboardLayout({
             </button>
           </div>
         </div>
+        {nav && nav.length > 0 && (
+          <nav className="mx-auto max-w-6xl px-4 sm:px-6">
+            <ul className="flex flex-wrap gap-1 border-t border-white/10 pt-1">
+              {nav.map((item) => (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    end
+                    className={({ isActive }) =>
+                      `flex min-h-[44px] items-center border-b-2 px-3 text-sm transition-colors ${
+                        isActive
+                          ? 'border-white font-medium text-white'
+                          : 'border-transparent text-white/60 hover:text-white'
+                      }`
+                    }
+                  >
+                    {item.label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">

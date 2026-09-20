@@ -995,4 +995,62 @@ class FixLinkApiIntegrationTest {
                         .header("Authorization", adminBearer))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    @Order(33)
+    @DisplayName("Phân trang: khối meta đủ sáu trường và hasNext/hasPrevious đúng ở từng trang")
+    void testPaginationMetaShape() throws Exception {
+        String adminBearer = bearerTokenOf("admin", "Admin@123");
+
+        // Trang đầu với limit 2: còn trang sau, không có trang trước
+        mockMvc.perform(get("/api/v1/admin/users?page=1&limit=2")
+                        .header("Authorization", adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.currentPage").value(1))
+                .andExpect(jsonPath("$.meta.limit").value(2))
+                .andExpect(jsonPath("$.meta.totalItems").isNumber())
+                .andExpect(jsonPath("$.meta.totalPages").isNumber())
+                .andExpect(jsonPath("$.meta.hasPrevious").value(false))
+                .andExpect(jsonPath("$.meta.hasNext").value(true))
+                .andExpect(jsonPath("$.data", hasSize(2)));
+
+        // Trang hai: có trang trước
+        mockMvc.perform(get("/api/v1/admin/users?page=2&limit=2")
+                        .header("Authorization", adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.currentPage").value(2))
+                .andExpect(jsonPath("$.meta.hasPrevious").value(true));
+
+        // Limit đủ lớn để gói hết trong một trang: không còn trang nào khác
+        mockMvc.perform(get("/api/v1/admin/users?page=1&limit=100")
+                        .header("Authorization", adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.totalPages").value(1))
+                .andExpect(jsonPath("$.meta.hasNext").value(false))
+                .andExpect(jsonPath("$.meta.hasPrevious").value(false));
+    }
+
+    @Test
+    @Order(34)
+    @DisplayName("Phân trang: danh sách danh mục của quản trị viên trả kèm meta và lọc được theo tên")
+    void testCategoryListPagination() throws Exception {
+        String adminBearer = bearerTokenOf("admin", "Admin@123");
+
+        mockMvc.perform(get("/api/v1/admin/categories?page=1&limit=2")
+                        .header("Authorization", adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.currentPage").value(1))
+                .andExpect(jsonPath("$.meta.limit").value(2))
+                .andExpect(jsonPath("$.meta.hasPrevious").value(false))
+                .andExpect(jsonPath("$.data", hasSize(2)));
+
+        // Tìm kiếm theo tên thu hẹp kết quả và meta tính lại theo đó
+        mockMvc.perform(get("/api/v1/admin/categories?page=1&limit=10&search=Điện Lạnh")
+                        .header("Authorization", adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.totalItems").value(1))
+                .andExpect(jsonPath("$.meta.totalPages").value(1))
+                .andExpect(jsonPath("$.meta.hasNext").value(false))
+                .andExpect(jsonPath("$.data", hasSize(1)));
+    }
 }

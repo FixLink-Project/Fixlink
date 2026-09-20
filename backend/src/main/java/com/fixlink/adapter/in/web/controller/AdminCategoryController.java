@@ -1,6 +1,7 @@
 package com.fixlink.adapter.in.web.controller;
 
 import com.fixlink.adapter.in.web.dto.request.CategoryRequest;
+import com.fixlink.adapter.in.web.dto.response.ApiPageResponse;
 import com.fixlink.adapter.in.web.dto.response.ApiResponse;
 import com.fixlink.adapter.in.web.dto.response.CategoryImpactAssessmentResponse;
 import com.fixlink.adapter.in.web.dto.response.CategoryImpactResponse;
@@ -27,9 +28,20 @@ public class AdminCategoryController {
     @GetMapping("/api/v1/admin/categories")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Lấy danh sách tất cả danh mục dịch vụ dành cho Quản trị viên")
-    public ResponseEntity<ApiResponse<java.util.List<CategoryResponse>>> getAllCategories() {
-        java.util.List<CategoryResponse> list = categoryAdminUseCase.getAllCategories();
-        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách danh mục thành công", list));
+    public ResponseEntity<ApiPageResponse<CategoryResponse>> getAllCategories(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String search
+    ) {
+        CategoryAdminUseCase.CategoryPage result = categoryAdminUseCase.getCategoryPage(page, limit, search);
+        return ResponseEntity.ok(ApiPageResponse.of(
+                "Lấy danh sách danh mục thành công",
+                result.currentPage(),
+                result.limit(),
+                result.totalItems(),
+                result.totalPages(),
+                result.items()
+        ));
     }
 
     @PostMapping("/api/v1/admin/categories")
@@ -40,7 +52,7 @@ public class AdminCategoryController {
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody CategoryRequest request
     ) {
-        Long adminId = principal != null ? principal.getId() : 1L;
+        Long adminId = principal.getId();
         CategoryResponse response = categoryAdminUseCase.createCategory(adminId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("Tạo mới danh mục dịch vụ thành công", response));
@@ -62,7 +74,7 @@ public class AdminCategoryController {
             @PathVariable Long id,
             @Valid @RequestBody CategoryRequest request
     ) {
-        Long adminId = principal != null ? principal.getId() : 1L;
+        Long adminId = principal.getId();
         CategoryResponse response = categoryAdminUseCase.updateCategory(adminId, id, request);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật danh mục dịch vụ thành công", response));
     }
@@ -74,7 +86,7 @@ public class AdminCategoryController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long id
     ) {
-        Long adminId = principal != null ? principal.getId() : 1L;
+        Long adminId = principal.getId();
         CategoryImpactResponse response = categoryAdminUseCase.deleteCategory(adminId, id);
         return ResponseEntity.ok(ApiResponse.success("Xóa mềm danh mục thành công", response));
     }

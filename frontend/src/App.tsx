@@ -1,5 +1,7 @@
 import { Route, Routes } from 'react-router-dom';
 import RequireAuth from './components/RequireAuth';
+import AdminCategoriesPage from './pages/AdminCategoriesPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import CustomerDashboardPage from './pages/CustomerDashboardPage';
 import CustomerRegisterPage from './pages/CustomerRegisterPage';
 import HomePage from './pages/HomePage';
@@ -28,6 +30,22 @@ export default function App() {
         element={
           <RequireAuth roles={['TECHNICIAN']}>
             <TechnicianDashboardPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/quan-tri"
+        element={
+          <RequireAuth roles={['ADMIN', 'STAFF']}>
+            <AdminUsersPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/quan-tri/danh-muc"
+        element={
+          <RequireAuth roles={['ADMIN']}>
+            <AdminCategoriesPage />
           </RequireAuth>
         }
       />

@@ -13,6 +13,10 @@ import com.fixlink.domain.exception.DuplicateCategoryNameException;
 import com.fixlink.domain.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +51,27 @@ public class CategoryAdminService implements CategoryAdminUseCase {
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CategoryPage getCategoryPage(int page, int limit, String search) {
+        // Trang tính từ 1 ở API, Spring Data đếm từ 0.
+        int safePage = Math.max(page, 1);
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        Pageable pageable = PageRequest.of(safePage - 1, safeLimit, Sort.by("displayOrder").ascending());
+
+        Page<ServiceCategoryJpaEntity> result = (search == null || search.isBlank())
+                ? serviceCategoryRepository.findAllByDeletedAtIsNull(pageable)
+                : serviceCategoryRepository.findByDeletedAtIsNullAndNameContainingIgnoreCase(search.trim(), pageable);
+
+        return new CategoryPage(
+                result.getContent().stream().map(this::mapToResponse).toList(),
+                safePage,
+                safeLimit,
+                result.getTotalElements(),
+                result.getTotalPages()
+        );
     }
 
 
