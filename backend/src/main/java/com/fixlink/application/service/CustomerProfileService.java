@@ -98,7 +98,9 @@ public class CustomerProfileService implements CustomerProfileUseCase {
         }
         entity.setUpdatedBy(currentUserId != null ? currentUserId : targetUserId);
 
-        CustomerProfileJpaEntity savedEntity = customerProfileRepository.save(entity);
+        // Flush ngay de @PreUpdate cap nhat updatedAt truoc khi map sang DTO tra ve.
+        // Neu chi save(), UPDATE chi chay luc commit nen response mang timestamp cu.
+        CustomerProfileJpaEntity savedEntity = customerProfileRepository.saveAndFlush(entity);
 
         // 6. Ghi nhận thay đổi vào Audit Trail
         Map<String, Object> newValues = new LinkedHashMap<>();

@@ -1,4 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
+import RequireAuth from './components/RequireAuth';
+import CustomerDashboardPage from './pages/CustomerDashboardPage';
 import CustomerRegisterPage from './pages/CustomerRegisterPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -12,6 +14,14 @@ export default function App() {
       <Route path="/dang-nhap" element={<LoginPage />} />
       <Route path="/dang-ky" element={<CustomerRegisterPage />} />
       <Route path="/dang-ky-tho" element={<TechnicianRegisterPage />} />
+      <Route
+        path="/khach-hang"
+        element={
+          <RequireAuth roles={['CUSTOMER']}>
+            <CustomerDashboardPage />
+          </RequireAuth>
+        }
+      />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
