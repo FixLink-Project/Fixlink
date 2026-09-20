@@ -22,6 +22,8 @@ export interface ApiErrorBody {
   errorCode: string;
   message: string;
   errors?: Record<string, string> | Array<{ field: string; message: string }>;
+  /** Chỉ có khi 429: số giây còn lại trước khi được thử đăng nhập lại. */
+  remainingSeconds?: number;
 }
 
 export interface ServiceCategory {
@@ -39,4 +41,27 @@ export interface ServiceArea {
   code: string;
   name: string;
   city: string;
+}
+
+export type Role = 'CUSTOMER' | 'TECHNICIAN' | 'STAFF' | 'ADMIN';
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
+export type VerificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  role: Role;
+  status: UserStatus;
+  fullName: string | null;
+  avatarUrl: string | null;
+  isVerified: boolean;
+  verificationStatus: VerificationStatus | null;
+}
+
+export interface AuthResult {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: AuthUser;
 }

@@ -18,6 +18,8 @@ export class ApiError extends Error {
   readonly statusCode: number;
   readonly errorCode: string;
   readonly fieldErrors?: ApiErrorBody['errors'];
+  /** Chỉ có khi bị tạm khoá (429): số giây còn lại trước khi được thử lại. */
+  readonly remainingSeconds?: number;
 
   constructor(body: ApiErrorBody) {
     super(body.message);
@@ -25,6 +27,7 @@ export class ApiError extends Error {
     this.statusCode = body.statusCode;
     this.errorCode = body.errorCode;
     this.fieldErrors = body.errors;
+    this.remainingSeconds = body.remainingSeconds;
   }
 }
 
