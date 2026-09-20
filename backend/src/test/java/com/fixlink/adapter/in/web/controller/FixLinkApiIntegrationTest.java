@@ -22,7 +22,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -53,6 +55,9 @@ class FixLinkApiIntegrationTest {
 
     @Autowired
     private com.fixlink.adapter.out.persistence.repository.SpringDataServiceAreaRepository serviceAreaRepository;
+
+    @Autowired
+    private com.fixlink.infrastructure.service.EmailServiceImpl emailService;
 
     private static String adminToken;
     private static String technicianUserId;
@@ -680,13 +685,18 @@ class FixLinkApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value(200));
 
-        // Lấy token vừa sinh ra trong DB
-        var tokens = passwordResetTokenRepository.findAll();
-        var tokenEntity = tokens.stream()
-                .filter(t -> "lethikhach@gmail.com".equalsIgnoreCase(t.getEmail()))
-                .reduce((first, second) -> second)
-                .orElseThrow();
-        String validToken = tokenEntity.getToken();
+        // Lấy token từ liên kết chế độ phát triển. Cơ sở dữ liệu chỉ giữ bản băm
+        // nên không thể lấy token dùng được từ bảng ra nữa.
+        String resetLink = emailService.getLastResetLink("lethikhach@gmail.com");
+        assertNotNull(resetLink, "Chế độ phát triển phải ghi lại liên kết đặt lại mật khẩu");
+        String validToken = resetLink.substring(resetLink.indexOf("token=") + 6);
+
+        // Bảng password_reset_tokens không được chứa token nguyên văn
+        var storedTokens = passwordResetTokenRepository.findAll();
+        assertTrue(
+                storedTokens.stream().noneMatch(t -> validToken.equals(t.getToken())),
+                "Token gửi cho người dùng không được lưu nguyên văn trong cơ sở dữ liệu"
+        );
 
         // 3. Reset với xác nhận mật khẩu không khớp -> 400
         com.fixlink.adapter.in.web.dto.request.ResetPasswordRequest mismatchReq =
@@ -1052,5 +1062,49 @@ class FixLinkApiIntegrationTest {
                 .andExpect(jsonPath("$.meta.totalPages").value(1))
                 .andExpect(jsonPath("$.meta.hasNext").value(false))
                 .andExpect(jsonPath("$.data", hasSize(1)));
+    }
+
+    @Test
+    @Order(35)
+    @DisplayName("Quên mật khẩu: vượt ngưỡng yêu cầu vẫn trả đúng thông báo như email không tồn tại")
+    void testForgotPasswordRateLimitDoesNotLeakEmails() throws Exception {
+        // Đăng ký một khách hàng riêng để không đụng ngưỡng của các bài test khác
+        RegisterCustomerRequest reg = new RegisterCustomerRequest();
+        reg.setUsername("nguoi_quen_mat_khau");
+        reg.setPassword("Password@123");
+        reg.setFullName("Phạm Thị Quên");
+        reg.setPhone("0955666777");
+        reg.setEmail("quenmatkhau@gmail.com");
+        mockMvc.perform(post("/api/v1/auth/register/customer")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reg)))
+                .andExpect(status().isCreated());
+
+        var existing = new com.fixlink.adapter.in.web.dto.request.ForgotPasswordRequest("quenmatkhau@gmail.com");
+        var missing = new com.fixlink.adapter.in.web.dto.request.ForgotPasswordRequest("khongtontai@gmail.com");
+
+        // Gửi quá ngưỡng 3 lần mỗi giờ
+        String lastMessage = null;
+        for (int i = 0; i < 5; i++) {
+            MvcResult result = mockMvc.perform(post("/api/v1/auth/forgot-password")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(existing)))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            lastMessage = objectMapper.readTree(result.getResponse().getContentAsString())
+                    .path("message").asText();
+        }
+
+        // Email không tồn tại phải cho ra đúng một phản hồi
+        MvcResult missingResult = mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(missing)))
+                .andExpect(status().isOk())
+                .andReturn();
+        String missingMessage = objectMapper.readTree(missingResult.getResponse().getContentAsString())
+                .path("message").asText();
+
+        assertEquals(missingMessage, lastMessage,
+                "Email có thật bị chặn ngưỡng phải trả giống hệt email không tồn tại");
     }
 }

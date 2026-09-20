@@ -37,6 +37,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -45,6 +49,24 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class AccountSecurityService implements ChangePasswordUseCase, PasswordResetUseCase, SessionUseCase {
+
+    /**
+     * Một thông báo duy nhất cho mọi trường hợp: email có thật, không tồn tại, hay
+     * vượt ngưỡng yêu cầu. Khác nhau một chữ là lộ email nào đã đăng ký.
+     */
+    private static final String NEUTRAL_FORGOT_PASSWORD_MESSAGE =
+            "Nếu email đã được đăng ký trong hệ thống, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư của bạn. Vui lòng kiểm tra email (bao gồm thư mục Spam) trong vòng 15 phút.";
+
+    /** Băm token để cơ sở dữ liệu không bao giờ giữ bản dùng được. */
+    private static String hashToken(String rawToken) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(rawToken.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hashed);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("Máy chủ không hỗ trợ thuật toán SHA-256", e);
+        }
+    }
 
     private final SpringDataUserRepository userRepository;
     private final SpringDataCustomerProfileRepository customerProfileRepository;
@@ -128,27 +150,31 @@ public class AccountSecurityService implements ChangePasswordUseCase, PasswordRe
         if (userOpt.isEmpty()) {
             log.info("Password reset requested for non-existing email: {}", email);
             return ApiResponse.success(
-                    "Nếu email đã được đăng ký trong hệ thống, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư của bạn. Vui lòng kiểm tra email (bao gồm thư mục Spam) trong vòng 15 phút.",
+                    NEUTRAL_FORGOT_PASSWORD_MESSAGE,
                     null
             );
         }
 
         UserJpaEntity user = userOpt.get();
 
-        // Rate limit: max 3 requests per hour
+        // Giới hạn 3 yêu cầu mỗi giờ. Khi vượt ngưỡng vẫn trả đúng thông báo trung lập
+        // như với email không tồn tại: nếu trả 429 riêng cho email có thật thì chỉ cần
+        // gửi quá ngưỡng là dò được email nào đã đăng ký.
         LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
         long count = passwordResetTokenRepository.countByEmailInLastHour(email, oneHourAgo);
         if (count >= 3) {
-            throw new RateLimitExceededException();
+            log.warn("Vượt ngưỡng yêu cầu đặt lại mật khẩu cho email: {}", email);
+            return ApiResponse.success(NEUTRAL_FORGOT_PASSWORD_MESSAGE, null);
         }
 
         // Invalidate older unused tokens
         passwordResetTokenRepository.invalidateUnusedTokensByUserId(user.getId());
 
-        // Generate UUID v4 token (15 mins)
+        // Token gửi cho người dùng là UUID ngẫu nhiên, cơ sở dữ liệu chỉ giữ bản băm
+        // SHA-256 để người đọc được bảng cũng không dùng lại được liên kết.
         String token = UUID.randomUUID().toString();
         PasswordResetTokenJpaEntity resetToken = PasswordResetTokenJpaEntity.builder()
-                .token(token)
+                .token(hashToken(token))
                 .user(user)
                 .email(email)
                 .expiresAt(LocalDateTime.now().plusMinutes(15))
@@ -160,7 +186,7 @@ public class AccountSecurityService implements ChangePasswordUseCase, PasswordRe
         emailService.sendPasswordResetEmail(email, token);
 
         return ApiResponse.success(
-                "Nếu email đã được đăng ký trong hệ thống, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư của bạn. Vui lòng kiểm tra email (bao gồm thư mục Spam) trong vòng 15 phút.",
+                NEUTRAL_FORGOT_PASSWORD_MESSAGE,
                 null
         );
     }
@@ -183,7 +209,8 @@ public class AccountSecurityService implements ChangePasswordUseCase, PasswordRe
         }
 
         // 3. Find token
-        PasswordResetTokenJpaEntity resetToken = passwordResetTokenRepository.findByToken(request.getToken())
+        PasswordResetTokenJpaEntity resetToken = passwordResetTokenRepository
+                .findByToken(hashToken(request.getToken()))
                 .orElseThrow(InvalidResetTokenException::new);
 
         if (resetToken.isUsed() || resetToken.getExpiresAt().isBefore(LocalDateTime.now())) {

@@ -4,9 +4,11 @@ import AdminCategoriesPage from './pages/AdminCategoriesPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import CustomerDashboardPage from './pages/CustomerDashboardPage';
 import CustomerRegisterPage from './pages/CustomerRegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import TechnicianDashboardPage from './pages/TechnicianDashboardPage';
 import TechnicianRegisterPage from './pages/TechnicianRegisterPage';
 
@@ -16,6 +18,8 @@ export default function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/dang-nhap" element={<LoginPage />} />
       <Route path="/dang-ky" element={<CustomerRegisterPage />} />
+      <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
+      <Route path="/dat-lai-mat-khau" element={<ResetPasswordPage />} />
       <Route path="/dang-ky-tho" element={<TechnicianRegisterPage />} />
       <Route
         path="/khach-hang"

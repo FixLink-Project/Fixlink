@@ -16,13 +16,14 @@ function formatCountdown(totalSeconds: number): string {
 interface LoginLocationState {
   username?: string;
   justRegistered?: boolean;
+  passwordReset?: boolean;
 }
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
   // Người vừa đăng ký xong được điền sẵn tên tài khoản.
-  const { username: prefilled, justRegistered } =
+  const { username: prefilled, justRegistered, passwordReset } =
     (useLocation().state as LoginLocationState | null) ?? {};
 
   const [username, setUsername] = useState(prefilled ?? '');
@@ -93,6 +94,12 @@ export default function LoginPage() {
       }
     >
       <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
+        {passwordReset && !error && !locked && (
+          <Alert tone="success" title="Đã đổi mật khẩu">
+            Đăng nhập lại bằng mật khẩu mới. Các thiết bị khác đã bị đăng xuất.
+          </Alert>
+        )}
+
         {justRegistered && !error && !locked && (
           <Alert tone="success" title="Đã tạo tài khoản">
             Đăng nhập bằng mật khẩu bạn vừa đặt để bắt đầu đăng yêu cầu sửa chữa.
