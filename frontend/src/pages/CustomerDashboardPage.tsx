@@ -3,6 +3,7 @@ import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import DashboardLayout from '../components/DashboardLayout';
+import ImageUploadField from '../components/ImageUploadField';
 import TextField from '../components/TextField';
 import { ApiError, api, toFieldErrors } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -236,15 +237,13 @@ export default function CustomerDashboardPage() {
                 error={errors.email}
                 onChange={(e) => update('email', e.target.value)}
               />
-              <TextField
+              <ImageUploadField
                 label="Ảnh đại diện"
-                name="avatarUrl"
-                type="url"
-                placeholder="https://..."
+                folder="avatars"
                 value={form.avatarUrl}
                 error={errors.avatarUrl}
-                hint="Dán đường dẫn ảnh. Tính năng tải ảnh trực tiếp sẽ bổ sung sau."
-                onChange={(e) => update('avatarUrl', e.target.value)}
+                hint="Ảnh vuông nhìn rõ mặt, tối đa 5 MB."
+                onChange={(url) => update('avatarUrl', url)}
               />
 
               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">

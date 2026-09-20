@@ -107,6 +107,21 @@ docker compose up --build -d
 Chỉ khởi động riêng PostgreSQL: `docker compose up -d db`, rồi chạy backend không kèm
 profile `local`.
 
+### Tải ảnh lên (tuỳ chọn)
+
+Ảnh căn cước của thợ và ảnh đại diện được tải lên Firebase Storage. Thiếu cấu
+hình thì phần chọn ảnh tự chuyển sang cho dán đường dẫn, ứng dụng vẫn chạy.
+
+```bash
+cd frontend
+cp .env.example .env    # rồi điền giá trị từ Firebase Console
+```
+
+Giá trị lấy ở **Firebase Console > Project settings > Your apps > SDK setup**.
+Biến `VITE_*` được nhúng vào mã nguồn phía trình duyệt nên ai cũng đọc được;
+quyền ghi phải siết bằng Storage Security Rules, không phải bằng cách giấu
+`apiKey`. Không đặt service account key vào tệp này.
+
 ---
 
 ## Tài khoản mẫu
@@ -137,7 +152,9 @@ FixLink/
 │   ├── checkstyle.xml    Bộ quy tắc linter
 │   └── pom.xml
 ├── frontend/             Ứng dụng React + TypeScript + Vite
-│   ├── src/lib/          Client API và kiểu dữ liệu dùng chung
+│   ├── .env.example      Mẫu cấu hình Firebase Storage
+│   ├── src/components/   Component dùng chung (Button, Pagination, ...)
+│   ├── src/lib/          Client API, phiên đăng nhập, kho ảnh
 │   ├── src/pages/        Các trang theo route
 │   └── tailwind.config.js
 ├── docker/init/          Script khởi tạo PostgreSQL cho container
@@ -153,7 +170,7 @@ FixLink/
 ```bash
 # Backend
 cd backend
-./mvnw test               # 31 bài unit + integration test
+./mvnw test               # 38 bài unit + integration test
 ./mvnw spotless:apply     # Tự căn chỉnh định dạng Java
 ./mvnw spotless:check     # Kiểm tra định dạng (git hook pre-commit gọi lệnh này)
 ./mvnw checkstyle:check   # Linter

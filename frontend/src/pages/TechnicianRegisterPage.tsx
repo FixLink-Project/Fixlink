@@ -4,6 +4,7 @@ import Alert from '../components/Alert';
 import AuthLayout from '../components/AuthLayout';
 import Button from '../components/Button';
 import FormSection from '../components/FormSection';
+import ImageUploadField from '../components/ImageUploadField';
 import StatusChip from '../components/StatusChip';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
@@ -237,24 +238,20 @@ export default function TechnicianRegisterPage() {
             onChange={(e) => update('citizenId', e.target.value)}
           />
           <div className="grid gap-5 sm:grid-cols-2">
-            <TextField
+            <ImageUploadField
               label="Ảnh mặt trước căn cước"
-              name="idCardFrontUrl"
-              type="url"
-              placeholder="https://..."
+              folder="cccd"
               value={form.idCardFrontUrl}
               error={errors.idCardFrontUrl}
-              hint="Dán đường dẫn ảnh. Tính năng tải ảnh trực tiếp sẽ bổ sung sau."
-              onChange={(e) => update('idCardFrontUrl', e.target.value)}
+              hint="Chụp rõ bốn góc, không loá sáng. Tối đa 5 MB."
+              onChange={(url) => update('idCardFrontUrl', url)}
             />
-            <TextField
+            <ImageUploadField
               label="Ảnh mặt sau căn cước"
-              name="idCardBackUrl"
-              type="url"
-              placeholder="https://..."
+              folder="cccd"
               value={form.idCardBackUrl}
               error={errors.idCardBackUrl}
-              onChange={(e) => update('idCardBackUrl', e.target.value)}
+              onChange={(url) => update('idCardBackUrl', url)}
             />
           </div>
         </FormSection>

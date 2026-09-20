@@ -4,6 +4,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import CheckboxGroup from '../components/CheckboxGroup';
 import DashboardLayout from '../components/DashboardLayout';
+import ImageUploadField from '../components/ImageUploadField';
 import StatusChip from '../components/StatusChip';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
@@ -357,6 +358,15 @@ export default function TechnicianDashboardPage() {
                   error={errors.email}
                   onChange={(e) => update('email', e.target.value)}
                 />
+                <ImageUploadField
+                  label="Ảnh đại diện"
+                  folder="avatars"
+                  value={form.avatarUrl}
+                  error={errors.avatarUrl}
+                  hint="Khách nhìn ảnh này khi chọn thợ. Tối đa 5 MB."
+                  onChange={(url) => update('avatarUrl', url)}
+                />
+
                 <TextArea
                   label="Giới thiệu ngắn"
                   name="bio"
