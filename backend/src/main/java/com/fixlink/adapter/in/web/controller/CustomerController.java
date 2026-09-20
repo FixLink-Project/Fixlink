@@ -5,6 +5,7 @@ import com.fixlink.adapter.in.web.dto.response.ApiResponse;
 import com.fixlink.adapter.in.web.dto.response.CustomerProfileResponseDto;
 import com.fixlink.application.port.in.CustomerProfileUseCase;
 import com.fixlink.application.port.in.CustomerProfileUseCase.AuditLogEntry;
+import com.fixlink.application.port.in.CustomerProfileUseCase.Requester;
 import com.fixlink.application.port.in.CustomerProfileUseCase.UpdateProfileCommand;
 import com.fixlink.domain.model.CustomerProfile;
 import com.fixlink.infrastructure.security.UserPrincipal;
@@ -28,6 +29,11 @@ public class CustomerController {
         this.customerProfileUseCase = customerProfileUseCase;
     }
 
+    /** Nguời gọi luôn dựng từ token đã xác thực. */
+    private Requester requesterOf(UserPrincipal principal) {
+        return new Requester(principal.getId(), principal.getRole());
+    }
+
     private Long parseUserId(String userIdStr) {
         if (userIdStr == null) return null;
         if (userIdStr.startsWith("usr_")) {
@@ -38,9 +44,12 @@ public class CustomerController {
 
     @GetMapping("/{userId}/profile")
     @Operation(summary = "Xem hồ sơ khách hàng", description = "Lấy thông tin chi tiết hồ sơ của khách hàng theo userId (chấp nhận cả '8' hoặc 'usr_8')")
-    public ResponseEntity<ApiResponse<CustomerProfileResponseDto>> getProfile(@PathVariable String userId) {
+    public ResponseEntity<ApiResponse<CustomerProfileResponseDto>> getProfile(
+            @PathVariable String userId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
         Long id = parseUserId(userId);
-        CustomerProfile profile = customerProfileUseCase.getProfile(id);
+        CustomerProfile profile = customerProfileUseCase.getProfile(id, requesterOf(principal));
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin hồ sơ thành công",
                 CustomerProfileResponseDto.fromDomain(profile)));
     }
@@ -50,17 +59,13 @@ public class CustomerController {
     public ResponseEntity<ApiResponse<CustomerProfileResponseDto>> updateProfile(
             @PathVariable String userId,
             @Valid @RequestBody UpdateCustomerProfileRequest request,
-            @AuthenticationPrincipal UserPrincipal principal,
-            @RequestHeader(value = "X-User-Id", required = false) String xUserId
+            @AuthenticationPrincipal UserPrincipal principal
     ) {
         Long targetId = parseUserId(userId);
-        // Xác định ID người đang gọi: Ưu tiên lấy từ JWT AuthenticationPrincipal, fallback X-User-Id
-        Long currentUserId = principal != null ? principal.getId() : parseUserId(xUserId);
-
-        // Nếu cả principal và xUserId đều không có, gán mặc định là targetId (trừ khi test IDOR truyền header khác)
-        if (currentUserId == null) {
-            currentUserId = targetId;
-        }
+        // Người gọi luôn lấy từ token đã xác thực. Trước đây có nhánh dự phòng đọc
+        // header X-User-Id do client tự khai, và khi thiếu cả hai thì mặc định coi
+        // người gọi chính là chủ hồ sơ — tức là vô hiệu hoá luôn kiểm tra IDOR.
+        Long currentUserId = principal.getId();
 
         UpdateProfileCommand command = new UpdateProfileCommand(
                 request.getFullName(),
@@ -75,10 +80,13 @@ public class CustomerController {
     }
 
     @GetMapping("/{userId}/audit-trail")
-    @Operation(summary = "Xem nhật ký kiểm toán hồ sơ khách hàng", description = "Tra cứu lịch sử thay đổi hồ sơ khách hàng (Audit Trail - AC 4)")
-    public ResponseEntity<ApiResponse<List<AuditLogEntry>>> getAuditTrail(@PathVariable String userId) {
+    @Operation(summary = "Xem nhật ký kiểm toán hồ sơ khách hàng", description = "Tra cứu lịch sử thay đổi hồ sơ khách hàng (Audit Trail)")
+    public ResponseEntity<ApiResponse<List<AuditLogEntry>>> getAuditTrail(
+            @PathVariable String userId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
         Long id = parseUserId(userId);
-        List<AuditLogEntry> auditTrail = customerProfileUseCase.getAuditTrail(id);
+        List<AuditLogEntry> auditTrail = customerProfileUseCase.getAuditTrail(id, requesterOf(principal));
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử kiểm toán thành công", auditTrail));
     }
 }

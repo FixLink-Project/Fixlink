@@ -32,10 +32,9 @@ public class TechnicianController {
     @GetMapping("/me/profile")
     @Operation(summary = "Xem thông tin hồ sơ thợ", description = "Lấy thông tin cá nhân, tay nghề và trạng thái xác minh KYC của thợ đang đăng nhập.")
     public ResponseEntity<ApiResponse<com.fixlink.adapter.in.web.dto.response.TechnicianProfileResponse>> getMyProfile(
-            @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(required = false) Long userId
+            @AuthenticationPrincipal UserPrincipal principal
     ) {
-        Long targetUserId = (principal != null) ? principal.getId() : (userId != null ? userId : 3L);
+        Long targetUserId = principal.getId();
         com.fixlink.adapter.in.web.dto.response.TechnicianProfileResponse profile = technicianProfileUseCase.getMyProfile(targetUserId);
         return ResponseEntity.ok(ApiResponse.success("Lấy hồ sơ kỹ thuật viên thành công", profile));
     }
@@ -44,10 +43,9 @@ public class TechnicianController {
     @Operation(summary = "Cập nhật thông tin hồ sơ thợ", description = "Kỹ thuật viên cập nhật thông tin cá nhân, tay nghề, năm kinh nghiệm, tiểu sử (Technician Profile Self-Service).")
     public ResponseEntity<ApiResponse<com.fixlink.adapter.in.web.dto.response.TechnicianProfileResponse>> updateMyProfile(
             @jakarta.validation.Valid @RequestBody com.fixlink.adapter.in.web.dto.request.UpdateTechnicianProfileRequest request,
-            @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(required = false) Long userId
+            @AuthenticationPrincipal UserPrincipal principal
     ) {
-        Long targetUserId = (principal != null) ? principal.getId() : (userId != null ? userId : 3L);
+        Long targetUserId = principal.getId();
         com.fixlink.adapter.in.web.dto.response.TechnicianProfileResponse updated = technicianProfileUseCase.updateMyProfile(targetUserId, request);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật hồ sơ kỹ thuật viên thành công", updated));
     }
@@ -56,10 +54,9 @@ public class TechnicianController {
     @Operation(summary = "Bật/Tắt trạng thái nhận việc", description = "Bật hoặc tắt chế độ sẵn sàng nhận yêu cầu sửa chữa. Bị từ chối (403) nếu thợ chưa được duyệt KYC.")
     public ResponseEntity<ApiResponse<TechnicianProfile>> updateOnlineStatus(
             @RequestBody Map<String, Boolean> body,
-            @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(required = false) Long userId
+            @AuthenticationPrincipal UserPrincipal principal
     ) {
-        Long targetUserId = (principal != null) ? principal.getId() : (userId != null ? userId : 3L);
+        Long targetUserId = principal.getId();
         boolean isOnline = body != null && Boolean.TRUE.equals(body.get("isOnline"));
         TechnicianProfile updated = technicianUseCase.updateOnlineStatus(targetUserId, isOnline);
         return ResponseEntity.ok(ApiResponse.success(
@@ -71,10 +68,9 @@ public class TechnicianController {
     @GetMapping("/me/repair-requests")
     @Operation(summary = "Xem danh sách yêu cầu sửa chữa", description = "Lấy các yêu cầu sửa chữa gửi tới thợ. Bị từ chối (403) nếu thợ chưa được duyệt KYC.")
     public ResponseEntity<ApiResponse<List<TechnicianUseCase.RepairRequestDto>>> getMyRepairRequests(
-            @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(required = false) Long userId
+            @AuthenticationPrincipal UserPrincipal principal
     ) {
-        Long targetUserId = (principal != null) ? principal.getId() : (userId != null ? userId : 3L);
+        Long targetUserId = principal.getId();
         List<TechnicianUseCase.RepairRequestDto> requests = technicianUseCase.getMyRepairRequests(targetUserId);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách yêu cầu sửa chữa thành công", requests));
     }

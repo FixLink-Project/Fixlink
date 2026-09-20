@@ -640,6 +640,12 @@
         let currentUserId = 3; // Mặc định là tho_dien_lanh_01
         let currentKycStatus = 'PENDING';
 
+        // Danh tính người gọi lấy từ token; máy chủ không còn nhận tham số userId.
+        function authHeaders(extra) {
+            const token = localStorage.getItem('fixlink_token');
+            return Object.assign({ 'Authorization': token ? `Bearer ${token}` : '' }, extra || {});
+        }
+
         // Load data on page init
         window.addEventListener('DOMContentLoaded', async () => {
             const storedUser = localStorage.getItem('fixlink_user');
@@ -661,7 +667,7 @@
 
         async function fetchProfileData() {
             try {
-                const res = await fetch(`/api/v1/technicians/me/profile?userId=${currentUserId}`);
+                const res = await fetch('/api/v1/technicians/me/profile', { headers: authHeaders() });
                 if (res.ok) {
                     const resData = await res.json();
                     if (resData.data) {
@@ -759,9 +765,9 @@
 
             const isChecked = e.target.checked;
             try {
-                const res = await fetch(`/api/v1/technicians/me/status/online?userId=${currentUserId}`, {
+                const res = await fetch('/api/v1/technicians/me/status/online', {
                     method: 'PATCH',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ isOnline: isChecked })
                 });
                 const data = await res.json();
@@ -799,12 +805,9 @@
             const bio = document.getElementById('editTechBio').value.trim();
 
             try {
-                const res = await fetch(`/api/v1/technicians/me/profile?userId=${currentUserId}`, {
+                const res = await fetch('/api/v1/technicians/me/profile', {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': token ? `Bearer ${token}` : ''
-                    },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ fullName, phone, email, yearsExperience, bio })
                 });
 

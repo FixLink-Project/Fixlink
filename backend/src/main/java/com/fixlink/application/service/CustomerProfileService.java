@@ -8,6 +8,7 @@ import com.fixlink.adapter.out.persistence.mapper.UserMapper;
 import com.fixlink.adapter.out.persistence.repository.SpringDataAuditLogRepository;
 import com.fixlink.adapter.out.persistence.repository.SpringDataCustomerProfileRepository;
 import com.fixlink.application.port.in.CustomerProfileUseCase;
+import com.fixlink.application.port.in.CustomerProfileUseCase.Requester;
 import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.exception.ResourceNotFoundException;
 import com.fixlink.domain.model.CustomerProfile;
@@ -41,16 +42,28 @@ public class CustomerProfileService implements CustomerProfileUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public CustomerProfile getProfile(Long userId) {
-        CustomerProfileJpaEntity entity = customerProfileRepository.findByUserIdAndDeletedAtIsNull(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ khách hàng với ID: " + userId));
+    public CustomerProfile getProfile(Long targetUserId, Requester requester) {
+        requireReadAccess(requester, targetUserId);
+
+        CustomerProfileJpaEntity entity = customerProfileRepository.findByUserIdAndDeletedAtIsNull(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ khách hàng với ID: " + targetUserId));
         return userMapper.toDomain(entity);
+    }
+
+    /**
+     * Chặn đọc hồ sơ của người khác (IDOR). Chỉ dựa vào token đã xác thực,
+     * không dùng bất kỳ giá trị nào do client gửi lên.
+     */
+    private void requireReadAccess(Requester requester, Long targetUserId) {
+        if (requester == null || !requester.canRead(targetUserId)) {
+            throw new AccessDeniedException("Bạn không có quyền xem hồ sơ của người dùng khác");
+        }
     }
 
     @Override
     public CustomerProfile updateProfile(Long targetUserId, Long currentUserId, UpdateProfileCommand command) {
         // 1. Kiểm tra IDOR - AC 2: User chỉ được cập nhật hồ sơ chính mình
-        if (currentUserId != null && !currentUserId.equals(targetUserId)) {
+        if (currentUserId == null || !currentUserId.equals(targetUserId)) {
             throw new AccessDeniedException("Bạn không có quyền chỉnh sửa hồ sơ của người dùng khác");
         }
 
@@ -116,8 +129,10 @@ public class CustomerProfileService implements CustomerProfileUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AuditLogEntry> getAuditTrail(Long userId) {
-        return auditLogRepository.findByEntityNameAndEntityIdOrderByCreatedAtDesc("customer_profiles", String.valueOf(userId))
+    public List<AuditLogEntry> getAuditTrail(Long targetUserId, Requester requester) {
+        requireReadAccess(requester, targetUserId);
+
+        return auditLogRepository.findByEntityNameAndEntityIdOrderByCreatedAtDesc("customer_profiles", String.valueOf(targetUserId))
                 .stream()
                 .map(entity -> new AuditLogEntry(
                         entity.getId(),

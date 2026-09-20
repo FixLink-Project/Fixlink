@@ -58,6 +58,22 @@ class FixLinkApiIntegrationTest {
     private static String technicianUserId;
     private static Long rc17CustomerId;
 
+    /** Dang nhap va tra ve gia tri header Authorization dung dinh dang Bearer. */
+    private String bearerTokenOf(String username, String password) throws Exception {
+        LoginRequest login = new LoginRequest();
+        login.setUsername(username);
+        login.setPassword(password);
+
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(login)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return "Bearer " + objectMapper.readTree(result.getResponse().getContentAsString())
+                .path("data").path("accessToken").asText();
+    }
+
     @Test
     @Order(1)
     @DisplayName("API 1: Đăng ký tài khoản Khách hàng thành công")
@@ -234,8 +250,10 @@ class FixLinkApiIntegrationTest {
     @DisplayName("Thợ chưa duyệt (PENDING) bị từ chối nhận yêu cầu sửa chữa (403 Forbidden)")
     void testTechnicianUnverified_CannotReceiveRepairRequests() throws Exception {
         // 1. Thử bật chế độ nhận việc online
+        String pendingTechToken = bearerTokenOf("tho_dien_lanh_01", "Password@123");
+
         mockMvc.perform(patch("/api/v1/technicians/me/status/online")
-                        .param("userId", "3") // tho_dien_lanh_01 ID = 3
+                        .header("Authorization", pendingTechToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"isOnline\": true}"))
                 .andExpect(status().isForbidden())
@@ -244,7 +262,7 @@ class FixLinkApiIntegrationTest {
 
         // 2. Thử truy cập danh sách yêu cầu sửa chữa
         mockMvc.perform(get("/api/v1/technicians/me/repair-requests")
-                        .param("userId", "3"))
+                        .header("Authorization", pendingTechToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.statusCode").value(403))
                 .andExpect(jsonPath("$.errorCode").value("UNVERIFIED_TECHNICIAN"));
@@ -254,11 +272,11 @@ class FixLinkApiIntegrationTest {
     @Order(10)
     @DisplayName("Thợ sau khi được Admin phê duyệt (APPROVED) được phép nhận yêu cầu sửa chữa (200 OK)")
     void testTechnicianApproved_CanReceiveRepairRequests() throws Exception {
-        Long techId = Long.parseLong(technicianUserId.replace("usr_", ""));
+        String approvedTechToken = bearerTokenOf("test_technician", "Password@123");
 
         // 1. Bật chế độ online thành công
         mockMvc.perform(patch("/api/v1/technicians/me/status/online")
-                        .param("userId", techId.toString())
+                        .header("Authorization", approvedTechToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"isOnline\": true}"))
                 .andExpect(status().isOk())
@@ -267,7 +285,7 @@ class FixLinkApiIntegrationTest {
 
         // 2. Lấy danh sách yêu cầu sửa chữa thành công
         mockMvc.perform(get("/api/v1/technicians/me/repair-requests")
-                        .param("userId", techId.toString()))
+                        .header("Authorization", approvedTechToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value(200))
                 .andExpect(jsonPath("$.data", hasSize(2)));
@@ -380,8 +398,10 @@ class FixLinkApiIntegrationTest {
         updateRequest.setEmail("customer17_new@gmail.com");
         updateRequest.setAvatarUrl("https://example.com/avatar17.jpg");
 
+        String ownerToken = bearerTokenOf("rc17_customer_test", "Password@123");
+
         mockMvc.perform(put("/api/v1/customers/" + rc17CustomerId + "/profile")
-                        .header("X-User-Id", rc17CustomerId)
+                        .header("Authorization", ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isOk())
@@ -404,9 +424,10 @@ class FixLinkApiIntegrationTest {
         hackRequest.setEmail("hacker@test.com");
 
         Long otherUserId = 999999L;
+        String attackerToken = bearerTokenOf("rc17_customer_test", "Password@123");
 
         mockMvc.perform(put("/api/v1/customers/" + otherUserId + "/profile")
-                        .header("X-User-Id", rc17CustomerId) // currentUserId != otherUserId
+                        .header("Authorization", attackerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(hackRequest)))
                 .andExpect(status().isForbidden())
@@ -424,8 +445,10 @@ class FixLinkApiIntegrationTest {
         invalidRequest.setPhone("123456"); // Sai format điện thoại
         invalidRequest.setEmail("email_khong_hop_le"); // Sai format email
 
+        String token = bearerTokenOf("rc17_customer_test", "Password@123");
+
         mockMvc.perform(put("/api/v1/customers/" + rc17CustomerId + "/profile")
-                        .header("X-User-Id", rc17CustomerId)
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest())
@@ -440,7 +463,10 @@ class FixLinkApiIntegrationTest {
     @Order(18)
     @DisplayName("Cập nhật hồ sơ thành công được ghi nhận đầy đủ vào hệ thống Audit Trail")
     void testCustomerUpdateProfileAuditTrailRecorded() throws Exception {
-        mockMvc.perform(get("/api/v1/customers/" + rc17CustomerId + "/audit-trail"))
+        String token = bearerTokenOf("rc17_customer_test", "Password@123");
+
+        mockMvc.perform(get("/api/v1/customers/" + rc17CustomerId + "/audit-trail")
+                        .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value(200))
                 .andExpect(jsonPath("$.data", hasSize(greaterThanOrEqualTo(1))))
@@ -513,7 +539,10 @@ class FixLinkApiIntegrationTest {
         req.setYearsExperience(7);
         req.setAvatarUrl("https://s3.fixlink.vn/avatars/tech_b_updated.jpg");
 
-        mockMvc.perform(put("/api/v1/technicians/me/profile?userId=3")
+        String techToken = bearerTokenOf("tho_dien_lanh_01", "Password@123");
+
+        mockMvc.perform(put("/api/v1/technicians/me/profile")
+                        .header("Authorization", techToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
@@ -747,7 +776,10 @@ class FixLinkApiIntegrationTest {
     @DisplayName("Kỹ thuật viên xem hồ sơ, cập nhật danh mục dịch vụ và khu vực hoạt động")
     void testRC18_TechnicianProfileAndAreas() throws Exception {
         // Xem hồ sơ kỹ thuật viên
-        mockMvc.perform(get("/api/v1/technicians/me/profile?userId=3"))
+        String techToken = bearerTokenOf("tho_dien_lanh_01", "Password@123");
+
+        mockMvc.perform(get("/api/v1/technicians/me/profile")
+                        .header("Authorization", techToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value(200))
                 .andExpect(jsonPath("$.data.userId").value(3))
@@ -767,7 +799,8 @@ class FixLinkApiIntegrationTest {
                         .areaIds(java.util.List.of(1L, 2L))
                         .build();
 
-        mockMvc.perform(put("/api/v1/technicians/me/profile?userId=3")
+        mockMvc.perform(put("/api/v1/technicians/me/profile")
+                        .header("Authorization", techToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateReq)))
                 .andExpect(status().isOk())
@@ -843,5 +876,113 @@ class FixLinkApiIntegrationTest {
                         .header("Authorization", currentAdminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value(200));
+    }
+
+    @Test
+    @Order(29)
+    @DisplayName("Phân quyền: không token trả 401, sai vai trò trả 403, đúng vai trò trả 200")
+    void testAdminEndpointRequiresAdminRole() throws Exception {
+        // 1. Không gửi token -> 401 Unauthorized
+        mockMvc.perform(get("/api/v1/admin/users"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.statusCode").value(401))
+                .andExpect(jsonPath("$.errorCode").value("UNAUTHENTICATED"));
+
+        // 2. Token của khách hàng -> 403 Forbidden
+        String customerToken = bearerTokenOf("customer01", "Password@123");
+        mockMvc.perform(get("/api/v1/admin/users")
+                        .header("Authorization", customerToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.statusCode").value(403))
+                .andExpect(jsonPath("$.errorCode").value("ACCESS_DENIED"));
+
+        // 3. Token quản trị viên -> 200 OK
+        String adminBearer = bearerTokenOf("admin", "Admin@123");
+        mockMvc.perform(get("/api/v1/admin/users")
+                        .header("Authorization", adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statusCode").value(200));
+    }
+
+    @Test
+    @Order(30)
+    @DisplayName("Phân quyền: khách hàng không vào được API của thợ và ngược lại")
+    void testRoleSeparationBetweenCustomerAndTechnician() throws Exception {
+        String customerToken = bearerTokenOf("customer01", "Password@123");
+        String technicianToken = bearerTokenOf("tho_dien_lanh_01", "Password@123");
+
+        // Khách hàng gọi API dành cho thợ -> 403
+        mockMvc.perform(get("/api/v1/technicians/me/profile")
+                        .header("Authorization", customerToken))
+                .andExpect(status().isForbidden());
+
+        // Thợ gọi API hồ sơ khách hàng -> 403
+        mockMvc.perform(get("/api/v1/customers/2/profile")
+                        .header("Authorization", technicianToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @Order(31)
+    @DisplayName("Các endpoint công khai vẫn truy cập được khi chưa đăng nhập")
+    void testPublicEndpointsStayReachable() throws Exception {
+        mockMvc.perform(get("/api/v1/categories")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/services")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/areas")).andExpect(status().isOk());
+    }
+
+    @Test
+    @Order(32)
+    @DisplayName("IDOR: khách hàng xem hồ sơ của khách hàng khác bị từ chối 403")
+    void testCustomerCannotReadAnotherCustomerProfile() throws Exception {
+        // Tạo thêm một khách hàng thứ hai để làm mục tiêu
+        RegisterCustomerRequest victim = new RegisterCustomerRequest();
+        victim.setUsername("customer02");
+        victim.setPassword("Password@123");
+        victim.setFullName("Trần Thị Nạn Nhân");
+        victim.setPhone("0944555666");
+        victim.setEmail("customer02@gmail.com");
+
+        MvcResult regResult = mockMvc.perform(post("/api/v1/auth/register/customer")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(victim)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long victimId = Long.parseLong(objectMapper.readTree(regResult.getResponse().getContentAsString())
+                .path("data").path("userId").asText().replace("usr_", ""));
+
+        String attackerToken = bearerTokenOf("customer01", "Password@123");
+
+        // 1. Xem hồ sơ người khác -> 403
+        mockMvc.perform(get("/api/v1/customers/" + victimId + "/profile")
+                        .header("Authorization", attackerToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.statusCode").value(403))
+                .andExpect(jsonPath("$.errorCode").value("ACCESS_DENIED"));
+
+        // 2. Xem nhật ký kiểm toán người khác -> 403
+        mockMvc.perform(get("/api/v1/customers/" + victimId + "/audit-trail")
+                        .header("Authorization", attackerToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value("ACCESS_DENIED"));
+
+        // 3. Nạn nhân tự xem hồ sơ của mình -> 200
+        String victimToken = bearerTokenOf("customer02", "Password@123");
+        mockMvc.perform(get("/api/v1/customers/" + victimId + "/profile")
+                        .header("Authorization", victimToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.fullName").value("Trần Thị Nạn Nhân"));
+
+        // 4. Quản trị viên xem được hồ sơ bất kỳ để quản lý -> 200
+        String adminBearer = bearerTokenOf("admin", "Admin@123");
+        mockMvc.perform(get("/api/v1/customers/" + victimId + "/profile")
+                        .header("Authorization", adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.fullName").value("Trần Thị Nạn Nhân"));
+
+        mockMvc.perform(get("/api/v1/customers/" + victimId + "/audit-trail")
+                        .header("Authorization", adminBearer))
+                .andExpect(status().isOk());
     }
 }

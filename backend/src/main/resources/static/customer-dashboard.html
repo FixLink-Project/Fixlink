@@ -317,7 +317,6 @@
                 const res = await fetch(`/api/v1/customers/${currentUserId}/profile`, {
                     headers: {
                         'Authorization': token ? `Bearer ${token}` : '',
-                        'X-User-Id': currentUserId
                     }
                 });
                 if (res.ok) {
@@ -356,7 +355,6 @@
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': token ? `Bearer ${token}` : '',
-                        'X-User-Id': currentUserId
                     },
                     body: JSON.stringify({ fullName, phone, email, avatarUrl })
                 });
@@ -382,7 +380,6 @@
                 const res = await fetch(`/api/v1/customers/${currentUserId}/audit-trail`, {
                     headers: {
                         'Authorization': token ? `Bearer ${token}` : '',
-                        'X-User-Id': currentUserId
                     }
                 });
                 const data = await res.json();
