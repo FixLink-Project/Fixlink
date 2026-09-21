@@ -531,7 +531,7 @@ Content-Type: application/json
 ```json
 {
   "statusCode": 200,
-  "message": "Nếu email đã được đăng ký trong hệ thống, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư của bạn. Vui lòng kiểm tra email (bao gồm thư mục Spam) trong vòng 15 phút."
+  "message": "Nếu email đã được đăng ký trong hệ thống, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư của bạn. Vui lòng kiểm tra email (bao gồm thư mục Spam) trong vòng 30 phút."
 }
 ```
 
@@ -561,7 +561,7 @@ Content-Type: application/json
 ### 2.7. POST `/api/v1/auth/reset-password`
 > **User Story:** *As a user with a valid reset link, I want to set a new password, so that I can access my account again.*
 
-- **Mô tả:** Đặt lại mật khẩu mới bằng token nhận được qua email. Token chỉ dùng được **một lần** và có hiệu lực **15 phút** kể từ lúc tạo.
+- **Mô tả:** Đặt lại mật khẩu mới bằng token nhận được qua email. Token chỉ dùng được **một lần** và có hiệu lực **30 phút** kể từ lúc tạo.
 - **Yêu cầu Auth:** Public (xác thực qua `token` trong request body thay vì JWT).
 
 #### Request Headers:
@@ -1555,6 +1555,6 @@ if (response.errorCode === 'VALIDATION_FAILED' && response.errors) {
 | :--- | :---: | :--- |
 | Access Token TTL | 24 giờ | JWT HS512, chứa `userId`, `role`, `jti` |
 | Refresh Token TTL | 7 ngày | UUID v4, lưu server-side |
-| Reset Token TTL | 15 phút | UUID v4, single-use |
+| Reset Token TTL | 30 phút | UUID v4, single-use |
 | Password BCrypt Cost | 12 | Cost factor cho mã hóa mật khẩu |
 | Rate Limit (Forgot Password) | 3 lần/giờ/email | Chống spam/brute-force |

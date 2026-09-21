@@ -1107,4 +1107,13 @@ class FixLinkApiIntegrationTest {
         assertEquals(missingMessage, lastMessage,
                 "Email có thật bị chặn ngưỡng phải trả giống hệt email không tồn tại");
     }
+
+    @Test
+    @Order(36)
+    @DisplayName("Health check: truy cập được không cần token và trả status UP")
+    void testHealthEndpointIsPublic() throws Exception {
+        mockMvc.perform(get("/api/v1/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+    }
 }

@@ -11,7 +11,6 @@ echo   * Giao diện (Vite dev server):  http://localhost:5173
 echo   * Swagger API Docs:             http://localhost:8080/swagger-ui.html
 echo   * H2 Database Console:          http://localhost:8080/h2-console
 echo                                   (JDBC: jdbc:h2:mem:fixlink_db, user: sa, mật khẩu để trống)
-echo   * Trang liên kết nội bộ:        http://localhost:8080/dev-links.html
 echo.
 echo   Đang biên dịch và khởi chạy backend... Nhấn Ctrl+C để dừng.
 echo ===============================================================================

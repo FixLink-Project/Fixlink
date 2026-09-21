@@ -55,7 +55,7 @@ public class AccountSecurityService implements ChangePasswordUseCase, PasswordRe
      * vượt ngưỡng yêu cầu. Khác nhau một chữ là lộ email nào đã đăng ký.
      */
     private static final String NEUTRAL_FORGOT_PASSWORD_MESSAGE =
-            "Nếu email đã được đăng ký trong hệ thống, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư của bạn. Vui lòng kiểm tra email (bao gồm thư mục Spam) trong vòng 15 phút.";
+            "Nếu email đã được đăng ký trong hệ thống, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư của bạn. Vui lòng kiểm tra email (bao gồm thư mục Spam) trong vòng 30 phút.";
 
     /** Băm token để cơ sở dữ liệu không bao giờ giữ bản dùng được. */
     private static String hashToken(String rawToken) {
@@ -177,7 +177,7 @@ public class AccountSecurityService implements ChangePasswordUseCase, PasswordRe
                 .token(hashToken(token))
                 .user(user)
                 .email(email)
-                .expiresAt(LocalDateTime.now().plusMinutes(15))
+                .expiresAt(LocalDateTime.now().plusMinutes(30))
                 .isUsed(false)
                 .build();
         passwordResetTokenRepository.save(resetToken);

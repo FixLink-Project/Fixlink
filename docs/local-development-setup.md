@@ -85,9 +85,12 @@ Nếu máy tính của bạn chưa có Docker hoặc cần chạy test nhanh off
 
 Khi Spring Boot hoàn tất khởi động trên cổng **8080**, bạn có thể truy cập các đường dẫn sau bằng trình duyệt:
 
+Backend chỉ phục vụ API và tài liệu; giao diện chạy riêng bằng Vite (xem README).
+
 | Thành phần | Đường dẫn URL | Mô tả |
 | :--- | :--- | :--- |
-| **Giao diện Web UI** | [http://localhost:8080/login.html](http://localhost:8080/login.html) | Màn hình đăng nhập & Dashboard |
+| **Giao diện (Vite dev server)** | [http://localhost:5173](http://localhost:5173) | Chạy `cd frontend && npm run dev` |
+| **Health check** | [http://localhost:8080/api/v1/health](http://localhost:8080/api/v1/health) | Trả `{ "status": "UP" }` khi backend sẵn sàng |
 | **Tài liệu Swagger UI** | [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) | OpenAPI 3.0 Specs & Thử nghiệm API |
 | **OpenAPI Schema (JSON)** | [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs) | Bản mô tả API máy đọc |
 | **H2 Console** *(nếu dùng profile local)* | [http://localhost:8080/h2-console](http://localhost:8080/h2-console) | JDBC URL: `jdbc:h2:mem:fixlink_db` |
@@ -96,13 +99,15 @@ Khi Spring Boot hoàn tất khởi động trên cổng **8080**, bạn có th�
 
 ## 5. Danh sách Tài khoản Kiểm thử Mặc định
 
-Mật khẩu chung cho tất cả các tài khoản mặc định: **`password123`**
+Được nạp sẵn khi khởi động ở profile `local`.
 
-| Vai trò | Username | Dashboard tương ứng |
+| Vai trò | Username | Mật khẩu |
 | :--- | :--- | :--- |
-| **Admin (Quản trị viên)** | `admin` | [http://localhost:8080/admin-dashboard.html](http://localhost:8080/admin-dashboard.html) |
-| **Customer (Khách hàng)** | `nguyenvana` hoặc `tranthib` | [http://localhost:8080/customer-dashboard.html](http://localhost:8080/customer-dashboard.html) |
-| **Technician (Kỹ thuật viên)** | `levanduc` hoặc `phamvanminh` | [http://localhost:8080/technician-dashboard.html](http://localhost:8080/technician-dashboard.html) |
+| **Admin (Quản trị viên)** | `admin` | `Admin@123` |
+| **Customer (Khách hàng)** | `customer01` | `Password@123` |
+| **Technician (Kỹ thuật viên, chờ duyệt)** | `tho_dien_lanh_01` | `Password@123` |
+| **Tài khoản bị khoá** | `user_blocked` | `Password@123` |
+| **Tài khoản ngừng hoạt động** | `user_inactive` | `Password@123` |
 
 ---
 

@@ -75,6 +75,9 @@ public class SecurityConfig {
                                 "/h2-console/**"
                         ).permitAll()
 
+                        // Healthcheck cho container và pipeline triển khai
+                        .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
+
                         // Xác thực: chỉ mở công khai những bước người dùng chưa thể có token
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers("/api/v1/auth/register/**").permitAll()
