@@ -2,12 +2,15 @@ import { Route, Routes } from 'react-router-dom';
 import RequireAuth from './components/RequireAuth';
 import AdminCategoriesPage from './pages/AdminCategoriesPage';
 import AdminUsersPage from './pages/AdminUsersPage';
+import CreateRepairRequestPage from './pages/CreateRepairRequestPage';
 import CustomerDashboardPage from './pages/CustomerDashboardPage';
 import CustomerRegisterPage from './pages/CustomerRegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+import MyRepairRequestsPage from './pages/MyRepairRequestsPage';
 import NotFoundPage from './pages/NotFoundPage';
+import RepairRequestDetailPage from './pages/RepairRequestDetailPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import TechnicianDashboardPage from './pages/TechnicianDashboardPage';
 import TechnicianProfilePage from './pages/TechnicianProfilePage';
@@ -27,6 +30,30 @@ export default function App() {
         element={
           <RequireAuth roles={['CUSTOMER']}>
             <CustomerDashboardPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/dang-yeu-cau"
+        element={
+          <RequireAuth roles={['CUSTOMER']}>
+            <CreateRepairRequestPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/yeu-cau-cua-toi"
+        element={
+          <RequireAuth roles={['CUSTOMER']}>
+            <MyRepairRequestsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/yeu-cau-cua-toi/:id"
+        element={
+          <RequireAuth roles={['CUSTOMER']}>
+            <RepairRequestDetailPage />
           </RequireAuth>
         }
       />

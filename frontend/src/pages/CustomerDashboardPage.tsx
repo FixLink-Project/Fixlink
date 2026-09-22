@@ -69,6 +69,12 @@ function diffFields(oldRaw: string | null, newRaw: string | null) {
     }));
 }
 
+const CUSTOMER_NAV = [
+  { to: '/khach-hang', label: 'Bảng điều khiển' },
+  { to: '/yeu-cau-cua-toi', label: 'Yêu cầu của tôi' },
+  { to: '/dang-yeu-cau', label: 'Đăng yêu cầu' }
+];
+
 export default function CustomerDashboardPage() {
   const { user, updateUser } = useAuth();
   const userId = user ? user.id.replace('usr_', '') : '';
@@ -177,6 +183,7 @@ export default function CustomerDashboardPage() {
 
   return (
     <DashboardLayout
+      nav={CUSTOMER_NAV}
       title={`Chào ${profile?.fullName?.trim() || user?.username || 'bạn'}`}
       description="Giữ thông tin liên hệ chính xác để thợ gọi đúng số khi tới sửa."
     >

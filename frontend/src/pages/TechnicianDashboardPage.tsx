@@ -4,9 +4,12 @@ import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import DashboardLayout from '../components/DashboardLayout';
+import Pagination from '../components/Pagination';
 import StatusChip from '../components/StatusChip';
+import TextArea from '../components/TextArea';
+import TextField from '../components/TextField';
 import { ApiError, api, formatCurrency } from '../lib/api';
-import type { VerificationStatus } from '../lib/types';
+import type { PageMeta, RepairRequest as MatchingRequest, VerificationStatus } from '../lib/types';
 
 interface SimpleRef {
   id: number;
@@ -72,19 +75,53 @@ export default function TechnicianDashboardPage() {
   const [togglingOnline, setTogglingOnline] = useState(false);
   const [onlineError, setOnlineError] = useState<string | null>(null);
 
+  const [matching, setMatching] = useState<MatchingRequest[]>([]);
+  const [matchingMeta, setMatchingMeta] = useState<PageMeta | null>(null);
+  const [matchingPage, setMatchingPage] = useState(1);
+  const [matchingLoading, setMatchingLoading] = useState(false);
+  const [matchingError, setMatchingError] = useState<string | null>(null);
+
+  const [quoteFor, setQuoteFor] = useState<MatchingRequest | null>(null);
+  const [quoteForm, setQuoteForm] = useState({
+    solution: '',
+    priceLaborVnd: '',
+    priceMaterialsVnd: '',
+    note: ''
+  });
+  const [quoteSaving, setQuoteSaving] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteSuccess, setQuoteSuccess] = useState<string | null>(null);
+
   const loadRequests = useCallback(async () => {
     try {
       const res = await api.get<RepairRequest[]>('/technicians/me/repair-requests');
       setRequests(res.data);
       setRequestsLocked(false);
     } catch (err) {
-      // Thợ chưa được duyệt bị chặn 403; đó là trạng thái hợp lệ, không phải lỗi tải.
       if (err instanceof ApiError && err.statusCode === 403) {
         setRequests([]);
         setRequestsLocked(true);
       } else {
         throw err;
       }
+    }
+  }, []);
+
+  const loadMatching = useCallback(async (page: number) => {
+    setMatchingLoading(true);
+    setMatchingError(null);
+    try {
+      const res = await api.get<MatchingRequest[]>(`/repair-requests/matching?page=${page}&limit=10`);
+      setMatching(res.data);
+      if (res.meta) setMatchingMeta(res.meta);
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode === 403) {
+        setMatching([]);
+      } else {
+        setMatchingError('Không tải được danh sách yêu cầu phù hợp.');
+      }
+    } finally {
+      setMatchingLoading(false);
     }
   }, []);
 
@@ -97,6 +134,9 @@ export default function TechnicianDashboardPage() {
         setProfile(res.data);
         setStatus('ready');
         await loadRequests();
+        if (res.data.verificationStatus === 'APPROVED') {
+          await loadMatching(1);
+        }
       } catch (err) {
         if (!alive) return;
         setLoadError(
@@ -108,7 +148,11 @@ export default function TechnicianDashboardPage() {
     return () => {
       alive = false;
     };
-  }, [loadRequests]);
+  }, [loadRequests, loadMatching]);
+
+  useEffect(() => {
+    if (matchingPage > 1) loadMatching(matchingPage);
+  }, [matchingPage, loadMatching]);
 
   async function handleToggleOnline() {
     if (!profile) return;
@@ -125,6 +169,28 @@ export default function TechnicianDashboardPage() {
       );
     } finally {
       setTogglingOnline(false);
+    }
+  }
+
+  async function handleQuoteSubmit() {
+    if (!quoteFor) return;
+    setQuoteError(null);
+    setQuoteSaving(true);
+    try {
+      await api.post(`/repair-requests/${quoteFor.id}/quotations`, {
+        solution: quoteForm.solution.trim(),
+        priceLaborVnd: Number(quoteForm.priceLaborVnd),
+        priceMaterialsVnd: Number(quoteForm.priceMaterialsVnd),
+        note: quoteForm.note.trim() || null
+      });
+      setQuoteSuccess(`Đã gửi báo giá cho "${quoteFor.title}".`);
+      setQuoteFor(null);
+      setQuoteForm({ solution: '', priceLaborVnd: '', priceMaterialsVnd: '', note: '' });
+      loadMatching(matchingPage);
+    } catch (err) {
+      setQuoteError(err instanceof ApiError ? err.message : 'Không gửi được báo giá.');
+    } finally {
+      setQuoteSaving(false);
     }
   }
 
@@ -272,6 +338,185 @@ export default function TechnicianDashboardPage() {
               </ul>
             )}
           </Card>
+
+          {/* Yêu cầu phù hợp — matching requests for bidding */}
+          {approved && (
+            <Card
+              title="Yêu cầu phù hợp"
+              description="Các đơn sửa chữa khớp nhóm việc và khu vực bạn nhận. Gửi báo giá để tham gia đấu thầu."
+            >
+              {quoteSuccess && (
+                <div className="mb-4">
+                  <Alert tone="success">{quoteSuccess}</Alert>
+                </div>
+              )}
+
+              {matchingError && <Alert tone="error">{matchingError}</Alert>}
+
+              {matchingLoading && (
+                <div className="h-24 animate-pulse rounded-lg border border-line bg-surface" />
+              )}
+
+              {!matchingLoading && matching.length === 0 && (
+                <div className="py-8 text-center">
+                  <p className="font-display font-semibold">Chưa có yêu cầu phù hợp</p>
+                  <p className="mt-2 text-sm text-ink-soft">
+                    Thêm nhóm việc và khu vực trong hồ sơ để nhận được nhiều đơn hơn.
+                  </p>
+                </div>
+              )}
+
+              {!matchingLoading && matching.length > 0 && (
+                <div className="space-y-3">
+                  {matching.map((req) => (
+                    <div
+                      key={req.id}
+                      className="rounded-xl border border-line p-4 transition-colors hover:border-brand/40"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium">{req.title}</h3>
+                            <StatusChip status={req.status} />
+                          </div>
+                          <p className="mt-1 text-sm text-ink-soft line-clamp-2">{req.description}</p>
+                          <div className="mt-2 flex flex-wrap gap-3 text-xs text-ink-soft">
+                            {req.categoryName && <span>{req.categoryName}</span>}
+                            {req.areaName && <span>• {req.areaName}</span>}
+                            <span>• {req.addressLine}</span>
+                            {req.budgetRef > 0 && (
+                              <span>• Ngân sách: {formatCurrency(req.budgetRef)}</span>
+                            )}
+                            {req.biddingDeadline && (
+                              <span>
+                                • Hạn: {new Date(req.biddingDeadline).toLocaleDateString('vi-VN')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setQuoteFor(req);
+                            setQuoteError(null);
+                            setQuoteSuccess(null);
+                          }}
+                        >
+                          Gửi báo giá
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {matchingMeta && matchingMeta.totalPages > 1 && (
+                <div className="mt-4">
+                  <Pagination
+                    meta={matchingMeta}
+                    onPageChange={setMatchingPage}
+                    disabled={matchingLoading}
+                    itemNoun="yêu cầu"
+                  />
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* Quotation submission modal */}
+          {quoteFor && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div className="w-full max-w-lg rounded-2xl border border-line bg-card p-6 shadow-xl">
+                <h2 className="font-display text-lg font-semibold">Gửi báo giá</h2>
+                <p className="mt-1 text-sm text-ink-soft">
+                  Đơn: <span className="font-medium text-ink">{quoteFor.title}</span>
+                </p>
+
+                {quoteError && (
+                  <div className="mt-3">
+                    <Alert tone="error">{quoteError}</Alert>
+                  </div>
+                )}
+
+                <div className="mt-4 space-y-4">
+                  <TextArea
+                    label="Giải pháp đề xuất"
+                    name="solution"
+                    rows={3}
+                    required
+                    placeholder="Mô tả cách bạn sẽ sửa..."
+                    value={quoteForm.solution}
+                    onChange={(e) =>
+                      setQuoteForm((f) => ({ ...f, solution: e.target.value }))
+                    }
+                  />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <TextField
+                      label="Giá công (VNĐ)"
+                      name="priceLaborVnd"
+                      type="number"
+                      min={0}
+                      required
+                      placeholder="300000"
+                      value={quoteForm.priceLaborVnd}
+                      onChange={(e) =>
+                        setQuoteForm((f) => ({ ...f, priceLaborVnd: e.target.value }))
+                      }
+                    />
+                    <TextField
+                      label="Giá vật tư (VNĐ)"
+                      name="priceMaterialsVnd"
+                      type="number"
+                      min={0}
+                      required
+                      placeholder="250000"
+                      value={quoteForm.priceMaterialsVnd}
+                      onChange={(e) =>
+                        setQuoteForm((f) => ({ ...f, priceMaterialsVnd: e.target.value }))
+                      }
+                    />
+                  </div>
+                  {quoteForm.priceLaborVnd && quoteForm.priceMaterialsVnd && (
+                    <p className="text-sm font-medium">
+                      Tổng:{' '}
+                      <span className="text-brand-ink">
+                        {formatCurrency(
+                          Number(quoteForm.priceLaborVnd) + Number(quoteForm.priceMaterialsVnd)
+                        )}
+                      </span>
+                    </p>
+                  )}
+                  <TextArea
+                    label="Ghi chú (không bắt buộc)"
+                    name="note"
+                    rows={2}
+                    placeholder="Lưu ý thêm cho khách..."
+                    value={quoteForm.note}
+                    onChange={(e) =>
+                      setQuoteForm((f) => ({ ...f, note: e.target.value }))
+                    }
+                  />
+                </div>
+
+                <div className="mt-6 flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => setQuoteFor(null)}>
+                    Hủy
+                  </Button>
+                  <Button
+                    onClick={handleQuoteSubmit}
+                    loading={quoteSaving}
+                    disabled={
+                      !quoteForm.solution.trim() ||
+                      !quoteForm.priceLaborVnd ||
+                      !quoteForm.priceMaterialsVnd
+                    }
+                  >
+                    {quoteSaving ? 'Đang gửi...' : 'Gửi báo giá'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </DashboardLayout>
