@@ -1116,4 +1116,323 @@ class FixLinkApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
     }
+
+    // ============================
+    // SPRINT 2: Repair Request, Quotation, Accept
+    // ============================
+
+    private static Long createdRequestId;
+    private static Long createdQuotationId;
+
+    @Test
+    @Order(37)
+    @DisplayName("S2-Setup: Chuẩn bị thợ đã duyệt với chuyên môn và khu vực")
+    void testS2Setup_PrepareTechnicianWithCategoriesAndAreas() throws Exception {
+        String techToken = bearerTokenOf("test_technician", "Password@123");
+
+        var updateReq = com.fixlink.adapter.in.web.dto.request.UpdateTechnicianProfileRequest.builder()
+                .fullName("Phạm Văn Thợ")
+                .phone("0978123456")
+                .email("phamvantho@gmail.com")
+                .bio("Chuyên sửa ống nước, máy bơm")
+                .yearsExperience(3)
+                .categoryIds(java.util.List.of(1L, 2L))
+                .areaIds(java.util.List.of(1L, 2L))
+                .build();
+
+        mockMvc.perform(put("/api/v1/technicians/me/profile")
+                        .header("Authorization", techToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.categories", hasSize(2)))
+                .andExpect(jsonPath("$.data.areas", hasSize(2)));
+    }
+
+    @Test
+    @Order(38)
+    @DisplayName("F1: Khách tạo yêu cầu sửa chữa → 201 BIDDING_OPEN")
+    void testCreateRepairRequest_Success() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        String body = """
+            {
+                "title": "Máy lạnh không lạnh",
+                "description": "Máy lạnh phòng khách bật nhưng không mát, có tiếng kêu",
+                "categoryId": 1,
+                "areaId": 1,
+                "addressLine": "123 Nguyễn Văn Trỗi, P.12",
+                "latitude": 10.7891,
+                "longitude": 106.6822,
+                "budgetRef": 500000,
+                "biddingDeadlineDays": 3,
+                "mediaUrls": ["https://firebase.test/photo1.jpg"]
+            }
+            """;
+
+        MvcResult result = mockMvc.perform(post("/api/v1/repair-requests")
+                        .header("Authorization", custToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.statusCode").value(201))
+                .andExpect(jsonPath("$.data.status").value("BIDDING_OPEN"))
+                .andExpect(jsonPath("$.data.title").value("Máy lạnh không lạnh"))
+                .andExpect(jsonPath("$.data.categoryName").exists())
+                .andExpect(jsonPath("$.data.mediaUrls", hasSize(1)))
+                .andReturn();
+
+        createdRequestId = objectMapper.readTree(result.getResponse().getContentAsString())
+                .path("data").path("id").asLong();
+    }
+
+    @Test
+    @Order(39)
+    @DisplayName("F1: Tạo yêu cầu thiếu title → 400 VALIDATION_FAILED")
+    void testCreateRepairRequest_MissingTitle() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        String body = """
+            {
+                "description": "Mô tả",
+                "categoryId": 1,
+                "addressLine": "123 ABC"
+            }
+            """;
+
+        mockMvc.perform(post("/api/v1/repair-requests")
+                        .header("Authorization", custToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    @Order(40)
+    @DisplayName("F1: Khách xem danh sách yêu cầu của mình → phân trang")
+    void testGetMyRequests() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        mockMvc.perform(get("/api/v1/repair-requests/my")
+                        .header("Authorization", custToken)
+                        .param("page", "1")
+                        .param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statusCode").value(200))
+                .andExpect(jsonPath("$.meta.currentPage").value(1))
+                .andExpect(jsonPath("$.meta.totalItems", greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$.data", hasSize(greaterThanOrEqualTo(1))));
+    }
+
+    @Test
+    @Order(41)
+    @DisplayName("F1: Khách xem chi tiết yêu cầu → có workProgress")
+    void testGetRepairRequestDetail() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        mockMvc.perform(get("/api/v1/repair-requests/" + createdRequestId)
+                        .header("Authorization", custToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.request.id").value(createdRequestId))
+                .andExpect(jsonPath("$.data.request.status").value("BIDDING_OPEN"))
+                .andExpect(jsonPath("$.data.workProgress", hasSize(greaterThanOrEqualTo(1))));
+    }
+
+    @Test
+    @Order(42)
+    @DisplayName("F1: Thợ đã duyệt xem yêu cầu phù hợp → matching")
+    void testGetMatchingRequests() throws Exception {
+        String techToken = bearerTokenOf("test_technician", "Password@123");
+
+        mockMvc.perform(get("/api/v1/repair-requests/matching")
+                        .header("Authorization", techToken)
+                        .param("page", "1")
+                        .param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statusCode").value(200))
+                .andExpect(jsonPath("$.data", hasSize(greaterThanOrEqualTo(1))));
+    }
+
+    @Test
+    @Order(43)
+    @DisplayName("F2: Thợ gửi báo giá → 201 PENDING")
+    void testCreateQuotation_Success() throws Exception {
+        String techToken = bearerTokenOf("test_technician", "Password@123");
+
+        String body = """
+            {
+                "solution": "Cần thay gas R32, vệ sinh dàn nóng",
+                "priceLaborVnd": 200000,
+                "priceMaterialsVnd": 350000,
+                "note": "Bảo hành 3 tháng"
+            }
+            """;
+
+        MvcResult result = mockMvc.perform(post("/api/v1/repair-requests/" + createdRequestId + "/quotations")
+                        .header("Authorization", techToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.statusCode").value(201))
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
+                .andExpect(jsonPath("$.data.totalPrice").value(550000))
+                .andExpect(jsonPath("$.data.technicianName").exists())
+                .andReturn();
+
+        createdQuotationId = objectMapper.readTree(result.getResponse().getContentAsString())
+                .path("data").path("id").asLong();
+    }
+
+    @Test
+    @Order(44)
+    @DisplayName("F2: Thợ gửi báo giá trùng → lỗi BR02")
+    void testCreateQuotation_DuplicateRejected() throws Exception {
+        String techToken = bearerTokenOf("test_technician", "Password@123");
+
+        String body = """
+            {
+                "solution": "Báo giá lần 2",
+                "priceLaborVnd": 100000,
+                "priceMaterialsVnd": 100000
+            }
+            """;
+
+        mockMvc.perform(post("/api/v1/repair-requests/" + createdRequestId + "/quotations")
+                        .header("Authorization", techToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_OPERATION"));
+    }
+
+    @Test
+    @Order(45)
+    @DisplayName("F2: Khách xem danh sách báo giá cho đơn → có thông tin thợ")
+    void testGetQuotationsForRequest() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        mockMvc.perform(get("/api/v1/repair-requests/" + createdRequestId + "/quotations")
+                        .header("Authorization", custToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(greaterThanOrEqualTo(1))))
+                .andExpect(jsonPath("$.data[0].technicianName").exists())
+                .andExpect(jsonPath("$.data[0].avgRating").exists());
+    }
+
+    @Test
+    @Order(46)
+    @DisplayName("F1: Khách không sửa được đơn khi đã có báo giá")
+    void testUpdateRepairRequest_RejectedWhenQuotationExists() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        String body = """
+            {
+                "title": "Sửa lại tiêu đề",
+                "description": "Mô tả mới",
+                "categoryId": 1,
+                "addressLine": "456 Lý Tự Trọng"
+            }
+            """;
+
+        mockMvc.perform(put("/api/v1/repair-requests/" + createdRequestId)
+                        .header("Authorization", custToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_OPERATION"));
+    }
+
+    @Test
+    @Order(47)
+    @DisplayName("F3: Khách chọn thợ → accept, auto-reject others, trạng thái MATCHED_AWAITING_DEPOSIT")
+    void testAcceptQuotation_Success() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        mockMvc.perform(post("/api/v1/repair-requests/" + createdRequestId
+                        + "/quotations/" + createdQuotationId + "/accept")
+                        .header("Authorization", custToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.requestId").value(createdRequestId))
+                .andExpect(jsonPath("$.data.selectedQuotationId").value(createdQuotationId))
+                .andExpect(jsonPath("$.data.agreedPrice").value(550000))
+                .andExpect(jsonPath("$.data.depositAmount").value(165000))
+                .andExpect(jsonPath("$.data.status").value("MATCHED_AWAITING_DEPOSIT"));
+    }
+
+    @Test
+    @Order(48)
+    @DisplayName("F3: Sau accept, chi tiết đơn hiện MATCHED_AWAITING_DEPOSIT + thợ đã chọn")
+    void testAfterAccept_RequestDetailShowsNewStatus() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        mockMvc.perform(get("/api/v1/repair-requests/" + createdRequestId)
+                        .header("Authorization", custToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.request.status").value("MATCHED_AWAITING_DEPOSIT"))
+                .andExpect(jsonPath("$.data.request.selectedQuotationId").value(createdQuotationId))
+                .andExpect(jsonPath("$.data.quotations[0].status").value("ACCEPTED"))
+                .andExpect(jsonPath("$.data.workProgress", hasSize(greaterThanOrEqualTo(2))));
+    }
+
+    @Test
+    @Order(49)
+    @DisplayName("F1: Khách hủy đơn (đã match) → CANCELLED")
+    void testCancelRepairRequest_AfterMatch() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        String body = """
+            { "reason": "Tôi đã tự sửa được" }
+            """;
+
+        mockMvc.perform(post("/api/v1/repair-requests/" + createdRequestId + "/cancel")
+                        .header("Authorization", custToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.data.cancelReason").value("Tôi đã tự sửa được"));
+    }
+
+    @Test
+    @Order(50)
+    @DisplayName("F1: Khách không hủy được đơn đã CANCELLED")
+    void testCancelRepairRequest_AlreadyCancelled() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        String body = """
+            { "reason": "Hủy lần nữa" }
+            """;
+
+        mockMvc.perform(post("/api/v1/repair-requests/" + createdRequestId + "/cancel")
+                        .header("Authorization", custToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_OPERATION"));
+    }
+
+    @Test
+    @Order(51)
+    @DisplayName("Phân quyền: Khách không truy cập được API admin")
+    void testCustomerCannotAccessAdminApi() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        mockMvc.perform(get("/api/v1/admin/users")
+                        .header("Authorization", custToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @Order(52)
+    @DisplayName("Phân quyền: Thợ chưa duyệt bị từ chối xem matching")
+    void testUnverifiedTechnician_CannotSeeMatching() throws Exception {
+        String pendingTechToken = bearerTokenOf("tho_dien_lanh_01", "Password@123");
+
+        mockMvc.perform(get("/api/v1/repair-requests/matching")
+                        .header("Authorization", pendingTechToken)
+                        .param("page", "1")
+                        .param("limit", "10"))
+                .andExpect(status().isForbidden());
+    }
 }
