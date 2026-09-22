@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +28,7 @@ public class RepairRequestController {
     private final RepairRequestUseCase repairRequestUseCase;
 
     @PostMapping
+    @PreAuthorize("hasRole('CUSTOMER')")
     @Operation(summary = "Tạo yêu cầu sửa chữa mới")
     public ResponseEntity<ApiResponse<RepairRequestResponse>> create(
             @Valid @RequestBody CreateRepairRequestRequest req,
@@ -52,6 +54,7 @@ public class RepairRequestController {
     }
 
     @GetMapping("/my")
+    @PreAuthorize("hasRole('CUSTOMER')")
     @Operation(summary = "Danh sách yêu cầu của tôi (khách hàng)")
     public ResponseEntity<ApiPageResponse<RepairRequestResponse>> getMyRequests(
             @AuthenticationPrincipal UserPrincipal user,
@@ -87,6 +90,7 @@ public class RepairRequestController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('CUSTOMER')")
     @Operation(summary = "Sửa yêu cầu (chỉ khi DRAFT hoặc BIDDING_OPEN chưa có báo giá)")
     public ResponseEntity<ApiResponse<RepairRequestResponse>> update(
             @PathVariable Long id,
@@ -112,6 +116,7 @@ public class RepairRequestController {
     }
 
     @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('CUSTOMER')")
     @Operation(summary = "Hủy yêu cầu sửa chữa")
     public ResponseEntity<ApiResponse<RepairRequestResponse>> cancel(
             @PathVariable Long id,
@@ -123,6 +128,7 @@ public class RepairRequestController {
     }
 
     @GetMapping("/matching")
+    @PreAuthorize("hasRole('TECHNICIAN')")
     @Operation(summary = "Yêu cầu phù hợp với thợ (TECHNICIAN)")
     public ResponseEntity<ApiPageResponse<RepairRequestResponse>> getMatching(
             @AuthenticationPrincipal UserPrincipal user,

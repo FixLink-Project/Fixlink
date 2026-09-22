@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +30,7 @@ public class QuotationController {
     private final QuotationUseCase quotationUseCase;
 
     @PostMapping
+    @PreAuthorize("hasRole('TECHNICIAN')")
     @Operation(summary = "Thợ gửi báo giá")
     public ResponseEntity<ApiResponse<QuotationResponse>> create(
             @PathVariable Long requestId,
@@ -50,6 +52,7 @@ public class QuotationController {
     }
 
     @PutMapping("/{quotationId}")
+    @PreAuthorize("hasRole('TECHNICIAN')")
     @Operation(summary = "Thợ sửa báo giá")
     public ResponseEntity<ApiResponse<QuotationResponse>> update(
             @PathVariable Long requestId,
@@ -71,6 +74,7 @@ public class QuotationController {
     }
 
     @DeleteMapping("/{quotationId}")
+    @PreAuthorize("hasRole('TECHNICIAN')")
     @Operation(summary = "Thợ rút báo giá")
     public ResponseEntity<ApiResponse<Void>> withdraw(
             @PathVariable Long requestId,
@@ -82,6 +86,7 @@ public class QuotationController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     @Operation(summary = "Khách xem danh sách báo giá cho đơn")
     public ResponseEntity<ApiResponse<List<QuotationResponse>>> getQuotations(
             @PathVariable Long requestId,
@@ -92,6 +97,7 @@ public class QuotationController {
     }
 
     @PostMapping("/{quotationId}/accept")
+    @PreAuthorize("hasRole('CUSTOMER')")
     @Operation(summary = "Khách chọn thợ (accept báo giá)")
     public ResponseEntity<ApiResponse<AcceptQuotationResponse>> accept(
             @PathVariable Long requestId,

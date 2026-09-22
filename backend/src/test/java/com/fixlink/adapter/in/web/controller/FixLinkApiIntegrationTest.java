@@ -1435,4 +1435,157 @@ class FixLinkApiIntegrationTest {
                         .param("limit", "10"))
                 .andExpect(status().isForbidden());
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  FEATURE 4: Sprint 0 Review — bổ sung test coverage còn thiếu
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    @Order(53)
+    @DisplayName("R0: GET /auth/me trả thông tin người dùng đang đăng nhập")
+    void testGetCurrentUser() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        mockMvc.perform(get("/api/v1/auth/me")
+                        .header("Authorization", custToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.username").value("customer01"))
+                .andExpect(jsonPath("$.data.role").value("CUSTOMER"))
+                .andExpect(jsonPath("$.data.customerProfile.fullName").isNotEmpty());
+    }
+
+    @Test
+    @Order(54)
+    @DisplayName("R0: GET /auth/me không có token → 401")
+    void testGetCurrentUser_NoToken() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.errorCode").value("UNAUTHENTICATED"));
+    }
+
+    @Test
+    @Order(55)
+    @DisplayName("R0: Đăng ký khách hàng thiếu trường bắt buộc → 400 VALIDATION_FAILED")
+    void testRegisterCustomer_MissingFields() throws Exception {
+        RegisterCustomerRequest req = new RegisterCustomerRequest();
+        req.setUsername("");
+        req.setPassword("");
+        req.setFullName("");
+        req.setPhone("");
+        req.setEmail("");
+
+        mockMvc.perform(post("/api/v1/auth/register/customer")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors").isNotEmpty());
+    }
+
+    @Test
+    @Order(56)
+    @DisplayName("R0: Đăng ký khách hàng email sai định dạng → 400 VALIDATION_FAILED")
+    void testRegisterCustomer_InvalidEmail() throws Exception {
+        RegisterCustomerRequest req = new RegisterCustomerRequest();
+        req.setUsername("test_invalid_email");
+        req.setPassword("Password@123");
+        req.setFullName("Test User");
+        req.setPhone("0901234567");
+        req.setEmail("not-an-email");
+
+        mockMvc.perform(post("/api/v1/auth/register/customer")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    @Order(57)
+    @DisplayName("R0: Đăng ký khách hàng SĐT sai format → 400 VALIDATION_FAILED")
+    void testRegisterCustomer_InvalidPhone() throws Exception {
+        RegisterCustomerRequest req = new RegisterCustomerRequest();
+        req.setUsername("test_invalid_phone");
+        req.setPassword("Password@123");
+        req.setFullName("Test User");
+        req.setPhone("1234");
+        req.setEmail("valid@test.com");
+
+        mockMvc.perform(post("/api/v1/auth/register/customer")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    @Order(58)
+    @DisplayName("R0: Thợ cập nhật hồ sơ thiếu trường bắt buộc → 400 VALIDATION_FAILED")
+    void testTechnicianUpdateProfile_BlankFields() throws Exception {
+        String techToken = bearerTokenOf("test_technician", "Password@123");
+
+        String body = objectMapper.writeValueAsString(java.util.Map.of(
+                "fullName", "",
+                "phone", "",
+                "email", "bad"
+        ));
+
+        mockMvc.perform(put("/api/v1/technicians/me/profile")
+                        .header("Authorization", techToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors").isNotEmpty());
+    }
+
+    @Test
+    @Order(59)
+    @DisplayName("R0: Refresh token không hợp lệ → 401 hoặc 400")
+    void testRefreshToken_Invalid() throws Exception {
+        String body = objectMapper.writeValueAsString(
+                java.util.Map.of("refreshToken", "invalid-random-token-12345"));
+
+        mockMvc.perform(post("/api/v1/auth/refresh-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    @Order(60)
+    @DisplayName("R0: Thợ không tạo được yêu cầu sửa chữa → 403 (chỉ CUSTOMER)")
+    void testTechnicianCannotCreateRepairRequest() throws Exception {
+        String techToken = bearerTokenOf("test_technician", "Password@123");
+
+        String body = objectMapper.writeValueAsString(java.util.Map.of(
+                "title", "Test",
+                "description", "Test desc",
+                "categoryId", 1,
+                "addressLine", "123 Test"));
+
+        mockMvc.perform(post("/api/v1/repair-requests")
+                        .header("Authorization", techToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @Order(61)
+    @DisplayName("R0: Khách không gửi được báo giá → 403 (chỉ TECHNICIAN)")
+    void testCustomerCannotCreateQuotation() throws Exception {
+        String custToken = bearerTokenOf("customer01", "Password@123");
+
+        String body = objectMapper.writeValueAsString(java.util.Map.of(
+                "solution", "Test",
+                "priceLaborVnd", 100000,
+                "priceMaterialsVnd", 50000));
+
+        mockMvc.perform(post("/api/v1/repair-requests/1/quotations")
+                        .header("Authorization", custToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden());
+    }
 }
