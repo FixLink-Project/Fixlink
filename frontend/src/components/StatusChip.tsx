@@ -25,8 +25,19 @@ const LABELS: Record<string, { label: string; tone: Tone }> = {
   INACTIVE: { label: 'Ngừng hoạt động', tone: 'neutral' },
   BLOCKED: { label: 'Bị khoá', tone: 'danger' },
   // Trạng thái yêu cầu sửa chữa
+  DRAFT: { label: 'Bản nháp', tone: 'neutral' },
+  BIDDING_OPEN: { label: 'Đang nhận báo giá', tone: 'pending' },
+  MATCHED_AWAITING_DEPOSIT: { label: 'Chờ đặt cọc', tone: 'pending' },
+  ASSIGNED: { label: 'Đã nhận việc', tone: 'success' },
+  INSPECTING: { label: 'Đang khảo sát', tone: 'pending' },
+  AWAITING_COST_APPROVAL: { label: 'Chờ duyệt chi phí', tone: 'pending' },
+  IN_PROGRESS: { label: 'Đang sửa chữa', tone: 'success' },
+  AWAITING_ACCEPTANCE: { label: 'Chờ nghiệm thu', tone: 'pending' },
   COMPLETED: { label: 'Đã hoàn tất', tone: 'success' },
   CANCELLED: { label: 'Đã huỷ', tone: 'neutral' },
+  // Trạng thái báo giá
+  ACCEPTED: { label: 'Đã chọn', tone: 'success' },
+  WITHDRAWN: { label: 'Đã rút', tone: 'neutral' },
   // Vai trò
   CUSTOMER: { label: 'Khách hàng', tone: 'neutral' },
   TECHNICIAN: { label: 'Kỹ thuật viên', tone: 'neutral' },
