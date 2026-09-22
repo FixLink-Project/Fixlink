@@ -147,7 +147,7 @@ FixLink/
 ├── backend/              Dịch vụ Spring Boot
 │   ├── src/main/java/    Mã nguồn theo kiến trúc Hexagonal
 │   ├── src/main/resources/
-│   │   ├── db/migration/ Flyway migration
+│   │   ├── db/migration/ Flyway migration (V1–V4)
 │   │   └── static/       Trang HTML tĩnh (đang được thay dần bằng frontend React)
 │   ├── checkstyle.xml    Bộ quy tắc linter
 │   └── pom.xml
@@ -165,12 +165,39 @@ FixLink/
 
 ---
 
+## API Sprint 2 — Yêu cầu sửa chữa & Báo giá
+
+### Yêu cầu sửa chữa (Repair Requests)
+
+| Phương thức | Đường dẫn | Vai trò | Mô tả |
+| :--- | :--- | :--- | :--- |
+| POST | `/api/v1/repair-requests` | CUSTOMER | Tạo yêu cầu mới |
+| GET | `/api/v1/repair-requests/my` | CUSTOMER | Danh sách yêu cầu của tôi |
+| GET | `/api/v1/repair-requests/{id}` | CUSTOMER/TECHNICIAN/ADMIN | Chi tiết đơn + báo giá + tiến độ |
+| PUT | `/api/v1/repair-requests/{id}` | CUSTOMER | Sửa đơn (DRAFT/BIDDING_OPEN, chưa có báo giá) |
+| POST | `/api/v1/repair-requests/{id}/cancel` | CUSTOMER | Hủy đơn (trước IN_PROGRESS) |
+| GET | `/api/v1/repair-requests/matching` | TECHNICIAN | Đơn phù hợp với chuyên môn + khu vực thợ |
+
+### Báo giá (Quotations)
+
+| Phương thức | Đường dẫn | Vai trò | Mô tả |
+| :--- | :--- | :--- | :--- |
+| POST | `/api/v1/repair-requests/{id}/quotations` | TECHNICIAN | Gửi báo giá |
+| PUT | `.../quotations/{qid}` | TECHNICIAN | Sửa báo giá (PENDING) |
+| DELETE | `.../quotations/{qid}` | TECHNICIAN | Rút báo giá |
+| GET | `/api/v1/repair-requests/{id}/quotations` | CUSTOMER/ADMIN | Danh sách báo giá cho đơn |
+| POST | `.../quotations/{qid}/accept` | CUSTOMER | Chọn thợ → auto-reject các báo giá khác |
+
+Máy trạng thái đơn: DRAFT → BIDDING_OPEN → MATCHED_AWAITING_DEPOSIT → ASSIGNED → INSPECTING → AWAITING_COST_APPROVAL → IN_PROGRESS → AWAITING_ACCEPTANCE → COMPLETED \| CANCELLED
+
+---
+
 ## Kiểm thử và chất lượng mã
 
 ```bash
 # Backend
 cd backend
-./mvnw test               # 38 bài unit + integration test
+./mvnw test               # 64 bài unit + integration test (Sprint 0 + Sprint 2)
 ./mvnw spotless:apply     # Tự căn chỉnh định dạng Java
 ./mvnw spotless:check     # Kiểm tra định dạng (git hook pre-commit gọi lệnh này)
 ./mvnw checkstyle:check   # Linter
