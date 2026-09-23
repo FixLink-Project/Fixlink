@@ -31,16 +31,29 @@ public class RepairRequestService implements RepairRequestUseCase {
     private final SpringDataServiceCategoryRepository categoryRepo;
     private final SpringDataServiceAreaRepository areaRepo;
     private final SpringDataTechnicianProfileRepository techProfileRepo;
+    private final SpringDataUserRepository userRepo;
 
     @Override
     @Transactional
     public RepairRequestResponse create(CreateCommand cmd, Long customerId) {
-        categoryRepo.findById(cmd.getCategoryId())
+        UserJpaEntity customer = userRepo.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin khách hàng"));
+        if (customer.getStatus() != com.fixlink.domain.model.UserStatus.ACTIVE) {
+            throw new DomainException("ACCOUNT_INACTIVE", "Tài khoản khách hàng không hoạt động hoặc đã bị khóa", 403);
+        }
+
+        ServiceCategoryJpaEntity category = categoryRepo.findById(cmd.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục dịch vụ"));
+        if (category.getIsActive() != null && !category.getIsActive()) {
+            throw new DomainException("INVALID_OPERATION", "Danh mục dịch vụ hiện đang tạm dừng hoạt động");
+        }
 
         if (cmd.getAreaId() != null) {
-            areaRepo.findById(cmd.getAreaId())
+            ServiceAreaJpaEntity area = areaRepo.findById(cmd.getAreaId())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khu vực"));
+            if (area.getIsActive() != null && !area.getIsActive()) {
+                throw new DomainException("INVALID_OPERATION", "Khu vực dịch vụ hiện đang tạm dừng hoạt động");
+            }
         }
 
         RepairRequestJpaEntity entity = new RepairRequestJpaEntity();
@@ -48,9 +61,9 @@ public class RepairRequestService implements RepairRequestUseCase {
         entity.setCustomerId(customerId);
         entity.setCategoryId(cmd.getCategoryId());
         entity.setAreaId(cmd.getAreaId());
-        entity.setTitle(cmd.getTitle());
-        entity.setDescription(cmd.getDescription());
-        entity.setAddress(cmd.getAddressLine());
+        entity.setTitle(cmd.getTitle() != null ? cmd.getTitle().trim() : null);
+        entity.setDescription(cmd.getDescription() != null ? cmd.getDescription().trim() : null);
+        entity.setAddress(cmd.getAddressLine() != null ? cmd.getAddressLine().trim() : null);
         entity.setLatitude(cmd.getLatitude());
         entity.setLongitude(cmd.getLongitude());
         entity.setRequestedTime(cmd.getPreferredTime() != null ? cmd.getPreferredTime() : LocalDateTime.now());
@@ -86,11 +99,25 @@ public class RepairRequestService implements RepairRequestUseCase {
             }
         }
 
-        entity.setTitle(cmd.getTitle());
-        entity.setDescription(cmd.getDescription());
+        ServiceCategoryJpaEntity category = categoryRepo.findById(cmd.getCategoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục dịch vụ"));
+        if (category.getIsActive() != null && !category.getIsActive()) {
+            throw new DomainException("INVALID_OPERATION", "Danh mục dịch vụ hiện đang tạm dừng hoạt động");
+        }
+
+        if (cmd.getAreaId() != null) {
+            ServiceAreaJpaEntity area = areaRepo.findById(cmd.getAreaId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khu vực"));
+            if (area.getIsActive() != null && !area.getIsActive()) {
+                throw new DomainException("INVALID_OPERATION", "Khu vực dịch vụ hiện đang tạm dừng hoạt động");
+            }
+        }
+
+        entity.setTitle(cmd.getTitle() != null ? cmd.getTitle().trim() : null);
+        entity.setDescription(cmd.getDescription() != null ? cmd.getDescription().trim() : null);
         entity.setCategoryId(cmd.getCategoryId());
         entity.setAreaId(cmd.getAreaId());
-        entity.setAddress(cmd.getAddressLine());
+        entity.setAddress(cmd.getAddressLine() != null ? cmd.getAddressLine().trim() : null);
         entity.setLatitude(cmd.getLatitude());
         entity.setLongitude(cmd.getLongitude());
         if (cmd.getPreferredTime() != null) entity.setRequestedTime(cmd.getPreferredTime());
@@ -107,6 +134,8 @@ public class RepairRequestService implements RepairRequestUseCase {
             mediaRepo.deleteByOwnerTypeAndOwnerId("REPAIR_REQUEST", requestId);
             saveMedia(requestId, cmd.getMediaUrls(), customerId);
         }
+
+        recordProgress(requestId, entity.getStatus(), entity.getStatus(), "Khách cập nhật thông tin yêu cầu", customerId);
 
         return toResponse(entity);
     }
@@ -129,6 +158,17 @@ public class RepairRequestService implements RepairRequestUseCase {
         entity.setCancelReason(reason);
         entity.setUpdatedBy(customerId);
         entity = requestRepo.save(entity);
+
+        // Chuyển toàn bộ báo giá đang PENDING sang REJECTED vì yêu cầu đã bị hủy
+        List<QuotationJpaEntity> quotes = quotationRepo.findByRequestIdOrderByCreatedAtDesc(requestId);
+        for (QuotationJpaEntity q : quotes) {
+            if (q.getStatus() == com.fixlink.domain.model.QuotationStatus.PENDING) {
+                q.setStatus(com.fixlink.domain.model.QuotationStatus.REJECTED);
+                q.setNote(q.getNote() != null ? q.getNote() + " [Hủy do khách hủy yêu cầu]" : "[Hủy do khách hủy yêu cầu]");
+                q.setUpdatedBy(customerId);
+                quotationRepo.save(q);
+            }
+        }
 
         recordProgress(requestId, oldStatus, RequestStatus.CANCELLED, "Khách hủy: " + reason, customerId);
 
@@ -336,7 +376,9 @@ public class RepairRequestService implements RepairRequestUseCase {
     }
 
     private String generateRequestCode() {
-        return "RR-" + System.currentTimeMillis() + "-" + (int) (Math.random() * 1000);
+        String datePart = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String randomPart = UUID.randomUUID().toString().replace("-", "").substring(0, 4).toUpperCase();
+        return "REQ-" + datePart + "-" + randomPart;
     }
 
     private Sort buildSort(String sortBy, String sortOrder) {
