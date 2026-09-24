@@ -5,14 +5,15 @@ FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /build
 
-# Copy Maven descriptor and download dependencies
+# Copy Maven descriptor and download dependencies (kèm plugin, để Lombok
+# annotation processor có sẵn khi biên dịch offline)
 COPY pom.xml ./
-RUN mvn dependency:go-offline -B
+RUN mvn -B -ntp dependency:go-offline dependency:resolve-plugins
 
 # Copy source code and build production artifact
-COPY src ./src
 COPY checkstyle.xml ./
-RUN mvn clean package -DskipTests -B
+COPY src ./src
+RUN mvn -B -ntp clean package -DskipTests
 
 # =============================================================================
 # Stage 2: Runtime Image with Eclipse Temurin JRE 21 Alpine
