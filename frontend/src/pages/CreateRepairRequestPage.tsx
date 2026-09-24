@@ -1,10 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import DashboardLayout from '../components/DashboardLayout';
-import ImageUploadField from '../components/ImageUploadField';
+import MultiImageUploadField from '../components/MultiImageUploadField';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
 import { ApiError, api, fetchAreas, fetchCategories, formatCurrency, toFieldErrors } from '../lib/api';
@@ -17,6 +17,19 @@ const CUSTOMER_NAV = [
 ];
 
 type Step = 1 | 2 | 3;
+
+function getCategoryIcon(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.includes('điện thoại') || lower.includes('smartphone') || lower.includes('phone')) return '📱';
+  if (lower.includes('máy tính') || lower.includes('laptop') || lower.includes('pc')) return '💻';
+  if (lower.includes('lạnh') || lower.includes('điều hòa') || lower.includes('tủ lạnh')) return '❄️';
+  if (lower.includes('giặt') || lower.includes('máy giặt')) return '🧺';
+  if (lower.includes('tivi') || lower.includes('ti vi') || lower.includes('tv') || lower.includes('màn hình')) return '📺';
+  if (lower.includes('âm thanh') || lower.includes('loa') || lower.includes('amply')) return '🔊';
+  if (lower.includes('bếp') || lower.includes('nồi') || lower.includes('lò vi sóng')) return '🍳';
+  if (lower.includes('bo mạch') || lower.includes('mạch') || lower.includes('linh kiện')) return '⚡';
+  return '🔧';
+}
 
 export default function CreateRepairRequestPage() {
   const navigate = useNavigate();
@@ -32,11 +45,12 @@ export default function CreateRepairRequestPage() {
     description: '',
     addressLine: '',
     budgetRef: '',
-    biddingDeadlineDays: '3',
-    mediaUrl: ''
+    biddingDeadlineDays: '3'
   });
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,7 +72,7 @@ export default function CreateRepairRequestPage() {
 
   function validateStep1(): boolean {
     const errs: Record<string, string> = {};
-    if (!form.categoryId) errs.categoryId = 'Chọn loại dịch vụ cần sửa.';
+    if (!form.categoryId) errs.categoryId = 'Vui lòng chọn loại thiết bị cần sửa chữa.';
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return false;
@@ -69,8 +83,8 @@ export default function CreateRepairRequestPage() {
   function validateStep2(): boolean {
     const errs: Record<string, string> = {};
     if (!form.title.trim()) errs.title = 'Tiêu đề không được để trống.';
-    if (!form.description.trim()) errs.description = 'Mô tả không được để trống.';
-    if (!form.addressLine.trim()) errs.addressLine = 'Địa chỉ không được để trống.';
+    if (!form.description.trim()) errs.description = 'Mô tả chi tiết triệu chứng hỏng không được để trống.';
+    if (!form.addressLine.trim()) errs.addressLine = 'Địa chỉ sửa chữa không được để trống.';
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return false;
@@ -83,21 +97,22 @@ export default function CreateRepairRequestPage() {
     else if (step === 2 && validateStep2()) setStep(3);
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function submitRequest(saveAsDraft: boolean) {
     setSaveError(null);
-    setSaving(true);
+    if (saveAsDraft) setSavingDraft(true);
+    else setSaving(true);
 
     try {
-      const mediaUrls = form.mediaUrl.trim() ? [form.mediaUrl.trim()] : [];
       const body = {
         title: form.title.trim(),
         description: form.description.trim(),
         categoryId: Number(form.categoryId),
         areaId: form.areaId ? Number(form.areaId) : null,
+        address: form.addressLine.trim(),
         addressLine: form.addressLine.trim(),
         budgetRef: form.budgetRef ? Number(form.budgetRef) : null,
         biddingDeadlineDays: Number(form.biddingDeadlineDays) || 3,
+        saveAsDraft,
         mediaUrls
       };
 
@@ -115,162 +130,189 @@ export default function CreateRepairRequestPage() {
       }
     } finally {
       setSaving(false);
+      setSavingDraft(false);
     }
   }
 
   const selectedCategory = categories.find((c) => c.id === Number(form.categoryId));
 
   return (
-    <DashboardLayout nav={CUSTOMER_NAV} title="Đăng yêu cầu sửa chữa" description="Mô tả sự cố, chọn loại dịch vụ, chờ thợ báo giá.">
+    <DashboardLayout
+      nav={CUSTOMER_NAV}
+      title="Đăng yêu cầu sửa chữa"
+      description="Kết nối với đội ngũ thợ điện tử uy tín, nhận báo giá cạnh tranh chỉ trong vài phút."
+    >
       {/* Stepper indicator */}
-      <div className="mb-8 flex items-center gap-2" aria-label="Tiến trình">
-        {[1, 2, 3].map((s) => (
-          <div key={s} className="flex items-center gap-2">
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                s === step
-                  ? 'bg-brand text-white'
-                  : s < step
-                    ? 'bg-brand/20 text-brand-ink'
-                    : 'bg-surface text-ink-soft'
-              }`}
-            >
-              {s < step ? '✓' : s}
+      <div className="mb-8 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm" aria-label="Tiến trình">
+        <div className="flex items-center justify-between sm:justify-start sm:gap-6">
+          {[
+            { num: 1, label: 'Chọn thiết bị' },
+            { num: 2, label: 'Mô tả sự cố & Ảnh' },
+            { num: 3, label: 'Xác nhận & Gửi' }
+          ].map(({ num, label }) => (
+            <div key={num} className="flex items-center gap-2 sm:gap-3">
+              <div
+                className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-semibold transition-all duration-300 ${
+                  num === step
+                    ? 'bg-brand text-white shadow-sm ring-4 ring-blue-100'
+                    : num < step
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-slate-100 text-slate-500 border border-slate-200'
+                }`}
+              >
+                {num < step ? '✓' : num}
+              </div>
+              <span className={`text-sm font-semibold hidden sm:inline ${num === step ? 'text-slate-900' : 'text-slate-500'}`}>
+                {label}
+              </span>
+              {num < 3 && <span className="text-slate-300 hidden sm:inline">→</span>}
             </div>
-            <span className={`text-sm ${s === step ? 'font-medium text-ink' : 'text-ink-soft'}`}>
-              {s === 1 ? 'Chọn dịch vụ' : s === 2 ? 'Mô tả sự cố' : 'Xác nhận'}
-            </span>
-            {s < 3 && <div className="mx-2 h-px w-8 bg-line sm:w-16" />}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      {saveError && (
-        <div className="mb-5">
-          <Alert tone="error">{saveError}</Alert>
-        </div>
-      )}
+      {saveError && <div className="mb-6"><Alert tone="error">{saveError}</Alert></div>}
 
-      {/* Step 1: Chọn danh mục */}
+      {/* Step 1: Chọn loại thiết bị */}
       {step === 1 && (
-        <Card title="Chọn loại dịch vụ" description="Chọn nhóm việc gần nhất với thứ đang hỏng.">
-          <div className="space-y-4">
-            {errors.categoryId && <Alert tone="error">{errors.categoryId}</Alert>}
-            <div className="grid gap-3 sm:grid-cols-2">
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => update('categoryId', String(cat.id))}
-                  className={`flex flex-col gap-1 rounded-xl border-2 p-4 text-left transition-colors ${
-                    form.categoryId === String(cat.id)
-                      ? 'border-brand bg-brand/5'
-                      : 'border-line hover:border-brand/50'
-                  }`}
-                >
-                  <span className="font-medium">{cat.name}</span>
-                  {cat.description && (
-                    <span className="text-sm text-ink-soft">{cat.description}</span>
-                  )}
-                </button>
-              ))}
+        <Card
+          title="Chọn loại thiết bị cần sửa chữa"
+          description="FixLink chuyên trị mọi sự cố thiết bị điện tử, công nghệ và điện gia dụng."
+        >
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+              {categories.map((cat) => {
+                const isSelected = form.categoryId === String(cat.id);
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => update('categoryId', String(cat.id))}
+                    className={`flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl border text-center transition-all duration-200 ${
+                      isSelected
+                        ? 'border-brand bg-blue-50/60 ring-2 ring-brand/30 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 bg-white shadow-xs'
+                    }`}
+                  >
+                    <span className="text-3xl sm:text-4xl mb-2">{getCategoryIcon(cat.name)}</span>
+                    <span className={`text-sm font-semibold ${isSelected ? 'text-brand' : 'text-slate-800'}`}>
+                      {cat.name}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="mt-4">
-              <label className="mb-1 block text-sm font-medium">Khu vực (không bắt buộc)</label>
-              <select
-                value={form.areaId}
-                onChange={(e) => update('areaId', e.target.value)}
-                className="min-h-[44px] w-full rounded-lg border border-line bg-card px-3 text-sm"
-              >
-                <option value="">— Chọn khu vực —</option>
-                {areas.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} — {a.city}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {errors.categoryId && (
+              <p className="text-sm font-medium text-rose-600">{errors.categoryId}</p>
+            )}
 
-            <div className="flex justify-end pt-2">
-              <Button onClick={goNext}>Tiếp theo</Button>
+            <div className="flex justify-end pt-4">
+              <Button onClick={goNext}>
+                Tiếp tục: Mô tả sự cố →
+              </Button>
             </div>
           </div>
         </Card>
       )}
 
-      {/* Step 2: Mô tả sự cố */}
+      {/* Step 2: Mô tả sự cố & Ảnh */}
       {step === 2 && (
         <Card
-          title="Mô tả sự cố"
-          description={
-            selectedCategory
-              ? `Danh mục: ${selectedCategory.name}`
-              : undefined
-          }
+          title={`Mô tả sự cố thiết bị ${selectedCategory?.name ? `(${selectedCategory.name})` : ''}`}
+          description="Cung cấp thông tin chi tiết giúp thợ chẩn đoán chính xác và đưa ra mức giá tốt nhất."
         >
           <div className="space-y-5">
             <TextField
-              label="Tiêu đề"
-              name="title"
+              label="Tiêu đề yêu cầu"
               required
-              placeholder="VD: Máy lạnh không lạnh"
+              placeholder="VD: Máy lạnh Daikin không mát, quạt kêu to"
               value={form.title}
               error={errors.title}
               onChange={(e) => update('title', e.target.value)}
             />
+
             <TextArea
-              label="Mô tả chi tiết"
-              name="description"
-              rows={4}
+              label="Mô tả chi tiết sự cố"
               required
-              placeholder="Mô tả biểu hiện hỏng, đã thử gì chưa..."
+              rows={4}
+              placeholder="Mô tả hiện trạng: máy bị lỗi gì, xuất hiện từ khi nào, các dấu hiệu bất thường..."
               value={form.description}
               error={errors.description}
               onChange={(e) => update('description', e.target.value)}
             />
-            <TextField
-              label="Địa chỉ"
-              name="addressLine"
-              required
-              placeholder="123 Nguyễn Văn Trỗi, P.12, Q.Phú Nhuận"
-              value={form.addressLine}
-              error={errors.addressLine}
-              onChange={(e) => update('addressLine', e.target.value)}
-            />
-            <div className="grid gap-5 sm:grid-cols-2">
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <TextField
-                label="Ngân sách tham khảo (VNĐ)"
-                name="budgetRef"
+                label="Địa chỉ cụ thể"
+                required
+                placeholder="Số nhà, tên đường, phường..."
+                value={form.addressLine}
+                error={errors.addressLine}
+                onChange={(e) => update('addressLine', e.target.value)}
+              />
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Khu vực (Quận/Huyện)</label>
+                <select
+                  value={form.areaId}
+                  onChange={(e) => update('areaId', e.target.value)}
+                  className="min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-xs focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+                >
+                  <option value="">Toàn khu vực (Không chỉ định)</option>
+                  {areas.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} ({a.city})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <TextField
+                label="Ngân sách dự kiến (VND)"
                 type="number"
                 min={0}
-                placeholder="500000"
+                placeholder="VD: 500000"
+                hint="Để trống nếu bạn muốn thợ tự đề xuất báo giá"
                 value={form.budgetRef}
                 onChange={(e) => update('budgetRef', e.target.value)}
               />
               <TextField
-                label="Số ngày nhận báo giá"
-                name="biddingDeadlineDays"
+                label="Thời hạn nhận báo giá (Ngày)"
                 type="number"
                 min={1}
                 max={7}
                 value={form.biddingDeadlineDays}
+                hint="Thời gian tối đa để các thợ gửi báo giá (1-7 ngày)"
                 onChange={(e) => update('biddingDeadlineDays', e.target.value)}
               />
             </div>
-            <ImageUploadField
-              label="Hình ảnh sự cố"
-              folder="repair-requests"
-              value={form.mediaUrl}
-              hint="Chụp rõ chỗ hỏng để thợ báo giá chính xác hơn. Tối đa 5 MB."
-              onChange={(url) => update('mediaUrl', url)}
-            />
 
-            <div className="flex justify-between pt-2">
+            {/* RC-30 & RC-8: Ảnh đính kèm Firebase Storage */}
+            <div className="pt-2 border-t border-slate-100">
+              <MultiImageUploadField
+                label="Hình ảnh hiện trường thiết bị (Tối đa 6 ảnh)"
+                value={mediaUrls}
+                onChange={setMediaUrls}
+                maxFiles={6}
+                hint="Chụp ảnh ngoại quan, tem máy, mã lỗi màn hình hoặc hiện trường hỏng hóc để thợ chẩn đoán từ xa."
+              />
+            </div>
+
+            <div className="flex justify-between items-center pt-4">
               <Button variant="secondary" onClick={() => setStep(1)}>
-                Quay lại
+                ← Đổi loại thiết bị
               </Button>
-              <Button onClick={goNext}>Tiếp theo</Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" loading={savingDraft} onClick={() => submitRequest(true)}>
+                  💾 Lưu bản nháp
+                </Button>
+                <Button onClick={goNext}>
+                  Kiểm tra thông tin →
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
@@ -278,49 +320,97 @@ export default function CreateRepairRequestPage() {
 
       {/* Step 3: Xác nhận */}
       {step === 3 && (
-        <Card title="Xác nhận yêu cầu" description="Kiểm tra lại trước khi gửi.">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <dl className="divide-y divide-line">
-              <Row label="Loại dịch vụ" value={selectedCategory?.name ?? '—'} />
-              <Row
-                label="Khu vực"
-                value={
-                  form.areaId
-                    ? areas.find((a) => a.id === Number(form.areaId))?.name ?? '—'
-                    : 'Không chọn'
-                }
-              />
-              <Row label="Tiêu đề" value={form.title} />
-              <Row label="Mô tả" value={form.description} />
-              <Row label="Địa chỉ" value={form.addressLine} />
-              <Row
-                label="Ngân sách"
-                value={form.budgetRef ? formatCurrency(Number(form.budgetRef)) : 'Không giới hạn'}
-              />
-              <Row label="Nhận báo giá trong" value={`${form.biddingDeadlineDays} ngày`} />
-              {form.mediaUrl && <Row label="Ảnh đính kèm" value="Đã tải 1 ảnh" />}
-            </dl>
+        <Card
+          title="Xác nhận thông tin yêu cầu"
+          description="Kiểm tra lại lần cuối trước khi phát sóng tới cộng đồng thợ kỹ thuật."
+        >
+          <div className="space-y-6">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+              <dl className="divide-y divide-slate-100">
+                <Row label="Loại thiết bị" value={selectedCategory?.name ?? '—'} highlight />
+                <Row
+                  label="Khu vực"
+                  value={
+                    form.areaId
+                      ? areas.find((a) => a.id === Number(form.areaId))?.name ?? '—'
+                      : 'Toàn khu vực (Không chỉ định)'
+                  }
+                />
+                <Row label="Tiêu đề yêu cầu" value={form.title} highlight />
+                <Row label="Mô tả sự cố" value={form.description} />
+                <Row label="Địa chỉ" value={form.addressLine} />
+                <Row
+                  label="Ngân sách dự kiến"
+                  value={form.budgetRef ? formatCurrency(Number(form.budgetRef)) : 'Thợ tự đề xuất báo giá'}
+                  accent={Boolean(form.budgetRef)}
+                />
+                <Row label="Thời hạn nhận giá" value={`${form.biddingDeadlineDays} ngày`} />
 
-            <div className="flex justify-between pt-4">
-              <Button variant="secondary" onClick={() => setStep(2)}>
-                Quay lại sửa
-              </Button>
-              <Button type="submit" loading={saving}>
-                {saving ? 'Đang gửi...' : 'Gửi yêu cầu'}
-              </Button>
+                {mediaUrls.length > 0 && (
+                  <div className="flex flex-col gap-2 p-4 sm:flex-row sm:gap-6">
+                    <dt className="w-44 shrink-0 text-sm font-semibold text-slate-500">
+                      Hình ảnh đính kèm ({mediaUrls.length})
+                    </dt>
+                    <dd className="flex flex-wrap gap-2">
+                      {mediaUrls.map((url, idx) => (
+                        <img
+                          key={idx}
+                          src={url}
+                          alt={`Ảnh đính kèm ${idx + 1}`}
+                          className="h-20 w-20 rounded-xl object-cover border border-slate-200 shadow-xs"
+                        />
+                      ))}
+                    </dd>
+                  </div>
+                )}
+              </dl>
             </div>
-          </form>
+
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-blue-900 shadow-xs">
+              💡 <strong>Lưu ý:</strong> Sau khi đăng, yêu cầu của bạn sẽ được gửi tới các thợ phù hợp. Bạn có thể chọn <em>Lưu bản nháp</em> để tiếp tục hoàn thiện sau, hoặc <em>Phát sóng ngay</em> để nhận báo giá minh bạch.
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-between gap-3 pt-2">
+              <Button variant="secondary" onClick={() => setStep(2)}>
+                ← Quay lại chỉnh sửa
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" loading={savingDraft} onClick={() => submitRequest(true)}>
+                  💾 Lưu bản nháp
+                </Button>
+                <Button loading={saving} onClick={() => submitRequest(false)}>
+                  {saving ? 'Đang phát sóng yêu cầu...' : '🚀 Phát sóng yêu cầu sửa chữa'}
+                </Button>
+              </div>
+            </div>
+          </div>
         </Card>
       )}
     </DashboardLayout>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+  highlight = false,
+  accent = false
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+  accent?: boolean;
+}) {
   return (
-    <div className="flex flex-col gap-1 py-3 sm:flex-row sm:gap-4">
-      <dt className="w-40 shrink-0 text-sm text-ink-soft">{label}</dt>
-      <dd className="text-sm">{value}</dd>
+    <div className="flex flex-col gap-1 p-4 sm:flex-row sm:gap-6">
+      <dt className="w-44 shrink-0 text-sm font-semibold text-slate-500">{label}</dt>
+      <dd
+        className={`text-sm ${
+          accent ? 'font-bold text-brand' : highlight ? 'font-bold text-slate-900' : 'text-slate-700'
+        }`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

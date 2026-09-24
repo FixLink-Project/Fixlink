@@ -272,22 +272,31 @@ ALTER TABLE repair_requests
     FOREIGN KEY (active_deal_id) REFERENCES deal_sessions(id) ON DELETE SET NULL;
 
 -- ============================================================
--- 13. APPOINTMENTS - Lịch hẹn
+-- 13. APPOINTMENTS - Lịch hẹn (Khảo sát, Sửa chữa, Bảo hành)
+-- Chuẩn hóa 100% theo database-erd.jpg (ERD v2.0)
 -- ============================================================
 CREATE TABLE appointments (
     id                  BIGSERIAL       PRIMARY KEY,
     repair_request_id   BIGINT          NOT NULL REFERENCES repair_requests(id),
-    customer_id         BIGINT          NOT NULL REFERENCES customer_profiles(user_id),
     technician_id       BIGINT          NOT NULL REFERENCES technician_profiles(user_id),
+    customer_id         BIGINT          NOT NULL REFERENCES customer_profiles(user_id),
+    appointment_type    VARCHAR(30)     NOT NULL DEFAULT 'REPAIR'
+                        CHECK (appointment_type IN ('SURVEY', 'REPAIR', 'WARRANTY')),
     scheduled_date      DATE            NOT NULL,
     scheduled_time      TIME            NOT NULL,
-    status              VARCHAR(20)     NOT NULL DEFAULT 'CONFIRMED'
-                        CHECK (status IN ('CONFIRMED', 'RESCHEDULED', 'CANCELLED')),
+    actual_start_at     TIMESTAMP,
+    actual_end_at       TIMESTAMP,
+    status              VARCHAR(30)     NOT NULL DEFAULT 'CONFIRMED'
+                        CHECK (status IN ('CONFIRMED', 'RESCHEDULED', 'COMPLETED', 'CANCELLED')),
+    address             VARCHAR(255),
     notes               TEXT,
+    cancel_reason       TEXT,
     created_at          TIMESTAMP       NOT NULL DEFAULT NOW(),
     created_by          BIGINT,
     updated_at          TIMESTAMP       NOT NULL DEFAULT NOW(),
-    updated_by          BIGINT
+    updated_by          BIGINT,
+    deleted_at          TIMESTAMP,
+    deleted_by          BIGINT
 );
 
 CREATE INDEX idx_appointments_request ON appointments(repair_request_id);

@@ -17,13 +17,13 @@ interface LoginLocationState {
   username?: string;
   justRegistered?: boolean;
   passwordReset?: boolean;
+  from?: string;
 }
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
-  // Người vừa đăng ký xong được điền sẵn tên tài khoản.
-  const { username: prefilled, justRegistered, passwordReset } =
+  const { username: prefilled, justRegistered, passwordReset, from } =
     (useLocation().state as LoginLocationState | null) ?? {};
 
   const [username, setUsername] = useState(prefilled ?? '');
@@ -33,7 +33,6 @@ export default function LoginPage() {
   const [lockedSeconds, setLockedSeconds] = useState(0);
   const timerRef = useRef<number | null>(null);
 
-  // Đếm ngược thời gian tài khoản bị tạm khoá do nhập sai nhiều lần.
   useEffect(() => {
     if (lockedSeconds <= 0) return;
     timerRef.current = window.setInterval(() => {
@@ -54,7 +53,8 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const user = await signIn(username.trim(), password);
-      navigate(HOME_BY_ROLE[user.role] ?? '/', { replace: true });
+      const destination = from || (HOME_BY_ROLE[user.role] ?? '/');
+      navigate(destination, { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.statusCode === 429) {
         const remaining = err.remainingSeconds;
@@ -79,15 +79,15 @@ export default function LoginPage() {
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Link
               to="/dang-ky"
-              className="flex min-h-[44px] flex-1 items-center justify-center rounded-lg border border-line bg-card px-4 text-sm font-medium hover:bg-surface"
+              className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-xs transition-all duration-200 hover:border-brand hover:text-brand hover:bg-blue-50/50"
             >
-              Đăng ký khách hàng
+              👤 Đăng ký khách hàng
             </Link>
             <Link
               to="/dang-ky-tho"
-              className="flex min-h-[44px] flex-1 items-center justify-center rounded-lg border border-line bg-card px-4 text-sm font-medium hover:bg-surface"
+              className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-xs transition-all duration-200 hover:border-brand hover:text-brand hover:bg-blue-50/50"
             >
-              Đăng ký làm thợ
+              🔧 Đăng ký làm thợ
             </Link>
           </div>
         </>
@@ -142,7 +142,7 @@ export default function LoginPage() {
         <div className="flex justify-end">
           <Link
             to="/quen-mat-khau"
-            className="rounded-lg py-1 text-sm text-brand hover:text-brand-strong hover:underline"
+            className="rounded-lg py-1 text-sm text-brand-glow transition-colors hover:text-brand hover:underline"
           >
             Quên mật khẩu?
           </Link>

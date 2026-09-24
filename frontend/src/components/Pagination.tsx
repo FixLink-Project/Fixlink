@@ -7,6 +7,10 @@ interface PaginationProps {
   disabled?: boolean;
   /** Danh từ số nhiều cho dòng đếm, ví dụ "người dùng", "danh mục". */
   itemNoun?: string;
+  /** Cho phép chọn số lượng mục hiển thị mỗi trang. */
+  pageSize?: number;
+  onPageSizeChange?: (size: number) => void;
+  pageSizeOptions?: number[];
 }
 
 /**
@@ -44,38 +48,66 @@ export default function Pagination({
   meta,
   onPageChange,
   disabled = false,
-  itemNoun = 'mục'
+  itemNoun = 'mục',
+  pageSize,
+  onPageSizeChange,
+  pageSizeOptions = [5, 10, 20]
 }: PaginationProps) {
   const { currentPage, limit, totalItems, totalPages, hasNext, hasPrevious } = meta;
 
-  // Một trang thì không cần thanh điều hướng, nhưng vẫn cho biết tổng số.
-  const showControls = totalPages > 1;
+  // Luôn hiển thị thanh điều hướng trang khi có dữ liệu
+  const showControls = totalPages >= 1;
 
   const from = totalItems === 0 ? 0 : (currentPage - 1) * limit + 1;
   const to = Math.min(currentPage * limit, totalItems);
 
+  const btnBase =
+    'flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl border px-3 text-sm transition-all duration-200 disabled:cursor-not-allowed';
+
   return (
     <nav
       aria-label="Phân trang"
-      className="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col gap-3 border-t border-slate-200/80 pt-4 sm:flex-row sm:items-center sm:justify-between"
     >
-      <p className="text-sm text-ink-soft">
-        {totalItems === 0
-          ? `Không có ${itemNoun} nào`
-          : `Hiển thị ${from}–${to} trong ${totalItems} ${itemNoun}`}
-      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-slate-500">
+          {totalItems === 0
+            ? `Không có ${itemNoun} nào`
+            : `Hiển thị ${from}–${to} trong ${totalItems} ${itemNoun}`}
+        </p>
+
+        {onPageSizeChange && (
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <span>•</span>
+            <label htmlFor="page-size-select" className="sr-only">Số lượng mỗi trang</label>
+            <select
+              id="page-size-select"
+              value={pageSize ?? limit}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+              disabled={disabled}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:border-brand focus:outline-none focus:ring-1 focus:ring-brand shadow-2xs transition-colors"
+            >
+              {pageSizeOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt} / trang
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
 
       {showControls && (
-        <ul className="flex flex-wrap items-center gap-1">
+        <ul className="flex flex-wrap items-center gap-1.5">
           <li>
             <button
               type="button"
               onClick={() => onPageChange(currentPage - 1)}
               disabled={disabled || !hasPrevious}
               aria-label="Trang trước"
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-line bg-card px-3 text-sm transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-card"
+              className={`${btnBase} border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white shadow-xs`}
             >
-              Trước
+              ←
             </button>
           </li>
 
@@ -84,7 +116,7 @@ export default function Pagination({
               <li
                 key={`gap-${index}`}
                 aria-hidden="true"
-                className="flex min-h-[44px] items-center px-1 text-ink-soft"
+                className="flex min-h-[40px] items-center px-2 text-slate-400 font-bold"
               >
                 …
               </li>
@@ -96,10 +128,10 @@ export default function Pagination({
                   disabled={disabled}
                   aria-label={`Trang ${page}`}
                   aria-current={page === currentPage ? 'page' : undefined}
-                  className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border px-3 text-sm transition-colors disabled:cursor-not-allowed ${
+                  className={`${btnBase} disabled:cursor-not-allowed ${
                     page === currentPage
-                      ? 'border-brand bg-brand text-white'
-                      : 'border-line bg-card hover:bg-surface'
+                      ? 'border-brand bg-brand text-white shadow-xs font-bold'
+                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs font-semibold'
                   }`}
                 >
                   {page}
@@ -114,9 +146,9 @@ export default function Pagination({
               onClick={() => onPageChange(currentPage + 1)}
               disabled={disabled || !hasNext}
               aria-label="Trang sau"
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-line bg-card px-3 text-sm transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-card"
+              className={`${btnBase} border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white shadow-xs`}
             >
-              Sau
+              →
             </button>
           </li>
         </ul>

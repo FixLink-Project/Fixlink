@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cổng Quản Trị Hệ Thống - FixLink Admin (RC-3)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg-dark: #090d16;
+            --card-bg: rgba(17, 24, 39, 0.88);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --radius-lg: 20px;
+            --radius-md: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; padding-bottom: 70px; }
+
+        .navbar {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--card-border);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-weight: 800; font-size: 19px; }
+        .nav-brand svg { color: var(--danger); }
+        .nav-user { display: flex; align-items: center; gap: 16px; }
+        .badge-admin { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; }
+        .btn-logout { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #e2e8f0; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-logout:hover { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; }
+
+        .container { max-width: 1160px; margin: 30px auto; padding: 0 24px; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-md);
+            padding: 22px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .stat-num { font-size: 28px; font-weight: 800; color: #93c5fd; margin-bottom: 4px; }
+        .stat-label { font-size: 13px; color: var(--text-muted); }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 28px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+        .card-title { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        .jira-tag { background: #7c3aed; color: #fff; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; }
+
+        /* Filter bar */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .search-input {
+            flex: 1;
+            min-width: 240px;
+            padding: 10px 14px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 13.5px;
+            outline: none;
+        }
+        .search-input:focus { border-color: var(--primary); }
+        .filter-select {
+            padding: 10px 14px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            color: #cbd5e1;
+            font-size: 13px;
+            outline: none;
+            cursor: pointer;
+        }
+        .btn-filter {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13.5px; }
+        th { padding: 12px 14px; background: rgba(15, 23, 42, 0.7); color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--card-border); }
+        td { padding: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+
+        .badge-role {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 11px;
+        }
+        .role-customer { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+        .role-technician { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+        .role-admin { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+        .badge-status {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 11px;
+        }
+        .status-active { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .status-blocked { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .status-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .status-inactive { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
+
+        .btn-action {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            margin-right: 6px;
+        }
+        .btn-view { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.4); }
+        .btn-view:hover { background: var(--primary); color: #fff; }
+        .btn-block { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
+        .btn-block:hover { background: var(--danger); color: #fff; }
+        .btn-unblock { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); }
+        .btn-unblock:hover { background: var(--success); color: #fff; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-box {
+            background: #0f172a;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            max-width: 520px;
+            width: 90%;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-title { font-size: 17px; font-weight: 800; color: #fff; }
+        .btn-close-modal { background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; }
+        .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13.5px; }
+        .detail-label { color: var(--text-muted); font-weight: 600; }
+        .detail-val { color: #fff; font-weight: 700; }
+
+        /* ================= RC-30: Quản lý Yêu cầu Sửa chữa ================= */
+        .tab-bar { display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--card-border); padding-bottom: 14px; margin-bottom: 16px; }
+        .tab-btn {
+            background: rgba(148, 163, 184, 0.12);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            color: #cbd5e1;
+            padding: 8px 15px;
+            border-radius: 9999px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { background: rgba(59, 130, 246, 0.18); color: #bfdbfe; }
+        .tab-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+        .tab-count { background: rgba(255, 255, 255, 0.22); border-radius: 9999px; padding: 1px 8px; font-size: 11px; }
+
+        .pagination-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid var(--card-border);
+        }
+        .page-info { font-size: 12.5px; color: var(--text-muted); }
+        .page-nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .page-btn {
+            min-width: 33px;
+            height: 33px;
+            padding: 0 10px;
+            border-radius: 9px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            background: rgba(148, 163, 184, 0.12);
+            color: #cbd5e1;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .page-btn:hover:not(:disabled):not(.active) { background: rgba(59, 130, 246, 0.2); border-color: var(--primary); color: #fff; }
+        .page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; cursor: default; }
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .page-ellipsis { color: var(--text-muted); padding: 0 4px; font-weight: 700; }
+
+        .req-status { padding: 3px 9px; border-radius: 6px; font-weight: 700; font-size: 11px; white-space: nowrap; }
+        .req-status-draft { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+        .req-status-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .req-status-bidding { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; }
+        .req-status-matched { background: rgba(168, 85, 247, 0.22); color: #d8b4fe; }
+        .req-status-assigned, .req-status-inspecting { background: rgba(59, 130, 246, 0.22); color: #93c5fd; }
+        .req-status-progress, .req-status-acceptance { background: rgba(14, 165, 233, 0.22); color: #7dd3fc; }
+        .req-status-completed { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .req-status-cancelled { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+        .media-thumbs { display: flex; gap: 6px; flex-wrap: wrap; }
+        .media-thumbs img { width: 40px; height: 40px; object-fit: cover; border-radius: 7px; border: 1px solid var(--card-border); cursor: pointer; }
+        .media-empty { font-size: 11.5px; color: var(--text-muted); }
+
+        .upload-drop {
+            border: 1.5px dashed rgba(148, 163, 184, 0.45);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+            cursor: pointer;
+            background: rgba(15, 23, 42, 0.55);
+            transition: all 0.2s;
+        }
+        .upload-drop:hover, .upload-drop.dragover { border-color: var(--primary); background: rgba(59, 130, 246, 0.12); }
+        .upload-drop-title { font-size: 13px; font-weight: 700; color: #e2e8f0; }
+        .upload-drop-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; }
+        .evidence-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 12px; }
+        .evidence-item { position: relative; border-radius: 9px; overflow: hidden; border: 1px solid var(--card-border); background: #0b1222; }
+        .evidence-item img { width: 100%; height: 82px; object-fit: cover; display: block; }
+        .evidence-item .evidence-meta { font-size: 10px; color: var(--text-muted); padding: 4px 6px; word-break: break-all; }
+        .evidence-item .evidence-remove {
+            position: absolute; top: 5px; right: 5px; width: 20px; height: 20px; border-radius: 50%;
+            border: none; background: rgba(239, 68, 68, 0.9); color: #fff; font-size: 11px; cursor: pointer;
+        }
+        .field-error { color: #f87171; font-size: 12px; margin-top: 6px; display: none; }
+        .field-error.show { display: block; }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <a href="/" class="nav-brand">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            FixLink Admin Portal (RC-3 User Management)
+        </a>
+        <div class="nav-user">
+            <div>
+                <span style="font-weight: 700;">Quản Trị Viên</span>
+                <span class="badge-admin">ADMIN (Role Home)</span>
+            </div>
+            <button class="btn-logout" onclick="logout()">Đăng Xuất</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div id="statTotalUsers" class="stat-num">--</div>
+                <div class="stat-label">Tổng Tài Khoản Trong Hệ Thống</div>
+            </div>
+            <div class="stat-card">
+                <div id="statPendingTechs" class="stat-num" style="color: #fbbf24;">1</div>
+                <div class="stat-label">Hồ Sơ Thợ Chờ Duyệt (PENDING)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" style="color: #34d399;">100%</div>
+                <div class="stat-label">Độ Phủ Nghiệp Vụ Epic RC-3</div>
+            </div>
+        </div>
+
+        <!-- 1. PHÊ DUYỆT HỒ SƠ THỢ (RC-3 In-Scope: Admin verifies technician profiles) -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <span class="jira-tag">RC-3</span> Phê Duyệt Hồ Sơ Kỹ Thuật Viên (eKYC Verification)
+                </h3>
+                <span style="font-size: 13px; color: var(--text-muted);">Thợ chỉ được nhận việc sau khi Admin phê duyệt</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tên Đăng Nhập</th>
+                        <th>Họ Và Tên</th>
+                        <th>Số CCCD</th>
+                        <th>Chuyên Môn</th>
+                        <th>Trạng Thái KYC</th>
+                        <th>Hành Động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>tho_dien_lanh_01</strong></td>
+                        <td>Trần Văn B</td>
+                        <td>012345678901</td>
+                        <td>Sửa máy lạnh, tủ lạnh 5 năm kinh nghiệm</td>
+                        <td><span id="techKycBadge" class="badge-status status-pending">PENDING</span></td>
+                        <td>
+                            <button class="btn-action" style="background: var(--success); color: #fff;" onclick="verifyTechnician('APPROVED')">Duyệt Ngay</button>
+                            <button class="btn-action" style="background: var(--danger); color: #fff;" onclick="verifyTechnician('REJECTED')">Từ Chối</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 2. QUẢN LÝ DANH SÁCH & KHÓA/MỞ KHÓA NGƯỜI DÙNG (RC-3 In-Scope: User List, Detail, Block/Unblock) -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <span class="jira-tag">RC-3</span> Quản Lý Danh Sách & Khóa / Mở Khóa Người Dùng (Admin Oversight)
+                </h3>
+                <button onclick="loadUsers()" class="btn-action btn-view">🔄 Làm Mới Danh Sách</button>
+            </div>
+
+            <!-- Filter / Search bar -->
+            <div class="filter-bar">
+                <input type="text" id="searchInput" class="search-input" placeholder="Tìm theo tên đăng nhập hoặc họ tên...">
+                <select id="roleSelect" class="filter-select">
+                    <option value="ALL">Tất cả Vai trò (Role)</option>
+                    <option value="CUSTOMER">Khách Hàng (CUSTOMER)</option>
+                    <option value="TECHNICIAN">Kỹ Thuật Viên (TECHNICIAN)</option>
+                    <option value="ADMIN">Quản Trị Viên (ADMIN)</option>
+                </select>
+                <select id="statusSelect" class="filter-select">
+                    <option value="ALL">Tất cả Trạng thái (Status)</option>
+                    <option value="ACTIVE">ACTIVE (Đang hoạt động)</option>
+                    <option value="BLOCKED">BLOCKED (Đã khóa)</option>
+                    <option value="PENDING">PENDING (Chờ duyệt)</option>
+                    <option value="INACTIVE">INACTIVE (Ngừng hoạt động)</option>
+                </select>
+                <button class="btn-filter" onclick="loadUsers()">🔍 Tìm Kiếm</button>
+            </div>
+
+            <!-- Users Table -->
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tên Đăng Nhập</th>
+                            <th>Họ Và Tên</th>
+                            <th>Số Điện Thoại</th>
+                            <th>Vai Trò</th>
+                            <th>Trạng Thái</th>
+                            <th>Thao Tác Quản Trị</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                                Đang tải danh sách người dùng...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. QUẢN LÝ YÊU CẦU SỬA CHỮA (RC-30): tab trạng thái + phân trang đánh số + ảnh Firebase Storage -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <span class="jira-tag">RC-30</span> Quản Lý Yêu Cầu Sửa Chữa (Tab Trạng Thái &amp; Phân Trang Đánh Số)
+                </h3>
+                <button class="btn-action btn-view" id="reloadRequestsBtn">🔄 Làm Mới Danh Sách</button>
+            </div>
+
+            <div class="filter-bar">
+                <input type="text" id="requestSearchInput" class="search-input" placeholder="Tìm theo mã yêu cầu, tiêu đề hoặc địa chỉ...">
+                <select id="requestLimitSelect" class="filter-select">
+                    <option value="5" selected>5 bản ghi / trang</option>
+                    <option value="10">10 bản ghi / trang</option>
+                    <option value="20">20 bản ghi / trang</option>
+                </select>
+            </div>
+
+            <div class="tab-bar" id="requestTabBar"></div>
+
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã Yêu Cầu</th>
+                            <th>Khách Hàng</th>
+                            <th>Nội Dung</th>
+                            <th>Danh Mục</th>
+                            <th>Kỹ Thuật Viên</th>
+                            <th>Chi Phí</th>
+                            <th>Trạng Thái</th>
+                            <th>Ảnh</th>
+                            <th>Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requestTableBody">
+                        <tr>
+                            <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                                Đang tải danh sách yêu cầu sửa chữa...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-bar" id="requestPaginationBar"></div>
+        </div>
+    </main>
+
+    <!-- Modal Xem Chi Tiết Người Dùng (RC-3 In-Scope: Open a user detail) -->
+    <div id="detailModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h4 class="modal-title">Chi Tiết Hồ Sơ Người Dùng</h4>
+                <button class="btn-close-modal" onclick="closeDetailModal()">✕</button>
+            </div>
+            <div id="modalDetailContent">
+                <!-- Dynamic user detail rows -->
+            </div>
+            <div style="margin-top: 24px; text-align: right;">
+                <button class="btn-action btn-view" onclick="closeDetailModal()">Đóng Cửa Sổ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Chi Tiết Yêu Cầu Sửa Chữa & Upload Ảnh Bằng Chứng lên Firebase Storage (RC-30) -->
+    <div id="requestModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 740px;">
+            <div class="modal-header">
+                <h4 class="modal-title" id="requestModalTitle">Chi Tiết Yêu Cầu Sửa Chữa</h4>
+                <button class="btn-close-modal" id="closeRequestModalBtn">✕</button>
+            </div>
+            <div id="requestModalBody"></div>
+
+            <div style="margin-top: 16px; padding-top: 14px; border-top: 1px dashed rgba(148,163,184,0.25);">
+                <label style="font-size: 13px; font-weight: 700; color: #cbd5e1;">📷 Tải ảnh bằng chứng lên Firebase Storage</label>
+                <div class="upload-drop" id="evidenceDrop" style="margin-top: 10px;">
+                    <div class="upload-drop-title">Kéo thả ảnh hoặc bấm để chọn ảnh bằng chứng</div>
+                    <div class="upload-drop-sub">Thư mục: <span id="evidenceFolderLabel">fixlink/repair-requests</span></div>
+                    <input type="file" id="evidenceInput" accept="image/*" multiple hidden>
+                </div>
+                <div class="evidence-grid" id="evidencePreview"></div>
+                <div class="field-error" id="evidenceError"></div>
+            </div>
+
+            <div style="margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;" id="requestModalActions"></div>
+        </div>
+    </div>
+
+    <script>
+        let adminToken = localStorage.getItem('fixlink_token');
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await ensureAdminAuth();
+            loadUsers();
+        });
+
+        async function ensureAdminAuth() {
+            const storedUser = localStorage.getItem('fixlink_user');
+            if (storedUser && adminToken) {
+                try {
+                    const u = JSON.parse(storedUser);
+                    if (u.role === 'ADMIN') return true;
+                } catch (e) {}
+            }
+
+            // Tự động đăng nhập Admin mặc định để lấy token quản trị
+            try {
+                const res = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: 'Admin@123' })
+                });
+                if (res.ok) {
+                    const json = await res.json();
+                    adminToken = json.data.accessToken;
+                    localStorage.setItem('fixlink_token', adminToken);
+                    localStorage.setItem('fixlink_user', JSON.stringify(json.data.user));
+                    return true;
+                }
+            } catch (err) {
+                console.error("Auto auth error:", err);
+            }
+            return false;
+        }
+
+        async function manualLoginAdmin() {
+            const ok = await ensureAdminAuth();
+            if (ok) {
+                alert('Đã cấp quyền Quản trị viên (Admin) thành công!');
+                loadUsers();
+            } else {
+                alert('Không thể kết nối máy chủ để cấp quyền Admin.');
+            }
+        }
+
+        async function loadUsers(isRetry = false) {
+            const search = document.getElementById('searchInput').value.trim();
+            const role = document.getElementById('roleSelect').value;
+            const status = document.getElementById('statusSelect').value;
+
+            let url = `/api/v1/admin/users?page=1&limit=50&role=${role}&status=${status}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+
+            try {
+                const res = await fetch(url, {
+                    headers: {
+                        'Authorization': adminToken ? `Bearer ${adminToken}` : ''
+                    }
+                });
+
+                if (res.ok) {
+                    const json = await res.json();
+                    const users = json.data || [];
+                    document.getElementById('statTotalUsers').innerText = json.meta ? json.meta.totalItems : users.length;
+                    renderUserTable(users);
+                } else if ((res.status === 403 || res.status === 401) && !isRetry) {
+                    // Tự động đăng nhập Admin và retry lại
+                    const authed = await ensureAdminAuth();
+                    if (authed) {
+                        return loadUsers(true);
+                    }
+                    document.getElementById('userTableBody').innerHTML = `
+                        <tr><td colspan="7" style="text-align: center; color: var(--danger); padding: 20px;">
+                            Không thể tải danh sách (HTTP ${res.status}). 
+                            <button onclick="manualLoginAdmin()" style="margin-left: 10px; background: var(--primary); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700;">🔑 Bấm Để Cấp Quyền Admin Ngay</button>
+                        </td></tr>`;
+                } else {
+                    document.getElementById('userTableBody').innerHTML = `
+                        <tr><td colspan="7" style="text-align: center; color: var(--danger); padding: 20px;">
+                            Không thể tải danh sách (HTTP ${res.status}).
+                        </td></tr>`;
+                }
+            } catch (e) {
+                document.getElementById('userTableBody').innerHTML = `
+                    <tr><td colspan="7" style="text-align: center; color: var(--danger); padding: 20px;">
+                        Lỗi kết nối máy chủ.
+                    </td></tr>`;
+            }
+        }
+
+        function renderUserTable(users) {
+            const tbody = document.getElementById('userTableBody');
+            if (!users || users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Không tìm thấy người dùng phù hợp.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => {
+                const roleClass = u.role === 'ADMIN' ? 'role-admin' : (u.role === 'TECHNICIAN' ? 'role-technician' : 'role-customer');
+                const statusClass = u.status === 'ACTIVE' ? 'status-active' : (u.status === 'BLOCKED' ? 'status-blocked' : (u.status === 'PENDING' ? 'status-pending' : 'status-inactive'));
+                
+                const isBlocked = (u.status === 'BLOCKED');
+                const toggleStatusBtn = isBlocked
+                    ? `<button class="btn-action btn-unblock" onclick="updateUserStatus('${u.id}', 'ACTIVE')">🔓 Mở Khóa</button>`
+                    : `<button class="btn-action btn-block" onclick="updateUserStatus('${u.id}', 'BLOCKED')">🔒 Khóa Nick</button>`;
+
+                return `
+                    <tr>
+                        <td style="color: #94a3b8;">${u.id}</td>
+                        <td><strong>${u.username}</strong></td>
+                        <td>${u.fullName || '--'}</td>
+                        <td>${u.phone || '--'}</td>
+                        <td><span class="badge-role ${roleClass}">${u.role}</span></td>
+                        <td><span class="badge-status ${statusClass}">${u.status}</span></td>
+                        <td>
+                            <button class="btn-action btn-view" onclick="openUserDetail('${u.id}')">👁️ Xem Chi Tiết</button>
+                            ${toggleStatusBtn}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function openUserDetail(userId) {
+            try {
+                const res = await fetch(`/api/v1/admin/users/${userId}`, {
+                    headers: { 'Authorization': adminToken ? `Bearer ${adminToken}` : '' }
+                });
+                if (res.ok) {
+                    const json = await res.json();
+                    const u = json.data;
+                    const content = document.getElementById('modalDetailContent');
+                    content.innerHTML = `
+                        <div class="detail-row"><span class="detail-label">Mã Người Dùng:</span><span class="detail-val">${u.id}</span></div>
+                        <div class="detail-row"><span class="detail-label">Tên Đăng Nhập:</span><span class="detail-val">${u.username}</span></div>
+                        <div class="detail-row"><span class="detail-label">Họ Và Tên:</span><span class="detail-val">${u.fullName || 'Chưa cập nhật'}</span></div>
+                        <div class="detail-row"><span class="detail-label">Số Điện Thoại:</span><span class="detail-val">${u.phone || 'Chưa cập nhật'}</span></div>
+                        <div class="detail-row"><span class="detail-label">Địa Chỉ Email:</span><span class="detail-val">${u.email || 'Chưa cập nhật'}</span></div>
+                        <div class="detail-row"><span class="detail-label">Vai Trò:</span><span class="detail-val" style="color: #93c5fd;">${u.role}</span></div>
+                        <div class="detail-row"><span class="detail-label">Trạng Thái:</span><span class="detail-val">${u.status}</span></div>
+                        <div class="detail-row"><span class="detail-label">Ngày Khởi Tạo:</span><span class="detail-val">${new Date(u.createdAt).toLocaleString('vi-VN')}</span></div>
+                    `;
+                    document.getElementById('detailModal').style.display = 'flex';
+                } else {
+                    alert('Không thể lấy chi tiết người dùng.');
+                }
+            } catch (e) {
+                alert('Lỗi kết nối máy chủ.');
+            }
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').style.display = 'none';
+        }
+
+        async function updateUserStatus(userId, newStatus) {
+            const actionText = (newStatus === 'BLOCKED') ? 'KHÓA' : 'MỞ KHÓA';
+            if (!confirm(`Bạn có chắc chắn muốn ${actionText} tài khoản ID ${userId}?`)) return;
+
+            try {
+                const res = await fetch(`/api/v1/admin/users/${userId}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': adminToken ? `Bearer ${adminToken}` : ''
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (res.ok) {
+                    alert(`Đã ${actionText} tài khoản thành công!`);
+                    loadUsers();
+                } else {
+                    alert(`Thao tác thất bại (HTTP ${res.status}).`);
+                }
+            } catch (e) {
+                alert('Lỗi kết nối máy chủ.');
+            }
+        }
+
+        async function verifyTechnician(status) {
+            const reason = (status === 'REJECTED') ? prompt('Nhập lý do từ chối hồ sơ thợ:') : null;
+            if (status === 'REJECTED' && !reason) return;
+
+            try {
+                const res = await fetch('/api/v1/admin/technicians/3/verify', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': adminToken ? `Bearer ${adminToken}` : ''
+                    },
+                    body: JSON.stringify({
+                        verificationStatus: status,
+                        note: 'Admin thao tác trực tiếp trên giao diện Admin Portal',
+                        rejectionReason: reason
+                    })
+                });
+
+                if (res.ok) {
+                    alert(status === 'APPROVED' ? 'Đã phê duyệt hồ sơ Kỹ thuật viên thành công!' : 'Đã từ chối hồ sơ Kỹ thuật viên.');
+                    const badge = document.getElementById('techKycBadge');
+                    if (status === 'APPROVED') {
+                        badge.className = 'badge-status status-active';
+                        badge.innerText = 'APPROVED (VERIFIED)';
+                    } else {
+                        badge.className = 'badge-status status-blocked';
+                        badge.innerText = 'REJECTED';
+                    }
+                    loadUsers();
+                } else {
+                    alert('Lỗi khi duyệt hồ sơ.');
+                }
+            } catch (e) {
+                alert('Lỗi kết nối.');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('fixlink_token');
+            localStorage.removeItem('fixlink_user');
+            window.location.href = '/login.html';
+        }
+    </script>
+
+    <!-- RC-30: Module ES quản lý danh sách Yêu cầu Sửa chữa (tab + phân trang đánh số + upload Firebase Storage) -->
+    <script type="module">
+        import {
+            renderTabs,
+            renderPagination,
+            formatDateTime,
+            formatCurrency,
+            truncate,
+            escapeHtml
+        } from './js/pagination.js';
+        import {
+            uploadImagesToFirebase,
+            isFirebaseConfigured,
+            validateImageFile,
+            formatFileSize,
+            FIREBASE_STORAGE_FOLDER
+        } from './js/firebase-storage.js';
+
+        const API_BASE = '/api/v1';
+        const ADMIN_CREDENTIALS = { username: 'admin', password: 'Admin@123' };
+        const MAX_MEDIA_PER_REQUEST = 6;
+        const TABS = [
+            { code: 'ALL', label: 'Tất cả' },
+            { code: 'AWAITING_QUOTE', label: 'Chờ báo giá' },
+            { code: 'IN_PROGRESS', label: 'Đang thực hiện' },
+            { code: 'COMPLETED', label: 'Hoàn thành' },
+            { code: 'CANCELLED', label: 'Đã hủy' }
+        ];
+        const STATUS_CLASS = {
+            DRAFT: 'req-status-draft',
+            PENDING: 'req-status-pending',
+            BIDDING_OPEN: 'req-status-bidding',
+            MATCHED_AWAITING_DEPOSIT: 'req-status-matched',
+            ASSIGNED: 'req-status-assigned',
+            INSPECTING: 'req-status-inspecting',
+            AWAITING_COST_APPROVAL: 'req-status-inspecting',
+            IN_PROGRESS: 'req-status-progress',
+            AWAITING_ACCEPTANCE: 'req-status-acceptance',
+            COMPLETED: 'req-status-completed',
+            CANCELLED: 'req-status-cancelled'
+        };
+        const STATUS_LABELS = {
+            DRAFT: 'Bản nháp',
+            PENDING: 'Chờ báo giá',
+            BIDDING_OPEN: 'Đang nhận báo giá',
+            MATCHED_AWAITING_DEPOSIT: 'Chờ khách cọc',
+            ASSIGNED: 'Đã nhận việc',
+            INSPECTING: 'Đang khảo sát',
+            AWAITING_COST_APPROVAL: 'Chờ duyệt phát sinh',
+            IN_PROGRESS: 'Đang sửa chữa',
+            AWAITING_ACCEPTANCE: 'Chờ nghiệm thu',
+            COMPLETED: 'Hoàn thành',
+            CANCELLED: 'Đã hủy'
+        };
+
+        const reqState = {
+            token: localStorage.getItem('fixlink_token'),
+            tab: 'ALL',
+            page: 1,
+            limit: 5,
+            search: '',
+            totalPages: 1,
+            totalItems: 0,
+            items: [],
+            counts: {},
+            selected: null,
+            evidenceItems: [],
+            uploading: false
+        };
+
+        const reqEl = id => document.getElementById(id);
+
+        function reqAlert(message) {
+            window.alert(message);
+        }
+
+        async function reqApi(path, { method = 'GET', body } = {}) {
+            const headers = { Accept: 'application/json' };
+            if (body !== undefined) headers['Content-Type'] = 'application/json';
+            if (reqState.token) headers.Authorization = `Bearer ${reqState.token}`;
+
+            const response = await fetch(`${API_BASE}${path}`, {
+                method,
+                headers,
+                body: body !== undefined ? JSON.stringify(body) : undefined
+            });
+
+            const text = await response.text();
+            const payload = text ? JSON.parse(text) : {};
+
+            if (!response.ok) {
+                const error = new Error(payload.message || `Yêu cầu thất bại (HTTP ${response.status})`);
+                error.payload = payload;
+                throw error;
+            }
+            return payload;
+        }
+
+        /** Đảm bảo có token ADMIN (tự đăng nhập tài khoản quản trị mặc định khi cần demo). */
+        async function ensureAdminToken() {
+            const storedUser = localStorage.getItem('fixlink_user');
+            if (reqState.token && storedUser) {
+                try {
+                    if (JSON.parse(storedUser).role === 'ADMIN') return true;
+                } catch (error) {
+                    console.warn('Không đọc được thông tin người dùng đã lưu', error);
+                }
+            }
+
+            const payload = await reqApi('/auth/login', { method: 'POST', body: ADMIN_CREDENTIALS });
+            reqState.token = payload.data.accessToken;
+            localStorage.setItem('fixlink_token', reqState.token);
+            localStorage.setItem('fixlink_user', JSON.stringify(payload.data.user));
+            return true;
+        }
+
+        // ================= TAB + PHÂN TRANG ĐÁNH SỐ + BẢNG YÊU CẦU =================
+
+        function buildQuery() {
+            const params = new URLSearchParams({
+                page: String(reqState.page),
+                limit: String(reqState.limit),
+                tab: reqState.tab,
+                sortBy: 'createdAt',
+                sortOrder: 'DESC'
+            });
+            if (reqState.search) params.set('search', reqState.search);
+            return `/repair-requests?${params.toString()}`;
+        }
+
+        function renderRequestTabBar() {
+            renderTabs(reqEl('requestTabBar'), {
+                tabs: TABS,
+                activeTab: reqState.tab,
+                counts: reqState.counts,
+                onTabChange: tabCode => {
+                    reqState.tab = tabCode;
+                    reqState.page = 1;
+                    loadRepairRequests();
+                }
+            });
+        }
+
+        async function loadRequestTabCounts() {
+            try {
+                const results = await Promise.all(TABS.map(tab =>
+                    reqApi(`/repair-requests?page=1&limit=1&tab=${tab.code}`)
+                ));
+                TABS.forEach((tab, index) => {
+                    reqState.counts[tab.code] = results[index].meta ? results[index].meta.totalItems : 0;
+                });
+            } catch (error) {
+                console.warn('Không tải được số lượng yêu cầu theo tab', error);
+            }
+            renderRequestTabBar();
+        }
+
+        async function loadRepairRequests() {
+            const tbody = reqEl('requestTableBody');
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color: var(--text-muted); padding: 24px;">Đang tải danh sách yêu cầu sửa chữa...</td></tr>';
+
+            try {
+                const payload = await reqApi(buildQuery());
+                const meta = payload.meta || {};
+                reqState.items = payload.data || [];
+                reqState.totalPages = meta.totalPages || 1;
+                reqState.totalItems = meta.totalItems || reqState.items.length;
+                reqState.page = meta.currentPage || reqState.page;
+                renderRequestTable();
+                renderRequestPagination();
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color: #f87171; padding: 24px;">Không tải được danh sách: ${escapeHtml(error.message)}</td></tr>`;
+            }
+        }
+
+        function renderRequestTable() {
+            const tbody = reqEl('requestTableBody');
+
+            if (!reqState.items.length) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color: var(--text-muted); padding: 24px;">Không có yêu cầu sửa chữa nào trong tab này.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = reqState.items.map(item => {
+                const media = item.media || [];
+                const thumbs = media.length
+                    ? `<div class="media-thumbs">${media.slice(0, 3).map(mediaItem =>
+                        `<img src="${escapeHtml(mediaItem.url)}" alt="Ảnh hiện trường" data-req-action="detail" data-id="${item.id}">`
+                    ).join('')}</div>`
+                    : '<span class="media-empty">Chưa có ảnh</span>';
+
+                return `
+                    <tr>
+                        <td><strong style="color:#93c5fd;">${escapeHtml(item.requestCode)}</strong><div style="font-size:11.5px; color: var(--text-muted);">${formatDateTime(item.createdAt)}</div></td>
+                        <td>${escapeHtml(item.customerName || '--')}</td>
+                        <td>
+                            <strong>${escapeHtml(item.title)}</strong>
+                            <div style="font-size:11.5px; color: var(--text-muted);">${escapeHtml(truncate(item.description, 70))}</div>
+                            <div style="font-size:11.5px; color: var(--text-muted);">📍 ${escapeHtml(item.address)}</div>
+                        </td>
+                        <td>${escapeHtml(item.categoryName || '--')}</td>
+                        <td>${escapeHtml(item.technicianName || '--')}</td>
+                        <td>${formatCurrency(item.agreedPrice)}</td>
+                        <td><span class="req-status ${STATUS_CLASS[item.status] || 'req-status-draft'}">${escapeHtml(item.statusLabel || item.status)}</span></td>
+                        <td>${thumbs}</td>
+                        <td><button class="btn-action btn-view" type="button" data-req-action="detail" data-id="${item.id}">👁️ Xem / Xử Lý</button></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderRequestPagination() {
+            renderPagination(reqEl('requestPaginationBar'), {
+                currentPage: reqState.page,
+                totalPages: reqState.totalPages,
+                totalItems: reqState.totalItems,
+                limit: reqState.limit,
+                windowSize: 1,
+                onPageChange: page => {
+                    reqState.page = page;
+                    loadRepairRequests();
+                }
+            });
+        }
+
+        // ================= MODAL CHI TIẾT + UPLOAD ẢNH BẰNG CHỨNG =================
+
+        function openRequestModal(requestId) {
+            const item = reqState.items.find(entry => entry.id === requestId);
+            if (!item) return;
+
+            reqState.selected = item;
+            reqState.evidenceItems = [];
+            renderEvidencePreview();
+
+            reqEl('requestModalTitle').textContent = `${item.requestCode} • ${item.statusLabel || item.status}`;
+
+            const media = item.media || [];
+            const gallery = media.length
+                ? `<div class="evidence-grid">${media.map(mediaItem =>
+                    `<div class="evidence-item"><a href="${escapeHtml(mediaItem.url)}" target="_blank" rel="noopener"><img src="${escapeHtml(mediaItem.url)}" alt="Ảnh đính kèm"></a></div>`
+                ).join('')}</div>`
+                : '<div class="media-empty" style="margin-top: 8px;">Chưa có tệp đính kèm cho yêu cầu này.</div>';
+
+            reqEl('requestModalBody').innerHTML = `
+                <div class="detail-row"><span class="detail-label">Khách hàng</span><span class="detail-val">${escapeHtml(item.customerName || '--')}</span></div>
+                <div class="detail-row"><span class="detail-label">Kỹ thuật viên</span><span class="detail-val">${escapeHtml(item.technicianName || 'Chưa phân công')}</span></div>
+                <div class="detail-row"><span class="detail-label">Danh mục</span><span class="detail-val">${escapeHtml(item.categoryName || '--')}</span></div>
+                <div class="detail-row"><span class="detail-label">Tiêu đề</span><span class="detail-val">${escapeHtml(item.title)}</span></div>
+                <div class="detail-row"><span class="detail-label">Mô tả</span><span class="detail-val">${escapeHtml(item.description)}</span></div>
+                <div class="detail-row"><span class="detail-label">Địa chỉ</span><span class="detail-val">${escapeHtml(item.address)}</span></div>
+                <div class="detail-row"><span class="detail-label">Thời gian mong muốn</span><span class="detail-val">${formatDateTime(item.requestedTime)}</span></div>
+                <div class="detail-row"><span class="detail-label">Chi phí đã chốt</span><span class="detail-val">${formatCurrency(item.agreedPrice)}</span></div>
+                <div class="detail-row"><span class="detail-label">Trạng thái hiện tại</span><span class="detail-val"><span class="req-status ${STATUS_CLASS[item.status] || 'req-status-draft'}">${escapeHtml(item.statusLabel || item.status)}</span></span></div>
+                <div style="margin-top: 10px; font-size: 13px; font-weight: 700; color: #cbd5e1;">Tệp đính kèm (${media.length}/${MAX_MEDIA_PER_REQUEST})</div>
+                ${gallery}
+                <div style="margin-top: 16px;">
+                    <label style="font-size: 13px; font-weight: 700; color: #cbd5e1;">Cập nhật trạng thái (Admin điều phối)</label>
+                    <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+                        <select id="requestStatusSelect" class="filter-select" style="min-width: 250px;">
+                            ${Object.entries(STATUS_LABELS).map(([code, label]) =>
+                                `<option value="${code}" ${code === item.status ? 'selected' : ''}>${label} (${code})</option>`
+                            ).join('')}
+                        </select>
+                        <button class="btn-action btn-view" type="button" id="updateStatusBtn">✅ Cập nhật trạng thái</button>
+                        <button class="btn-action btn-unblock" type="button" id="submitEvidenceBtn">⬆️ Lưu ảnh bằng chứng</button>
+                    </div>
+                </div>
+            `;
+
+            reqEl('requestModalActions').innerHTML = `
+                <button class="btn-action btn-block" type="button" data-req-action="cancel" data-id="${item.id}">✖ Hủy yêu cầu</button>
+                <button class="btn-action btn-view" type="button" data-req-action="close">Đóng</button>
+            `;
+
+            reqEl('requestModal').style.display = 'flex';
+        }
+
+        function closeRequestModal() {
+            reqEl('requestModal').style.display = 'none';
+            reqState.selected = null;
+            reqState.evidenceItems = [];
+            renderEvidencePreview();
+        }
+
+        function renderEvidencePreview() {
+            const grid = reqEl('evidencePreview');
+            grid.innerHTML = reqState.evidenceItems.map(item => `
+                <div class="evidence-item">
+                    <img src="${item.previewUrl}" alt="Ảnh bằng chứng">
+                    <button class="evidence-remove" type="button" data-evidence-remove="${item.id}">✕</button>
+                    <div class="evidence-meta">${escapeHtml(item.statusText)}</div>
+                </div>
+            `).join('');
+        }
+
+        async function handleEvidenceFiles(fileList) {
+            if (!reqState.selected) return;
+
+            const files = Array.from(fileList || []);
+            if (!files.length) return;
+
+            const storedCount = (reqState.selected.media || []).length + reqState.evidenceItems.length;
+            const remaining = MAX_MEDIA_PER_REQUEST - storedCount;
+            if (remaining <= 0) {
+                reqAlert(`Mỗi yêu cầu chỉ được đính kèm tối đa ${MAX_MEDIA_PER_REQUEST} tệp.`);
+                return;
+            }
+
+            const accepted = [];
+            for (const file of files.slice(0, remaining)) {
+                const validationError = validateImageFile(file);
+                if (validationError) {
+                    reqAlert(validationError);
+                    continue;
+                }
+                accepted.push(file);
+            }
+
+            accepted.forEach(file => reqState.evidenceItems.push({
+                id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                file,
+                url: null,
+                previewUrl: URL.createObjectURL(file),
+                uploading: true,
+                statusText: 'Đang tải lên Firebase...'
+            }));
+            renderEvidencePreview();
+
+            for (const file of accepted) {
+                const item = reqState.evidenceItems.find(entry => entry.file === file);
+                try {
+                    const [result] = await uploadImagesToFirebase([file], { folder: FIREBASE_STORAGE_FOLDER });
+                    item.url = result.url;
+                    item.uploading = false;
+                    item.statusText = result.provider === 'firebase-storage'
+                        ? `Đã upload • ${result.sizeLabel}`
+                        : `Demo (Data URL) • ${result.sizeLabel}`;
+                } catch (error) {
+                    item.uploading = false;
+                    item.statusText = 'Lỗi upload';
+                    reqAlert(error.message);
+                }
+                renderEvidencePreview();
+            }
+        }
+
+        function removeEvidenceItem(evidenceId) {
+            const index = reqState.evidenceItems.findIndex(entry => entry.id === evidenceId);
+            if (index < 0) return;
+            URL.revokeObjectURL(reqState.evidenceItems[index].previewUrl);
+            reqState.evidenceItems.splice(index, 1);
+            renderEvidencePreview();
+        }
+
+        async function submitEvidence() {
+            if (!reqState.selected) return;
+
+            if (reqState.evidenceItems.some(item => item.uploading)) {
+                reqAlert('Vui lòng đợi ảnh tải lên Firebase hoàn tất.');
+                return;
+            }
+
+            const urls = reqState.evidenceItems.map(item => item.url).filter(Boolean);
+            if (!urls.length) {
+                reqAlert('Vui lòng chọn ít nhất một ảnh bằng chứng.');
+                return;
+            }
+
+            const requestId = reqState.selected.id;
+            try {
+                await reqApi(`/repair-requests/${requestId}/media`, { method: 'POST', body: { mediaUrls: urls } });
+                reqAlert('Đã gắn ảnh bằng chứng vào yêu cầu sửa chữa thành công.');
+                await loadRepairRequests();
+                await loadRequestTabCounts();
+                openRequestModal(requestId);
+            } catch (error) {
+                reqAlert(error.message);
+            }
+        }
+
+        async function updateRequestStatus() {
+            if (!reqState.selected) return;
+
+            const select = reqEl('requestStatusSelect');
+            const targetStatus = select ? select.value : null;
+            if (!targetStatus || targetStatus === reqState.selected.status) {
+                reqAlert('Vui lòng chọn một trạng thái mới khác trạng thái hiện tại.');
+                return;
+            }
+
+            if (!window.confirm(`Chuyển yêu cầu ${reqState.selected.requestCode} sang trạng thái ${STATUS_LABELS[targetStatus]}?`)) return;
+
+            const requestId = reqState.selected.id;
+            try {
+                await reqApi(`/repair-requests/${requestId}/status`, {
+                    method: 'PATCH',
+                    body: { status: targetStatus, note: 'Admin cập nhật trạng thái trên Admin Portal' }
+                });
+                reqAlert('Cập nhật trạng thái yêu cầu thành công.');
+                await loadRepairRequests();
+                await loadRequestTabCounts();
+                openRequestModal(requestId);
+            } catch (error) {
+                reqAlert(error.message);
+            }
+        }
+
+        // ================= GẮN SỰ KIỆN & KHỞI TẠO KHU VỰC YÊU CẦU =================
+
+        function bindRequestEvents() {
+            reqEl('reloadRequestsBtn').addEventListener('click', async () => {
+                await loadRepairRequests();
+                await loadRequestTabCounts();
+            });
+            reqEl('closeRequestModalBtn').addEventListener('click', closeRequestModal);
+            reqEl('requestModal').addEventListener('click', event => {
+                if (event.target === reqEl('requestModal')) closeRequestModal();
+            });
+
+            reqEl('requestTableBody').addEventListener('click', event => {
+                const target = event.target.closest('[data-req-action]');
+                if (!target || target.dataset.reqAction !== 'detail') return;
+                openRequestModal(Number(target.dataset.id));
+            });
+
+            reqEl('requestModalActions').addEventListener('click', async event => {
+                const target = event.target.closest('[data-req-action]');
+                if (!target) return;
+
+                if (target.dataset.reqAction === 'close') {
+                    closeRequestModal();
+                    return;
+                }
+
+                if (target.dataset.reqAction === 'cancel') {
+                    const item = reqState.selected;
+                    if (!item || !window.confirm(`Xác nhận hủy yêu cầu ${item.requestCode}?`)) return;
+                    try {
+                        await reqApi(`/repair-requests/${item.id}/status`, {
+                            method: 'PATCH',
+                            body: { status: 'CANCELLED', note: 'Admin hủy yêu cầu trên Admin Portal' }
+                        });
+                        reqAlert('Đã hủy yêu cầu sửa chữa.');
+                        closeRequestModal();
+                        await loadRepairRequests();
+                        await loadRequestTabCounts();
+                    } catch (error) {
+                        reqAlert(error.message);
+                    }
+                }
+            });
+
+            // Nút trong modal được render động -> dùng event delegation
+            reqEl('requestModalBody').addEventListener('click', event => {
+                if (event.target.id === 'updateStatusBtn') updateRequestStatus();
+                if (event.target.id === 'submitEvidenceBtn') submitEvidence();
+            });
+
+            // Upload ảnh bằng chứng lên Firebase Storage
+            const dropZone = reqEl('evidenceDrop');
+            const fileInput = reqEl('evidenceInput');
+            dropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', event => {
+                handleEvidenceFiles(event.target.files);
+                fileInput.value = '';
+            });
+            ['dragenter', 'dragover'].forEach(type => dropZone.addEventListener(type, event => {
+                event.preventDefault();
+                dropZone.classList.add('dragover');
+            }));
+            ['dragleave', 'drop'].forEach(type => dropZone.addEventListener(type, event => {
+                event.preventDefault();
+                dropZone.classList.remove('dragover');
+            }));
+            dropZone.addEventListener('drop', event => handleEvidenceFiles(event.dataTransfer.files));
+            reqEl('evidencePreview').addEventListener('click', event => {
+                const button = event.target.closest('[data-evidence-remove]');
+                if (button) removeEvidenceItem(button.dataset.evidenceRemove);
+            });
+
+            let searchTimer = null;
+            reqEl('requestSearchInput').addEventListener('input', event => {
+                window.clearTimeout(searchTimer);
+                searchTimer = window.setTimeout(() => {
+                    reqState.search = event.target.value.trim();
+                    reqState.page = 1;
+                    loadRepairRequests();
+                }, 350);
+            });
+            reqEl('requestLimitSelect').addEventListener('change', event => {
+                reqState.limit = Number(event.target.value);
+                reqState.page = 1;
+                loadRepairRequests();
+            });
+        }
+
+        async function initRequestManagement() {
+            renderRequestTabBar();
+            bindRequestEvents();
+            reqEl('evidenceFolderLabel').textContent = FIREBASE_STORAGE_FOLDER;
+
+            if (!isFirebaseConfigured()) {
+                console.warn('[FixLink] Firebase Storage chưa được cấu hình -> ảnh bằng chứng sẽ dùng Data URL ở chế độ demo.');
+            }
+
+            try {
+                await ensureAdminToken();
+            } catch (error) {
+                console.error('Không thể xác thực quản trị viên', error);
+                reqEl('requestTableBody').innerHTML = `<tr><td colspan="9" style="text-align:center; color:#f87171; padding:24px;">Không thể xác thực quản trị viên: ${escapeHtml(error.message)}</td></tr>`;
+                return;
+            }
+
+            await loadRepairRequests();
+            await loadRequestTabCounts();
+        }
+
+        window.addEventListener('DOMContentLoaded', initRequestManagement);
+    </script>
+</body>
+</html>
+

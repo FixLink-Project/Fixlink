@@ -6,7 +6,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import Pagination from '../components/Pagination';
 import StatusChip from '../components/StatusChip';
 import Tabs from '../components/Tabs';
-import { ApiError, api } from '../lib/api';
+import { ApiError, api, formatCurrency } from '../lib/api';
 import type { PageMeta, Role, UserStatus, VerificationStatus } from '../lib/types';
 
 interface TechnicianProfileBrief {
@@ -14,12 +14,16 @@ interface TechnicianProfileBrief {
   phone: string;
   email: string;
   citizenId: string;
+  avatarUrl?: string | null;
   verificationStatus: VerificationStatus;
   yearsExperience: number | null;
   avgRating: number;
   completedJobs: number;
   walletBalance: number;
   isOnline: boolean;
+  idCardFrontUrl?: string | null;
+  idCardBackUrl?: string | null;
+  bio?: string | null;
 }
 
 interface CustomerProfileBrief {
@@ -88,6 +92,7 @@ export default function AdminUsersPage() {
 
   // Bộ lọc; đổi bất kỳ giá trị nào cũng quay về trang 1.
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('ALL');
@@ -99,17 +104,29 @@ export default function AdminUsersPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNote, setActionNote] = useState<string | null>(null);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (previewImage) setPreviewImage(null);
+        else if (detail) setDetail(null);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [detail, previewImage]);
 
   const query = useMemo(() => {
     const params = new URLSearchParams({
       page: String(page),
-      limit: '10',
+      limit: String(pageSize),
       role,
       status: TABS.find((t) => t.id === tab)?.status ?? 'ALL'
     });
     if (search.trim()) params.set('search', search.trim());
     return params.toString();
-  }, [page, role, tab, search]);
+  }, [page, pageSize, role, tab, search]);
 
   const load = useCallback(
     async (isRefresh = false) => {
@@ -316,7 +333,8 @@ export default function AdminUsersPage() {
               </div>
             ) : (
               <ul className={`divide-y divide-line ${refreshing ? 'opacity-60' : ''}`}>
-                {users.map((user) => {
+                {users.map((user, index) => {
+                  const itemIndex = (page - 1) * pageSize + index + 1;
                   const pendingTechnician =
                     user.role === 'TECHNICIAN' && user.status === 'PENDING';
                   const blocked = user.status === 'BLOCKED';
@@ -325,15 +343,22 @@ export default function AdminUsersPage() {
                   return (
                     <li key={user.id} className="py-4 first:pt-0 last:pb-0">
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-display font-semibold">{user.username}</p>
-                            <StatusChip status={user.role} />
-                            <StatusChip status={user.status} />
+                        <div className="flex items-start gap-3 min-w-0">
+                          {/* Đánh số thứ tự trong ô bo góc */}
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 border border-slate-200/80 font-mono font-bold text-slate-700 text-sm shadow-2xs mt-0.5">
+                            {itemIndex}
                           </div>
-                          <p className="mt-1 text-sm text-ink-soft">
-                            Tạo ngày {formatDate(user.createdAt)}
-                          </p>
+
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-display font-semibold text-slate-900">{user.username}</p>
+                              <StatusChip status={user.role} />
+                              <StatusChip status={user.status} />
+                            </div>
+                            <p className="mt-1 text-sm text-ink-soft">
+                              Tạo ngày {formatDate(user.createdAt)}
+                            </p>
+                          </div>
                         </div>
 
                         <div className="flex flex-wrap gap-2">
@@ -395,6 +420,12 @@ export default function AdminUsersPage() {
                   meta={meta}
                   disabled={refreshing}
                   itemNoun="tài khoản"
+                  pageSize={pageSize}
+                  pageSizeOptions={[5, 10, 20]}
+                  onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setPage(1);
+                  }}
                   onPageChange={(next) => {
                     setPage(next);
                     setActionNote(null);
@@ -405,88 +436,272 @@ export default function AdminUsersPage() {
           </Card>
         )}
 
+        {/* Modal Popup: Chi tiết Hồ sơ Người dùng / Kỹ thuật viên */}
         {(detailLoading || detail) && (
-          <Card
-            title="Hồ sơ chi tiết"
-            actions={
-              <Button variant="quiet" onClick={() => setDetail(null)}>
-                Đóng
-              </Button>
-            }
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in duration-200"
+            onClick={() => {
+              if (!detailLoading) setDetail(null);
+            }}
           >
-            {detailLoading ? (
-              <div className="space-y-3">
-                <div className="h-5 w-48 animate-pulse rounded bg-line" />
-                <div className="h-5 w-64 animate-pulse rounded bg-line/70" />
+            <div
+              className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl transition-all border border-slate-100 space-y-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand font-bold text-lg">
+                    {detail?.role === 'TECHNICIAN' ? '🔧' : '👤'}
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">
+                      {detail?.role === 'TECHNICIAN' ? 'Hồ sơ Thợ sửa chữa' : 'Thông tin tài khoản'}
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      {detail ? `Mã tài khoản: ${detail.id}` : 'Đang tải thông tin...'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDetail(null)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                  title="Đóng popup (Esc)"
+                >
+                  ✕
+                </button>
               </div>
-            ) : detail ? (
-              <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
-                <div>
-                  <dt className="text-sm text-ink-soft">Tên đăng nhập</dt>
-                  <dd className="font-medium">{detail.username}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-ink-soft">Vai trò và trạng thái</dt>
-                  <dd className="mt-0.5 flex gap-2">
-                    <StatusChip status={detail.role} />
-                    <StatusChip status={detail.status} />
-                  </dd>
-                </div>
 
-                {detail.customerProfile && (
-                  <>
-                    <div>
-                      <dt className="text-sm text-ink-soft">Họ và tên</dt>
-                      <dd className="font-medium">{detail.customerProfile.fullName}</dd>
+              {/* Modal Body */}
+              {detailLoading ? (
+                <div className="space-y-4 py-8">
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-full bg-slate-100 animate-pulse" />
+                    <div className="space-y-2 flex-1">
+                      <div className="h-5 w-48 rounded bg-slate-100 animate-pulse" />
+                      <div className="h-4 w-32 rounded bg-slate-100 animate-pulse" />
                     </div>
-                    <div>
-                      <dt className="text-sm text-ink-soft">Liên hệ</dt>
-                      <dd>
-                        {detail.customerProfile.phone}, {detail.customerProfile.email}
-                      </dd>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 pt-4">
+                    <div className="h-12 rounded-xl bg-slate-100 animate-pulse" />
+                    <div className="h-12 rounded-xl bg-slate-100 animate-pulse" />
+                    <div className="h-12 rounded-xl bg-slate-100 animate-pulse" />
+                    <div className="h-12 rounded-xl bg-slate-100 animate-pulse" />
+                  </div>
+                </div>
+              ) : detail ? (
+                <div className="space-y-5">
+                  {/* User Basic Info Header */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="flex items-center gap-3.5">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand text-white font-bold text-lg shadow-xs">
+                        {(detail.technicianProfile?.fullName || detail.customerProfile?.fullName || detail.username).charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-base">
+                          {detail.technicianProfile?.fullName || detail.customerProfile?.fullName || detail.username}
+                        </h3>
+                        <p className="text-xs text-slate-500 font-mono">@{detail.username}</p>
+                      </div>
                     </div>
-                  </>
-                )}
-
-                {detail.technicianProfile && (
-                  <>
-                    <div>
-                      <dt className="text-sm text-ink-soft">Họ và tên</dt>
-                      <dd className="font-medium">{detail.technicianProfile.fullName}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm text-ink-soft">Liên hệ</dt>
-                      <dd>
-                        {detail.technicianProfile.phone}, {detail.technicianProfile.email}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm text-ink-soft">Số căn cước</dt>
-                      <dd>{detail.technicianProfile.citizenId}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm text-ink-soft">Xác minh</dt>
-                      <dd className="mt-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusChip status={detail.role} />
+                      <StatusChip status={detail.status} />
+                      {detail.technicianProfile && (
                         <StatusChip status={detail.technicianProfile.verificationStatus} />
-                      </dd>
+                      )}
                     </div>
-                    <div>
-                      <dt className="text-sm text-ink-soft">Kinh nghiệm</dt>
-                      <dd>
-                        {detail.technicianProfile.yearsExperience != null
-                          ? `${detail.technicianProfile.yearsExperience} năm`
-                          : 'Chưa khai'}
-                      </dd>
+                  </div>
+
+                  {/* Grid Info */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-3.5 rounded-xl border border-slate-100 bg-white">
+                      <span className="text-xs font-medium text-slate-400">Số điện thoại</span>
+                      <p className="text-sm font-semibold text-slate-800 mt-0.5">
+                        {detail.technicianProfile?.phone || detail.customerProfile?.phone || 'Chưa cập nhật'}
+                      </p>
                     </div>
-                    <div>
-                      <dt className="text-sm text-ink-soft">Việc đã hoàn tất</dt>
-                      <dd>{detail.technicianProfile.completedJobs}</dd>
+                    <div className="p-3.5 rounded-xl border border-slate-100 bg-white">
+                      <span className="text-xs font-medium text-slate-400">Email liên hệ</span>
+                      <p className="text-sm font-semibold text-slate-800 mt-0.5 truncate">
+                        {detail.technicianProfile?.email || detail.customerProfile?.email || 'Chưa cập nhật'}
+                      </p>
                     </div>
-                  </>
-                )}
-              </dl>
-            ) : null}
-          </Card>
+                    <div className="p-3.5 rounded-xl border border-slate-100 bg-white">
+                      <span className="text-xs font-medium text-slate-400">Ngày tham gia hệ thống</span>
+                      <p className="text-sm font-semibold text-slate-800 mt-0.5">
+                        {formatDate(detail.createdAt)}
+                      </p>
+                    </div>
+
+                    {/* Thợ sửa chữa chi tiết */}
+                    {detail.technicianProfile && (
+                      <>
+                        <div className="p-3.5 rounded-xl border border-slate-100 bg-white">
+                          <span className="text-xs font-medium text-slate-400">Số CCCD / CMND</span>
+                          <p className="text-sm font-semibold text-slate-800 font-mono mt-0.5">
+                            {detail.technicianProfile.citizenId || 'Chưa khai'}
+                          </p>
+                        </div>
+                        <div className="p-3.5 rounded-xl border border-slate-100 bg-white">
+                          <span className="text-xs font-medium text-slate-400">Kinh nghiệm hành nghề</span>
+                          <p className="text-sm font-semibold text-slate-800 mt-0.5">
+                            {detail.technicianProfile.yearsExperience != null ? `${detail.technicianProfile.yearsExperience} năm kinh nghiệm` : 'Chưa khai'}
+                          </p>
+                        </div>
+                        <div className="p-3.5 rounded-xl border border-slate-100 bg-white">
+                          <span className="text-xs font-medium text-slate-400">Số việc hoàn thành & Đánh giá</span>
+                          <p className="text-sm font-semibold text-slate-800 mt-0.5 flex items-center gap-2">
+                            <span>{detail.technicianProfile.completedJobs} đơn</span>
+                            <span className="text-amber-500 font-bold">★ {detail.technicianProfile.avgRating?.toFixed(1) || '5.0'}</span>
+                          </p>
+                        </div>
+                        <div className="p-3.5 rounded-xl border border-slate-100 bg-white sm:col-span-2">
+                          <span className="text-xs font-medium text-slate-400">Số dư ví thợ</span>
+                          <p className="text-sm font-bold text-emerald-600 mt-0.5">
+                            {formatCurrency(detail.technicianProfile.walletBalance || 0)}
+                          </p>
+                        </div>
+
+                        {detail.technicianProfile.bio && (
+                          <div className="p-3.5 rounded-xl border border-slate-100 bg-white sm:col-span-2">
+                            <span className="text-xs font-medium text-slate-400">Tiểu sử & Chuyên môn</span>
+                            <p className="text-sm text-slate-700 mt-1 leading-relaxed">
+                              {detail.technicianProfile.bio}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Ảnh CCCD 2 mặt */}
+                        {(detail.technicianProfile.idCardFrontUrl || detail.technicianProfile.idCardBackUrl) && (
+                          <div className="sm:col-span-2 space-y-2 pt-2">
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                              Ảnh Căn cước công dân (KYC)
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {detail.technicianProfile.idCardFrontUrl && (
+                                <div className="group relative rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                                  <div className="px-3 py-1.5 bg-slate-100 border-b border-slate-200 text-xs font-semibold text-slate-600 flex justify-between items-center">
+                                    <span>Mặt trước CCCD</span>
+                                    <span className="text-2xs text-brand font-medium group-hover:underline">Bấm phóng to</span>
+                                  </div>
+                                  <img
+                                    src={detail.technicianProfile.idCardFrontUrl}
+                                    alt="Mặt trước CCCD"
+                                    className="h-36 w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={() => setPreviewImage(detail.technicianProfile!.idCardFrontUrl!)}
+                                  />
+                                </div>
+                              )}
+                              {detail.technicianProfile.idCardBackUrl && (
+                                <div className="group relative rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                                  <div className="px-3 py-1.5 bg-slate-100 border-b border-slate-200 text-xs font-semibold text-slate-600 flex justify-between items-center">
+                                    <span>Mặt sau CCCD</span>
+                                    <span className="text-2xs text-brand font-medium group-hover:underline">Bấm phóng to</span>
+                                  </div>
+                                  <img
+                                    src={detail.technicianProfile.idCardBackUrl}
+                                    alt="Mặt sau CCCD"
+                                    className="h-36 w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={() => setPreviewImage(detail.technicianProfile!.idCardBackUrl!)}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Khách hàng chi tiết */}
+                    {detail.customerProfile && (
+                      <div className="p-3.5 rounded-xl border border-slate-100 bg-white sm:col-span-2">
+                        <span className="text-xs font-medium text-slate-400">Hạng thành viên</span>
+                        <p className="text-sm font-semibold text-brand mt-0.5">
+                          {detail.customerProfile.membershipTier || 'Tiêu chuẩn'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Modal Footer Actions */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
+                    <div className="flex flex-wrap gap-2">
+                      {detail.role === 'TECHNICIAN' && detail.technicianProfile?.verificationStatus === 'PENDING' && (
+                        <>
+                          <Button
+                            loading={busyUserId === detail.id}
+                            onClick={async () => {
+                              await verifyTechnician(detail, 'APPROVED');
+                            }}
+                          >
+                            ✓ Duyệt hồ sơ thợ
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            disabled={busyUserId === detail.id}
+                            onClick={async () => {
+                              await verifyTechnician(detail, 'REJECTED');
+                            }}
+                          >
+                            ✕ Từ chối
+                          </Button>
+                        </>
+                      )}
+
+                      {!(detail.role === 'TECHNICIAN' && detail.technicianProfile?.verificationStatus === 'PENDING') && (
+                        detail.status === 'BLOCKED' ? (
+                          <Button
+                            variant="secondary"
+                            loading={busyUserId === detail.id}
+                            onClick={() => changeStatus(detail, 'ACTIVE')}
+                          >
+                            Mở khoá tài khoản
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="danger"
+                            loading={busyUserId === detail.id}
+                            onClick={() => changeStatus(detail, 'BLOCKED')}
+                          >
+                            Khoá tài khoản
+                          </Button>
+                        )
+                      )}
+                    </div>
+
+                    <Button variant="secondary" onClick={() => setDetail(null)}>
+                      Đóng
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+
+        {/* Lightbox Preview for CCCD Photo */}
+        {previewImage && (
+          <div
+            className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+            onClick={() => setPreviewImage(null)}
+          >
+            <div className="relative max-h-[90vh] max-w-[90vw]">
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="absolute -top-10 right-0 text-white font-bold text-base hover:text-slate-300"
+              >
+                ✕ Đóng (Esc)
+              </button>
+              <img
+                src={previewImage}
+                alt="Phóng to CCCD"
+                className="max-h-[85vh] max-w-full rounded-xl object-contain shadow-2xl"
+              />
+            </div>
+          </div>
         )}
       </div>
     </DashboardLayout>

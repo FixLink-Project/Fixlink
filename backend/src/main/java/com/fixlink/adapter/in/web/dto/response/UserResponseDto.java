@@ -56,6 +56,9 @@ public class UserResponseDto {
             tDto.setCompletedJobs(user.getTechnicianProfile().getCompletedJobs());
             tDto.setWalletBalance(user.getTechnicianProfile().getWalletBalance());
             tDto.setIsOnline(user.getTechnicianProfile().getIsOnline());
+            tDto.setIdCardFrontUrl(user.getTechnicianProfile().getIdCardFrontUrl());
+            tDto.setIdCardBackUrl(user.getTechnicianProfile().getIdCardBackUrl());
+            tDto.setBio(user.getTechnicianProfile().getBio());
             dto.setTechnicianProfile(tDto);
         }
 
@@ -88,5 +91,8 @@ public class UserResponseDto {
         private Integer completedJobs;
         private BigDecimal walletBalance;
         private Boolean isOnline;
+        private String idCardFrontUrl;
+        private String idCardBackUrl;
+        private String bio;
     }
 }

@@ -10,10 +10,14 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-brand text-white hover:bg-brand-strong disabled:hover:bg-brand',
-  secondary: 'border border-line bg-card text-ink hover:bg-surface disabled:hover:bg-card',
-  quiet: 'text-ink-soft hover:bg-surface hover:text-ink disabled:hover:bg-transparent',
-  danger: 'bg-rose text-white hover:bg-rose/90 disabled:hover:bg-rose'
+  primary:
+    'bg-gradient-to-r from-brand to-brand-strong text-white font-semibold shadow-sm hover:shadow-glow hover:brightness-105 active:scale-[0.98] disabled:hover:shadow-none disabled:hover:brightness-100 disabled:active:scale-100',
+  secondary:
+    'border border-line bg-surface-card text-ink font-medium hover:bg-surface-elevated hover:border-line-strong shadow-sm active:scale-[0.98] disabled:hover:bg-surface-card disabled:active:scale-100',
+  quiet:
+    'text-ink-soft font-medium hover:bg-surface-elevated hover:text-ink active:scale-[0.98] disabled:hover:bg-transparent disabled:active:scale-100',
+  danger:
+    'bg-danger text-white font-semibold shadow-sm hover:bg-danger-strong active:scale-[0.98] disabled:hover:bg-danger disabled:active:scale-100'
 };
 
 export default function Button({
@@ -31,8 +35,8 @@ export default function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={[
-        'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-5 text-sm font-medium',
-        'transition-colors disabled:cursor-not-allowed disabled:opacity-55',
+        'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 text-sm font-medium',
+        'transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-55',
         VARIANTS[variant],
         fullWidth ? 'w-full' : '',
         className

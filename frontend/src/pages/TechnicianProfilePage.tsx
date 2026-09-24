@@ -245,7 +245,7 @@ export default function TechnicianProfilePage() {
       actions={profile && <StatusChip status={profile.verificationStatus} />}
     >
       {status === 'loading' && (
-        <div className="h-80 animate-pulse rounded-xl border border-line bg-card" />
+        <div className="h-80 animate-pulse rounded-2xl border border-white/10 bg-surface-card" />
       )}
 
       {status === 'error' && (
@@ -396,7 +396,7 @@ export default function TechnicianProfilePage() {
                     <button
                       type="button"
                       onClick={signOut}
-                      className="underline hover:text-brand-strong"
+                      className="underline hover:text-brand-glow"
                     >
                       Đăng xuất khỏi thiết bị này
                     </button>

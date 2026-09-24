@@ -66,10 +66,11 @@ export interface AuthResult {
   user: AuthUser;
 }
 
-// ── Sprint 2: Repair Requests & Quotations ──
+// ── Sprint 2 & RC-30: Repair Requests & Quotations ──
 
 export type RequestStatus =
   | 'DRAFT'
+  | 'PENDING'
   | 'BIDDING_OPEN'
   | 'MATCHED_AWAITING_DEPOSIT'
   | 'ASSIGNED'
@@ -82,22 +83,45 @@ export type RequestStatus =
 
 export type QuotationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN';
 
+export type MediaType = 'IMAGE' | 'VIDEO' | 'DOCUMENT';
+
+export interface MediaItem {
+  id?: number;
+  url: string;
+  mediaType: MediaType;
+  uploadedBy?: number;
+  createdAt?: string;
+}
+
+export type RequestTabCode = 'ALL' | 'AWAITING_QUOTE' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+export interface RequestTabItem {
+  code: RequestTabCode;
+  label: string;
+  statuses: RequestStatus[];
+}
+
 export interface RepairRequest {
   id: number;
   requestCode: string;
   customerId: number;
+  customerName?: string | null;
   technicianId: number | null;
+  technicianName?: string | null;
   categoryId: number;
   categoryName: string | null;
   areaId: number | null;
   areaName: string | null;
   status: RequestStatus;
+  statusLabel?: string;
   title: string;
   description: string;
+  address?: string;
   addressLine: string;
   latitude: number | null;
   longitude: number | null;
   preferredTime: string | null;
+  requestedTime?: string | null;
   agreedPrice: number;
   depositAmount: number;
   budgetRef: number;
@@ -105,6 +129,7 @@ export interface RepairRequest {
   cancelReason: string | null;
   selectedQuotationId: number | null;
   mediaUrls: string[];
+  media?: MediaItem[];
   quotationCount: number;
   createdAt: string;
   updatedAt: string;
@@ -151,3 +176,54 @@ export interface AcceptQuotationResult {
   depositAmount: number;
   status: RequestStatus;
 }
+
+// ── Jira RC-48: Appointment Status Lifecycle ──
+
+export type AppointmentStatus = 'CONFIRMED' | 'RESCHEDULED' | 'COMPLETED' | 'CANCELLED';
+
+export interface Appointment {
+  id: number;
+  repairRequestId: number;
+  requestCode?: string | null;
+  requestTitle?: string | null;
+  requestAddress?: string | null;
+  customerId: number;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  technicianId: number;
+  technicianName?: string | null;
+  technicianPhone?: string | null;
+  appointmentType?: string | null;
+  address?: string | null;
+  scheduledDate: string;
+  scheduledTime: string;
+  actualStartAt?: string | null;
+  actualEndAt?: string | null;
+  status: AppointmentStatus;
+  statusLabel: string;
+  notes?: string | null;
+  cancelReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAppointmentPayload {
+  repairRequestId: number;
+  technicianId?: number;
+  appointmentType?: string;
+  address?: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  notes?: string;
+}
+
+export interface RescheduleAppointmentPayload {
+  scheduledDate: string;
+  scheduledTime: string;
+  notes?: string;
+}
+
+export interface CancelAppointmentPayload {
+  cancelReason: string;
+}
+

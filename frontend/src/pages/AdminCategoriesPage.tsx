@@ -50,6 +50,7 @@ export default function AdminCategoriesPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
 
@@ -65,10 +66,10 @@ export default function AdminCategoriesPage() {
   const [deleting, setDeleting] = useState(false);
 
   const query = useMemo(() => {
-    const params = new URLSearchParams({ page: String(page), limit: '10' });
+    const params = new URLSearchParams({ page: String(page), limit: String(pageSize) });
     if (search.trim()) params.set('search', search.trim());
     return params.toString();
-  }, [page, search]);
+  }, [page, pageSize, search]);
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -374,23 +375,32 @@ export default function AdminCategoriesPage() {
               </div>
             ) : (
               <ul className={`divide-y divide-line ${refreshing ? 'opacity-60' : ''}`}>
-                {categories.map((category) => (
-                  <li key={category.id} className="py-4 first:pt-0 last:pb-0">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-display font-semibold">{category.name}</p>
-                          <StatusChip
-                            status={category.isActive ? 'ACTIVE' : 'INACTIVE'}
-                            label={category.isActive ? 'Đang mở' : 'Đang tắt'}
-                          />
+                {categories.map((category, index) => {
+                  const itemIndex = (page - 1) * pageSize + index + 1;
+                  return (
+                    <li key={category.id} className="py-4 first:pt-0 last:pb-0">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0">
+                          {/* Đánh số thứ tự trong ô bo góc */}
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 border border-slate-200/80 font-mono font-bold text-slate-700 text-sm shadow-2xs mt-0.5">
+                            {itemIndex}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-display font-semibold text-slate-900">{category.name}</p>
+                              <StatusChip
+                                status={category.isActive ? 'ACTIVE' : 'INACTIVE'}
+                                label={category.isActive ? 'Đang mở' : 'Đang tắt'}
+                              />
+                            </div>
+                          <p className="mt-1 text-sm text-ink-soft">
+                            {category.description || 'Chưa có mô tả.'}
+                          </p>
+                          <p className="mt-1 text-sm text-ink-soft">
+                            Mã {category.code}, thứ tự {category.displayOrder}
+                          </p>
                         </div>
-                        <p className="mt-1 text-sm text-ink-soft">
-                          {category.description || 'Chưa có mô tả.'}
-                        </p>
-                        <p className="mt-1 text-sm text-ink-soft">
-                          Mã {category.code}, thứ tự {category.displayOrder}
-                        </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Button variant="quiet" onClick={() => openEdit(category)}>
@@ -402,7 +412,8 @@ export default function AdminCategoriesPage() {
                       </div>
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
 
@@ -412,6 +423,12 @@ export default function AdminCategoriesPage() {
                   meta={meta}
                   disabled={refreshing}
                   itemNoun="danh mục"
+                  pageSize={pageSize}
+                  pageSizeOptions={[5, 10, 20]}
+                  onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setPage(1);
+                  }}
                   onPageChange={(next) => {
                     setPage(next);
                     setNote(null);

@@ -264,6 +264,42 @@ CREATE INDEX idx_audit_logs_user_action ON audit_logs(user_id, action);
 CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_name, entity_id);
 ```
 
+### 4.9. Bảng `appointments` (Lịch hẹn Khảo sát, Sửa chữa, Bảo hành - Jira RC-48)
+*Chuẩn hóa 100% theo sơ đồ kiến trúc `database-erd.jpg`:*
+```sql
+CREATE TABLE appointments (
+    id                  BIGSERIAL PRIMARY KEY,
+    repair_request_id   BIGINT NOT NULL,
+    technician_id       BIGINT NOT NULL,
+    customer_id         BIGINT NOT NULL,
+    appointment_type    VARCHAR(30) NOT NULL DEFAULT 'REPAIR' 
+                        CHECK (appointment_type IN ('SURVEY', 'REPAIR', 'WARRANTY')),
+    scheduled_date      DATE NOT NULL,
+    scheduled_time      TIME NOT NULL,
+    actual_start_at     TIMESTAMP WITH TIME ZONE,
+    actual_end_at       TIMESTAMP WITH TIME ZONE,
+    status              VARCHAR(30) NOT NULL DEFAULT 'CONFIRMED'
+                        CHECK (status IN ('CONFIRMED', 'RESCHEDULED', 'COMPLETED', 'CANCELLED')),
+    address             VARCHAR(255),
+    notes               TEXT,
+    cancel_reason       TEXT,
+    created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by          BIGINT,
+    updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by          BIGINT,
+    deleted_at          TIMESTAMP WITH TIME ZONE,
+    deleted_by          BIGINT,
+    CONSTRAINT fk_appointments_request FOREIGN KEY (repair_request_id) REFERENCES repair_requests(id),
+    CONSTRAINT fk_appointments_technician FOREIGN KEY (technician_id) REFERENCES technician_profiles(user_id),
+    CONSTRAINT fk_appointments_customer FOREIGN KEY (customer_id) REFERENCES customer_profiles(user_id)
+);
+CREATE INDEX idx_appointments_request ON appointments(repair_request_id);
+CREATE INDEX idx_appointments_customer ON appointments(customer_id);
+CREATE INDEX idx_appointments_technician ON appointments(technician_id);
+CREATE INDEX idx_appointments_date ON appointments(scheduled_date);
+CREATE INDEX idx_appointments_status ON appointments(status);
+```
+
 ---
 
 ## 5. KHUNG MỞ RỘNG CHO CÁC MODULE TƯƠNG LAI (EXTENSIBLE MODULES)
@@ -272,6 +308,7 @@ Cơ sở dữ liệu được thiết kế sẵn điểm tựa khóa ngoại (`r
 
 ```text
 repair_requests (Lõi)
+    ├── 1:N ➔ appointments (Lịch hẹn Khảo sát, Sửa chữa, Bảo hành - RC-48)
     ├── 1:N ➔ quotations (Báo giá thợ gửi đến)
     ├── 1:1 ➔ inspection_records (Biên bản khảo sát hiện trường)
     │            └── 1:N ➔ additional_costs (Chi phí vật tư/nhân công phát sinh)
@@ -281,7 +318,7 @@ repair_requests (Lõi)
     ├── 1:1 ➔ reviews (Đánh giá & chấm điểm thợ sau hoàn thành)
     ├── 1:1 ➔ warranties (Phiếu bảo hành điện tử)
     ├── 1:1 ➔ disputes (Khiếu nại / tranh chấp tiền cọc)
-    └── 1:N ➔ media_files (Ảnh/video hiện trường trước và sau sửa)
+    └── 1:N ➔ media_attachments (Ảnh/video hiện trường trước và sau sửa)
 ```
 
 ---
@@ -297,6 +334,9 @@ erDiagram
     users ||--o{ repair_requests : "creates_as_customer (1:N)"
     users ||--o{ repair_requests : "assigned_as_technician (1:N)"
     users ||--o{ audit_logs : "triggers_action (1:N)"
+    repair_requests ||--o{ appointments : "schedules (1:N)"
+    customer_profiles ||--o{ appointments : "customer_of (1:N)"
+    technician_profiles ||--o{ appointments : "technician_of (1:N)"
 
     service_categories ||--o{ services : "contains (1:N)"
     service_categories ||--o{ repair_requests : "classified_in (1:N)"
@@ -407,6 +447,25 @@ erDiagram
         text old_values
         text new_values
         timestamp created_at
+    }
+
+    appointments {
+        bigint id PK
+        bigint repair_request_id FK
+        bigint technician_id FK
+        bigint customer_id FK
+        varchar appointment_type
+        date scheduled_date
+        time scheduled_time
+        timestamp actual_start_at
+        timestamp actual_end_at
+        varchar status
+        varchar address
+        text notes
+        text cancel_reason
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at
     }
 ```
 

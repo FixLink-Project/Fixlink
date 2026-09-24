@@ -31,7 +31,7 @@ export default function CheckboxGroup({
       {description && <p className="mb-2 text-sm text-ink-soft">{description}</p>}
 
       {options.length === 0 ? (
-        <p className="text-sm text-ink-soft">{emptyText}</p>
+        <p className="text-sm text-slate-400">{emptyText}</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {options.map((option) => {
@@ -39,21 +39,21 @@ export default function CheckboxGroup({
             return (
               <label
                 key={option.id}
-                className={`flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm transition-colors ${
+                className={`flex min-h-[42px] cursor-pointer items-center gap-2 rounded-xl border px-3.5 text-xs sm:text-sm transition-all duration-200 ${
                   checked
-                    ? 'border-brand bg-brand/10 text-brand-ink'
-                    : 'border-line bg-card text-ink-soft hover:bg-surface'
+                    ? 'border-brand bg-blue-50/90 text-brand font-bold shadow-xs ring-1 ring-brand/30'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 shadow-xs font-medium'
                 }`}
               >
                 <input
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggle(option.id)}
-                  className="h-4 w-4 accent-brand"
+                  className="h-4 w-4 rounded border-slate-300 accent-brand"
                 />
                 <span>
                   {option.label}
-                  {option.hint && <span className="text-ink-soft">, {option.hint}</span>}
+                  {option.hint && <span className="text-slate-400 text-xs"> ({option.hint})</span>}
                 </span>
               </label>
             );

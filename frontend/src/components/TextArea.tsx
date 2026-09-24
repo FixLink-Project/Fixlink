@@ -1,44 +1,37 @@
-import { useId, type TextareaHTMLAttributes } from 'react';
+import type { TextareaHTMLAttributes } from 'react';
 
-interface TextAreaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'id'> {
+interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
   error?: string;
   hint?: string;
 }
 
-export default function TextArea({ label, error, hint, className = '', ...rest }: TextAreaProps) {
-  const id = useId();
-  const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
-
+export default function TextArea({ label, error, hint, id, ...rest }: TextAreaProps) {
+  const fieldId = id ?? rest.name;
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
+      <label htmlFor={fieldId} className="mb-1.5 block text-sm font-medium text-ink">
         {label}
+        {rest.required && <span className="ml-0.5 text-brand-glow">*</span>}
       </label>
       <textarea
         {...rest}
-        id={id}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : hint ? hintId : undefined}
+        id={fieldId}
         className={[
-          'w-full rounded-lg border bg-card px-3.5 py-2.5 text-ink',
-          'placeholder:text-ink-soft/60 disabled:cursor-not-allowed disabled:bg-surface',
-          error ? 'border-rose focus-visible:ring-rose' : 'border-line',
-          className
-        ]
-          .filter(Boolean)
-          .join(' ')}
+          'min-h-[80px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-ink',
+          'placeholder:text-ink-muted transition-all duration-200 resize-y shadow-sm',
+          'focus:outline-none focus:ring-4 focus:ring-brand/10 focus:border-brand',
+          error
+            ? 'border-danger focus:ring-danger/10 focus:border-danger'
+            : 'border-line hover:border-line-strong'
+        ].join(' ')}
       />
-      {error ? (
-        <p id={errorId} className="mt-1.5 text-sm text-rose">
+      {hint && !error && <p className="mt-1.5 text-sm text-ink-muted">{hint}</p>}
+      {error && (
+        <p className="mt-1.5 text-sm text-danger" role="alert">
           {error}
         </p>
-      ) : hint ? (
-        <p id={hintId} className="mt-1.5 text-sm text-ink-soft">
-          {hint}
-        </p>
-      ) : null}
+      )}
     </div>
   );
 }
