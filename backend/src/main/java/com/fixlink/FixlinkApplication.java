@@ -4,9 +4,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class FixLinkApplication {
+public class FixlinkApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(FixLinkApplication.class, args);
+        SpringApplication.run(FixlinkApplication.class, args);
     }
 }
