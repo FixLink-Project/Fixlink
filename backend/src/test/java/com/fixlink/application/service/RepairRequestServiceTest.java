@@ -10,6 +10,7 @@ import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.exception.ResourceNotFoundException;
 import com.fixlink.domain.model.QuotationStatus;
 import com.fixlink.domain.model.RequestStatus;
+import com.fixlink.domain.model.Role;
 import com.fixlink.domain.model.UserStatus;
 import com.fixlink.domain.model.VerificationStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -110,6 +111,45 @@ class RepairRequestServiceTest {
     // =========================================================================
     // RC-32: Create Repair Request
     // =========================================================================
+
+    @Test
+    @DisplayName("RC-36: Thông tin thiết bị được lưu và trả về cùng yêu cầu sửa chữa")
+    void testCreateRequest_PersistsDeviceInformation() {
+        activeCustomer.setRole(Role.CUSTOMER);
+        when(userRepo.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeCustomer));
+        when(categoryRepo.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(activeCategory));
+        when(requestRepo.findByRequestCode(anyString())).thenReturn(Optional.empty());
+        when(requestRepo.save(any(RepairRequestJpaEntity.class))).thenAnswer(invocation -> {
+            RepairRequestJpaEntity saved = invocation.getArgument(0);
+            saved.setId(101L);
+            return saved;
+        });
+        when(mediaRepo.findByOwnerTypeAndOwnerIdInOrderByCreatedAtAsc(anyString(), anyList()))
+                .thenReturn(List.of());
+        when(categoryRepo.findAllById(anyList())).thenReturn(List.of(activeCategory));
+        when(repairRequestMapper.toDomain(any(RepairRequestJpaEntity.class))).thenAnswer(invocation -> {
+            RepairRequestJpaEntity saved = invocation.getArgument(0);
+            return com.fixlink.domain.model.RepairRequest.builder()
+                    .id(saved.getId())
+                    .deviceBrand(saved.getDeviceBrand())
+                    .deviceModel(saved.getDeviceModel())
+                    .serialNumber(saved.getSerialNumber())
+                    .build();
+        });
+
+        var result = service.createRequest(new RepairRequestUseCase.CreateRepairRequestCommand(
+                1L, "Repair appliance", "Device is not cooling", "123 Example Street", 10L,
+                null, null, null, null, null, 3, null, false, List.of(),
+                "  Daikin  ", "  FTKF35  ", "  SN-12345  "));
+
+        assertEquals("Daikin", result.request().getDeviceBrand());
+        assertEquals("FTKF35", result.request().getDeviceModel());
+        assertEquals("SN-12345", result.request().getSerialNumber());
+        verify(requestRepo).save(argThat(saved ->
+                "Daikin".equals(saved.getDeviceBrand())
+                        && "FTKF35".equals(saved.getDeviceModel())
+                        && "SN-12345".equals(saved.getSerialNumber())));
+    }
 
     @Test
     @DisplayName("RC-32: Khách hàng tạo yêu cầu sửa chữa thành công")

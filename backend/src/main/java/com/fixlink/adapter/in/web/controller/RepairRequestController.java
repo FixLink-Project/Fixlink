@@ -124,7 +124,10 @@ public class RepairRequestController {
                 request.getBiddingDeadlineDays(),
                 request.getRequestedTime() != null ? request.getRequestedTime() : request.getPreferredTime(),
                 Boolean.TRUE.equals(request.getSaveAsDraft()),
-                request.getMediaUrls()
+                request.getMediaUrls(),
+                request.getDeviceBrand(),
+                request.getDeviceModel(),
+                request.getSerialNumber()
         ));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(

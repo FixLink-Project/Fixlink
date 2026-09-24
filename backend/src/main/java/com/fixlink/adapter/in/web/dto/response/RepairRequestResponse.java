@@ -41,6 +41,9 @@ public class RepairRequestResponse {
     }
     private String title;
     private String description;
+    private String deviceBrand;
+    private String deviceModel;
+    private String serialNumber;
     private String address;
     private String addressLine;
     private BigDecimal latitude;
@@ -93,6 +96,9 @@ public class RepairRequestResponse {
                 .statusLabel(resolveStatusLabel(entity.getStatus()))
                 .title(entity.getTitle())
                 .description(entity.getDescription())
+                .deviceBrand(entity.getDeviceBrand())
+                .deviceModel(entity.getDeviceModel())
+                .serialNumber(entity.getSerialNumber())
                 .address(entity.getAddress())
                 .addressLine(entity.getAddress())
                 .areaId(entity.getAreaId())

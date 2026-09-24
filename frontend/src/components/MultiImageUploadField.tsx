@@ -31,90 +31,70 @@ export default function MultiImageUploadField({
     if (!files.length) return;
 
     if (value.length + files.length > maxFiles) {
-      setUploadError(`Chỉ được tải lên tối đa ${maxFiles} ảnh. Hiện đã có ${value.length} ảnh.`);
+      setUploadError(`Có thể đính kèm tối đa ${maxFiles} ảnh. Hiện đã có ${value.length} ảnh.`);
+      return;
+    }
+
+    const validationError = files.map((file) => validateImageFile(file)).find(Boolean);
+    if (validationError) {
+      setUploadError(validationError);
       return;
     }
 
     setUploadError(null);
-    for (const f of files) {
-      const err = validateImageFile(f);
-      if (err) {
-        setUploadError(err);
-        return;
-      }
-    }
-
     setUploading(true);
     setProgress(0);
 
     const newUrls: string[] = [];
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const res = await uploadImageToFirebase(file, {
-          onProgress: (p) => setProgress(Math.round(((i + p / 100) / files.length) * 100))
+      for (let index = 0; index < files.length; index++) {
+        const result = await uploadImageToFirebase(files[index], {
+          onProgress: (percent) => setProgress(Math.round(((index + percent / 100) / files.length) * 100))
         });
-        newUrls.push(res.url);
+        newUrls.push(result.url);
       }
       onChange([...value, ...newUrls]);
-    } catch (err: any) {
-      setUploadError(err?.message || 'Tải ảnh thất bại. Vui lòng thử lại.');
+    } catch (uploadFailure) {
+      setUploadError(uploadFailure instanceof Error ? uploadFailure.message : 'Tải ảnh thất bại. Vui lòng thử lại.');
     } finally {
       setUploading(false);
       setProgress(null);
     }
   }
 
-  function handleRemove(indexToRemove: number) {
-    onChange(value.filter((_, idx) => idx !== indexToRemove));
-  }
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-1.5">
+      <div className="mb-1.5 flex items-center justify-between">
         <span className="block text-sm font-semibold text-slate-800">{label}</span>
-        <span className="text-xs font-medium text-slate-400">
-          {value.length}/{maxFiles} tệp
-        </span>
+        <span className="text-xs font-medium text-slate-500">{value.length}/{maxFiles} ảnh</span>
       </div>
 
-      {/* Grid of uploaded images + Add button */}
-      <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-6 gap-3">
-        {value.map((url, idx) => (
-          <div
-            key={idx}
-            className="group relative aspect-square rounded-xl border border-slate-200 bg-slate-50 overflow-hidden shadow-xs"
-          >
-            <img
-              src={url}
-              alt={`Ảnh ${idx + 1}`}
-              className="h-full w-full object-cover"
-            />
+      <div className="grid grid-cols-2 gap-3 xs:grid-cols-3 sm:grid-cols-6">
+        {value.map((url, index) => (
+          <div key={`${url}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-xs">
+            <img src={url} alt={`Ảnh thiết bị ${index + 1}`} className="h-full w-full object-cover" />
             {!disabled && (
               <button
                 type="button"
-                onClick={() => handleRemove(idx)}
-                className="absolute top-1 right-1 h-6 w-6 rounded-full bg-slate-900/70 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-600"
-                title="Gỡ ảnh này"
+                onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}
+                aria-label={`Xóa ảnh ${index + 1}`}
+                className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/75 text-sm text-white transition-colors hover:bg-rose-600"
               >
-                ✕
+                ×
               </button>
             )}
-            <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-slate-900/60 text-[10px] text-white font-medium">
-              #{idx + 1}
-            </span>
+            <span className="absolute bottom-1 left-1 rounded bg-slate-900/60 px-1.5 py-0.5 text-[10px] font-medium text-white">Ảnh {index + 1}</span>
           </div>
         ))}
 
-        {/* Add photo card button */}
         {value.length < maxFiles && !disabled && (
           <button
             type="button"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
-            className="aspect-square flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-blue-50/50 hover:border-brand text-slate-400 hover:text-brand transition-all shadow-xs"
+            className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500 shadow-xs transition-all hover:border-brand hover:bg-blue-50/50 hover:text-brand disabled:cursor-wait disabled:opacity-60"
           >
-            <span className="text-2xl">📷</span>
+            <span aria-hidden="true" className="text-2xl">＋</span>
             <span className="text-xs font-semibold">Thêm ảnh</span>
           </button>
         )}
@@ -128,29 +108,23 @@ export default function MultiImageUploadField({
         className="sr-only"
         disabled={disabled || uploading}
         onChange={handleFiles}
+        aria-label={label}
       />
 
       {uploading && (
-        <div className="mt-3">
-          <div className="flex justify-between text-xs text-slate-500 mb-1">
-            <span>Đang tải ảnh lên...</span>
+        <div className="mt-3" role="status" aria-live="polite">
+          <div className="mb-1 flex justify-between text-xs text-slate-600">
+            <span>Đang tải ảnh lên…</span>
             <span className="font-semibold text-brand">{progress}%</span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-brand transition-[width] duration-200"
-              style={{ width: `${progress}%` }}
-            />
+            <div className="h-full rounded-full bg-brand transition-[width] duration-200" style={{ width: `${progress}%` }} />
           </div>
         </div>
       )}
 
-      {(uploadError || error) && (
-        <p className="mt-2 text-xs font-medium text-rose-600">{uploadError ?? error}</p>
-      )}
-      {hint && !uploadError && !error && (
-        <p className="mt-2 text-xs text-slate-500">{hint}</p>
-      )}
+      {(uploadError || error) && <p className="mt-2 text-xs font-medium text-rose-600" role="alert">{uploadError ?? error}</p>}
+      {hint && !uploadError && !error && <p className="mt-2 text-xs text-slate-500">{hint}</p>}
     </div>
   );
 }

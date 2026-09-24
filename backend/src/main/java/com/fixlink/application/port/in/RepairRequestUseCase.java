@@ -101,8 +101,31 @@ public interface RepairRequestUseCase {
             Integer biddingDeadlineDays,
             LocalDateTime requestedTime,
             boolean saveAsDraft,
-            List<String> mediaUrls
+            List<String> mediaUrls,
+            String deviceBrand,
+            String deviceModel,
+            String serialNumber
     ) {
+        public CreateRepairRequestCommand(
+                Long customerId,
+                String title,
+                String description,
+                String address,
+                Long categoryId,
+                Long serviceId,
+                Long areaId,
+                BigDecimal latitude,
+                BigDecimal longitude,
+                BigDecimal budgetRef,
+                Integer biddingDeadlineDays,
+                LocalDateTime requestedTime,
+                boolean saveAsDraft,
+                List<String> mediaUrls
+        ) {
+            this(customerId, title, description, address, categoryId, serviceId, areaId, latitude, longitude,
+                    budgetRef, biddingDeadlineDays, requestedTime, saveAsDraft, mediaUrls, null, null, null);
+        }
+
         public CreateRepairRequestCommand(
                 Long customerId,
                 String title,
@@ -115,7 +138,7 @@ public interface RepairRequestUseCase {
                 List<String> mediaUrls
         ) {
             this(customerId, title, description, address, categoryId, serviceId,
-                    null, null, null, null, null, requestedTime, saveAsDraft, mediaUrls);
+                    null, null, null, null, null, requestedTime, saveAsDraft, mediaUrls, null, null, null);
         }
     }
 

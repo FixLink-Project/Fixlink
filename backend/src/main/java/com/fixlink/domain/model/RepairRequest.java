@@ -26,6 +26,9 @@ public class RepairRequest {
     private RequestStatus status;
     private String title;
     private String description;
+    private String deviceBrand;
+    private String deviceModel;
+    private String serialNumber;
     private String address;
     private BigDecimal latitude;
     private BigDecimal longitude;
