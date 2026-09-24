@@ -3,29 +3,29 @@ package com.fixlink.adapter.out.persistence.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-@Entity
-@Table(name = "service_areas")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ServiceAreaJpaEntity extends BaseEntity {
+@Entity
+@Table(name = "service_areas")
+public class ServiceAreaJpaEntity extends BaseJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(name = "code", length = 50, nullable = false, unique = true)
     private String code;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "name", length = 100, nullable = false)
     private String name;
 
-    @Column(nullable = false, length = 50)
+    @Column(name = "city", length = 50, nullable = false)
     private String city;
 
+    @Column(name = "is_active")
     @Builder.Default
-    @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 }

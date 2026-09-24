@@ -9,7 +9,7 @@ import java.util.Optional;
 
 @Repository
 public interface SpringDataServiceRepository extends JpaRepository<ServiceJpaEntity, Long> {
-    Optional<ServiceJpaEntity> findByCode(String code);
-    List<ServiceJpaEntity> findByCategoryIdAndIsActiveTrue(Long categoryId);
     List<ServiceJpaEntity> findByIsActiveTrue();
+    List<ServiceJpaEntity> findByCategoryIdAndIsActiveTrue(Long categoryId);
+    Optional<ServiceJpaEntity> findByIdAndDeletedAtIsNull(Long id);
 }

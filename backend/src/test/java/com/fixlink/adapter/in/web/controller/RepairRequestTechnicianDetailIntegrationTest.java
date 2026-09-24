@@ -182,7 +182,7 @@ class RepairRequestTechnicianDetailIntegrationTest {
                 .andExpect(jsonPath("$.data.request.title", is("Sửa máy rửa chén Bosch lỗi E15 tràn nước")))
                 .andExpect(jsonPath("$.data.request.status", is("BIDDING_OPEN")))
                 .andExpect(jsonPath("$.data.request.address", notNullValue()))
-                .andExpect(jsonPath("$.data.request.budgetRef", is(500000.0)))
+                .andExpect(jsonPath("$.data.request.budgetRef", is(500000)))
                 .andExpect(jsonPath("$.data.quotations", empty()));
     }
 
@@ -210,8 +210,8 @@ class RepairRequestTechnicianDetailIntegrationTest {
                 .andExpect(jsonPath("$.data.quotations", hasSize(1)))
                 .andExpect(jsonPath("$.data.quotations[0].technicianId", is(techUser.getId().intValue())))
                 .andExpect(jsonPath("$.data.quotations[0].solution", is("Xử lý vi mạch cảm biến ngập nước đáy máy.")))
-                .andExpect(jsonPath("$.data.quotations[0].priceLaborVnd", is(300000.0)))
-                .andExpect(jsonPath("$.data.quotations[0].priceMaterialsVnd", is(150000.0)));
+                .andExpect(jsonPath("$.data.quotations[0].priceLaborVnd", is(300000)))
+                .andExpect(jsonPath("$.data.quotations[0].priceMaterialsVnd", is(150000)));
     }
 
     @Test
@@ -234,7 +234,7 @@ class RepairRequestTechnicianDetailIntegrationTest {
                 .andExpect(jsonPath("$.data.request.id", is(assignedRequestId.intValue())))
                 .andExpect(jsonPath("$.data.request.requestCode", is("REQ-TEST-RC39-ASSIGNED")))
                 .andExpect(jsonPath("$.data.request.status", is("ASSIGNED")))
-                .andExpect(jsonPath("$.data.request.agreedPrice", is(450000.0)));
+                .andExpect(jsonPath("$.data.request.agreedPrice", is(450000)));
     }
 
     @Test

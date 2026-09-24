@@ -1,41 +1,38 @@
 package com.fixlink.adapter.out.persistence.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@Entity
-@Table(name = "service_categories")
 @Getter
 @Setter
-public class ServiceCategoryJpaEntity extends BaseEntity {
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Entity
+@Table(name = "service_categories")
+public class ServiceCategoryJpaEntity extends BaseJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "code", nullable = false, unique = true, length = 50)
+    @Column(name = "code", length = 50, nullable = false, unique = true)
     private String code;
 
-    @Column(name = "name", nullable = false, length = 100)
+    @Column(name = "name", length = 100, nullable = false)
     private String name;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "icon_url")
+    @Column(name = "icon_url", length = 255)
     private String iconUrl;
 
     @Column(name = "display_order")
+    @Builder.Default
     private Integer displayOrder = 0;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
-
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ServiceJpaEntity> services = new ArrayList<>();
 }

@@ -34,7 +34,7 @@ public interface SpringDataRepairRequestRepository extends JpaRepository<RepairR
           AND r.deletedAt IS NULL
           AND (r.biddingDeadline IS NULL OR r.biddingDeadline > CURRENT_TIMESTAMP)
           AND r.categoryId IN :categoryIds
-          AND r.areaId IN :areaIds
+          AND (r.areaId IS NULL OR r.areaId IN :areaIds)
           AND r.customerId != :technicianId
           AND (
                :search IS NULL OR :search = ''

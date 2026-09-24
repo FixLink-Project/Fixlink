@@ -11,54 +11,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class UserMapper {
 
-    public User toDomain(UserJpaEntity entity) {
-        if (entity == null) {
-            return null;
-        }
-
-        User user = new User(
-                entity.getId(),
-                entity.getUsername(),
-                entity.getPasswordHash(),
-                entity.getRole(),
-                entity.getStatus(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt()
-        );
-
-        if (entity.getCustomerProfile() != null) {
-            user.setCustomerProfile(toDomain(entity.getCustomerProfile()));
-        }
-
-        if (entity.getTechnicianProfile() != null) {
-            user.setTechnicianProfile(toDomain(entity.getTechnicianProfile()));
-        }
-
-        return user;
-    }
-
-    public UserJpaEntity toEntity(User domain) {
-        if (domain == null) {
-            return null;
-        }
-
-        UserJpaEntity entity = new UserJpaEntity();
-        entity.setId(domain.getId());
-        entity.setUsername(domain.getUsername());
-        entity.setPasswordHash(domain.getPasswordHash());
-        entity.setRole(domain.getRole());
-        entity.setStatus(domain.getStatus());
-        entity.setCreatedAt(domain.getCreatedAt());
-        entity.setUpdatedAt(domain.getUpdatedAt());
-
-        return entity;
-    }
-
     public CustomerProfile toDomain(CustomerProfileJpaEntity entity) {
         if (entity == null) {
             return null;
         }
-
         return new CustomerProfile(
                 entity.getUserId(),
                 entity.getFullName(),
@@ -71,13 +27,12 @@ public class UserMapper {
         );
     }
 
-    public CustomerProfileJpaEntity toEntity(CustomerProfile domain, UserJpaEntity userEntity) {
+    public CustomerProfileJpaEntity toJpaEntity(CustomerProfile domain) {
         if (domain == null) {
             return null;
         }
-
         CustomerProfileJpaEntity entity = new CustomerProfileJpaEntity();
-        entity.setUser(userEntity);
+        entity.setUserId(domain.getUserId());
         entity.setFullName(domain.getFullName());
         entity.setPhone(domain.getPhone());
         entity.setEmail(domain.getEmail());
@@ -85,7 +40,36 @@ public class UserMapper {
         entity.setMembershipTier(domain.getMembershipTier());
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setUpdatedAt(domain.getUpdatedAt());
+        return entity;
+    }
 
+    public User toDomain(UserJpaEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        return new User(
+                entity.getId(),
+                entity.getUsername(),
+                entity.getPasswordHash(),
+                entity.getRole(),
+                entity.getStatus(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
+        );
+    }
+
+    public UserJpaEntity toJpaEntity(User domain) {
+        if (domain == null) {
+            return null;
+        }
+        UserJpaEntity entity = new UserJpaEntity();
+        entity.setId(domain.getId());
+        entity.setUsername(domain.getUsername());
+        entity.setPasswordHash(domain.getPasswordHash());
+        entity.setRole(domain.getRole());
+        entity.setStatus(domain.getStatus());
+        entity.setCreatedAt(domain.getCreatedAt());
+        entity.setUpdatedAt(domain.getUpdatedAt());
         return entity;
     }
 
@@ -93,7 +77,6 @@ public class UserMapper {
         if (entity == null) {
             return null;
         }
-
         TechnicianProfile domain = new TechnicianProfile();
         domain.setUserId(entity.getUserId());
         domain.setFullName(entity.getFullName());
@@ -106,7 +89,9 @@ public class UserMapper {
         domain.setBio(entity.getBio());
         domain.setYearsExperience(entity.getYearsExperience());
         domain.setVerificationStatus(entity.getVerificationStatus());
-        domain.setVerifiedBy(entity.getVerifiedBy());
+        if (entity.getVerifiedBy() != null && entity.getVerifiedBy().matches("\\d+")) {
+            domain.setVerifiedBy(Long.parseLong(entity.getVerifiedBy()));
+        }
         domain.setVerifiedAt(entity.getVerifiedAt());
         domain.setRejectionReason(entity.getRejectionReason());
         domain.setAvgRating(entity.getAvgRating());
@@ -115,17 +100,15 @@ public class UserMapper {
         domain.setIsOnline(entity.getIsOnline());
         domain.setCreatedAt(entity.getCreatedAt());
         domain.setUpdatedAt(entity.getUpdatedAt());
-
         return domain;
     }
 
-    public TechnicianProfileJpaEntity toEntity(TechnicianProfile domain, UserJpaEntity userEntity) {
+    public TechnicianProfileJpaEntity toJpaEntity(TechnicianProfile domain) {
         if (domain == null) {
             return null;
         }
-
         TechnicianProfileJpaEntity entity = new TechnicianProfileJpaEntity();
-        entity.setUser(userEntity);
+        entity.setUserId(domain.getUserId());
         entity.setFullName(domain.getFullName());
         entity.setPhone(domain.getPhone());
         entity.setEmail(domain.getEmail());
@@ -136,7 +119,7 @@ public class UserMapper {
         entity.setBio(domain.getBio());
         entity.setYearsExperience(domain.getYearsExperience());
         entity.setVerificationStatus(domain.getVerificationStatus());
-        entity.setVerifiedBy(domain.getVerifiedBy());
+        entity.setVerifiedBy(domain.getVerifiedBy() != null ? String.valueOf(domain.getVerifiedBy()) : null);
         entity.setVerifiedAt(domain.getVerifiedAt());
         entity.setRejectionReason(domain.getRejectionReason());
         entity.setAvgRating(domain.getAvgRating());
@@ -145,7 +128,6 @@ public class UserMapper {
         entity.setIsOnline(domain.getIsOnline());
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setUpdatedAt(domain.getUpdatedAt());
-
         return entity;
     }
 }

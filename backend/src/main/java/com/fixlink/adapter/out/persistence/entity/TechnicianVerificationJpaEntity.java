@@ -2,16 +2,18 @@ package com.fixlink.adapter.out.persistence.entity;
 
 import com.fixlink.domain.model.VerificationStatus;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "technician_verifications")
 @Getter
 @Setter
-public class TechnicianVerificationJpaEntity extends BaseEntity {
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Entity
+@Table(name = "technician_verifications")
+public class TechnicianVerificationJpaEntity extends BaseJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,16 +26,17 @@ public class TechnicianVerificationJpaEntity extends BaseEntity {
     private Long adminId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "status", length = 20, nullable = false)
+    @Builder.Default
     private VerificationStatus status = VerificationStatus.PENDING;
 
-    @Column(name = "citizen_id", nullable = false, length = 20)
+    @Column(name = "citizen_id", length = 20, nullable = false)
     private String citizenId;
 
-    @Column(name = "id_card_front_url", nullable = false)
+    @Column(name = "id_card_front_url", length = 500)
     private String idCardFrontUrl;
 
-    @Column(name = "id_card_back_url", nullable = false)
+    @Column(name = "id_card_back_url", length = 500)
     private String idCardBackUrl;
 
     @Column(name = "rejection_reason", columnDefinition = "TEXT")

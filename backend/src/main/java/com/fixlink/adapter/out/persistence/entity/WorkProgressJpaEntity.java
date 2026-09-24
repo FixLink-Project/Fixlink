@@ -2,15 +2,17 @@ package com.fixlink.adapter.out.persistence.entity;
 
 import com.fixlink.domain.model.RequestStatus;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "work_progress")
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Entity
+@Table(name = "work_progress")
 public class WorkProgressJpaEntity {
 
     @Id
@@ -21,11 +23,11 @@ public class WorkProgressJpaEntity {
     private Long requestId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "from_status", nullable = false, length = 30)
+    @Column(name = "from_status", length = 30, nullable = false)
     private RequestStatus fromStatus;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "to_status", nullable = false, length = 30)
+    @Column(name = "to_status", length = 30, nullable = false)
     private RequestStatus toStatus;
 
     @Column(name = "note", columnDefinition = "TEXT")
@@ -39,6 +41,8 @@ public class WorkProgressJpaEntity {
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
 }

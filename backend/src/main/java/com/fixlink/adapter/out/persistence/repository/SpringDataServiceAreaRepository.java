@@ -9,8 +9,7 @@ import java.util.Optional;
 
 @Repository
 public interface SpringDataServiceAreaRepository extends JpaRepository<ServiceAreaJpaEntity, Long> {
-
-    Optional<ServiceAreaJpaEntity> findByIdAndIsActiveTrue(Long id);
-
     List<ServiceAreaJpaEntity> findAllByIsActiveTrue();
+    Optional<ServiceAreaJpaEntity> findByIdAndIsActiveTrue(Long id);
+    Optional<ServiceAreaJpaEntity> findByIdAndDeletedAtIsNull(Long id);
 }

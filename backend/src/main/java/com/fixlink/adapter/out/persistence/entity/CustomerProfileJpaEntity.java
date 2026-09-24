@@ -1,16 +1,17 @@
 package com.fixlink.adapter.out.persistence.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.springframework.data.domain.Persistable;
 
-@Entity
-@Table(name = "customer_profiles")
 @Getter
 @Setter
 @NoArgsConstructor
-public class CustomerProfileJpaEntity extends BaseEntity {
+@AllArgsConstructor
+@Builder
+@Entity
+@Table(name = "customer_profiles")
+public class CustomerProfileJpaEntity extends BaseJpaEntity implements Persistable<Long> {
 
     @Id
     @Column(name = "user_id")
@@ -27,12 +28,40 @@ public class CustomerProfileJpaEntity extends BaseEntity {
     @Column(name = "phone", length = 20, nullable = false, unique = true)
     private String phone;
 
-    @Column(name = "email", length = 150, nullable = false, unique = true)
+    @Column(name = "email", length = 100, nullable = false, unique = true)
     private String email;
 
-    @Column(name = "avatar_url", length = 500)
+    @Column(name = "avatar_url", length = 255)
     private String avatarUrl;
 
-    @Column(name = "membership_tier", length = 30)
+    @Column(name = "membership_tier", length = 20, nullable = false)
+    @Builder.Default
     private String membershipTier = "STANDARD";
+
+    @Transient
+    @Builder.Default
+    private boolean isNewEntity = true;
+
+    @Override
+    public Long getId() {
+        return userId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return isNewEntity;
+    }
+
+    @PostLoad
+    @PostPersist
+    void markNotNew() {
+        this.isNewEntity = false;
+    }
+
+    public void setUser(UserJpaEntity user) {
+        this.user = user;
+        if (user != null && user.getId() != null) {
+            this.userId = user.getId();
+        }
+    }
 }

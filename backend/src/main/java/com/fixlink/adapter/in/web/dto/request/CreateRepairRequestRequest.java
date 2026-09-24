@@ -1,5 +1,6 @@
 package com.fixlink.adapter.in.web.dto.request;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -33,6 +34,7 @@ public class CreateRepairRequestRequest {
     @Size(max = 255, message = "Địa chỉ tối đa 255 ký tự")
     private String address;
 
+    @NotBlank(message = "Địa chỉ không được để trống")
     @Size(max = 255, message = "Địa chỉ tối đa 255 ký tự")
     private String addressLine;
 
@@ -46,6 +48,7 @@ public class CreateRepairRequestRequest {
     private BigDecimal latitude;
     private BigDecimal longitude;
 
+    @DecimalMin(value = "0.0", inclusive = true, message = "Ngân sách tham khảo không được âm")
     private BigDecimal budgetRef;
 
     private Integer biddingDeadlineDays;

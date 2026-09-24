@@ -9,13 +9,10 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/**
- * BaseEntity chứa 6 trường audit bắt buộc và soft-delete theo chuẩn ERD v2.0
- */
 @Getter
 @Setter
 @MappedSuperclass
-public abstract class BaseEntity {
+public abstract class BaseJpaEntity {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -23,7 +20,7 @@ public abstract class BaseEntity {
     @Column(name = "created_by")
     private Long createdBy;
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @Column(name = "updated_by")
@@ -37,18 +34,17 @@ public abstract class BaseEntity {
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = now;
         }
-        updatedAt = createdAt;
+        if (this.updatedAt == null) {
+            this.updatedAt = now;
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    public boolean isDeleted() {
-        return deletedAt != null;
+        this.updatedAt = LocalDateTime.now();
     }
 }

@@ -10,15 +10,13 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface SpringDataRefreshTokenRepository extends JpaRepository<RefreshTokenJpaEntity, Long> {
+public interface SpringDataRefreshTokenRepository extends JpaRepository<RefreshTokenJpaEntity, String> {
 
     Optional<RefreshTokenJpaEntity> findByToken(String token);
+
+    void deleteByToken(String token);
 
     @Modifying
     @Query("DELETE FROM RefreshTokenJpaEntity r WHERE r.user.id = :userId")
     void deleteByUserId(@Param("userId") Long userId);
-
-    @Modifying
-    @Query("DELETE FROM RefreshTokenJpaEntity r WHERE r.token = :token")
-    void deleteByToken(@Param("token") String token);
 }

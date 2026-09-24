@@ -18,6 +18,10 @@ spring:
     baseline-on-migrate: true
     baseline-version: 0
     locations: classpath:db/migration
+    # Cho phep migration co so thu tu thap hon chay sau (V5 duoc them vao
+    # sau khi V6/V7 da chay tren cac DB hien co). Khong bat co nay thi
+    # Flyway se fail khi gap migration "den muon".
+    out-of-order: true
 
   jpa:
     hibernate:

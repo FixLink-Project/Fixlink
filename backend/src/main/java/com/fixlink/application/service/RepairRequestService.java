@@ -10,6 +10,7 @@ import com.fixlink.domain.exception.InvalidStateTransitionException;
 import com.fixlink.domain.exception.ResourceNotFoundException;
 import com.fixlink.domain.exception.ValidationFailedException;
 import com.fixlink.domain.model.Media;
+import com.fixlink.domain.model.QuotationStatus;
 import com.fixlink.domain.model.MediaType;
 import com.fixlink.domain.model.RequestStatus;
 import com.fixlink.domain.model.RequestTab;
@@ -345,25 +346,54 @@ public class RepairRequestService implements RepairRequestUseCase {
     // 4. SPRINT 2 METHODS (Bidding / Quotation / Matching)
     // ==================================================================================
 
+    /** Danh muc phai ton tai va dang hoat dong (lay tu PR #1). */
+    private void assertCategoryActive(Long categoryId) {
+        ServiceCategoryJpaEntity category = categoryRepo.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục dịch vụ"));
+        if (category.getIsActive() != null && !category.getIsActive()) {
+            throw new DomainException("INVALID_OPERATION",
+                    "Danh mục dịch vụ hiện đang tạm dừng hoạt động");
+        }
+    }
+
+    /** Khu vuc (neu co) phai ton tai va dang hoat dong (lay tu PR #1). */
+    private void assertAreaActive(Long areaId) {
+        if (areaId == null) {
+            return;
+        }
+        ServiceAreaJpaEntity area = areaRepo.findById(areaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khu vực"));
+        if (area.getIsActive() != null && !area.getIsActive()) {
+            throw new DomainException("INVALID_OPERATION",
+                    "Khu vực dịch vụ hiện đang tạm dừng hoạt động");
+        }
+    }
+
+    private String trimOrNull(String value) {
+        return value != null ? value.trim() : null;
+    }
+
     @Override
     @Transactional
     public RepairRequestResponse create(CreateCommand cmd, Long customerId) {
-        categoryRepo.findById(cmd.getCategoryId())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục dịch vụ"));
-
-        if (cmd.getAreaId() != null) {
-            areaRepo.findById(cmd.getAreaId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khu vực"));
+        UserJpaEntity customer = userRepo.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin khách hàng"));
+        if (customer.getStatus() != UserStatus.ACTIVE) {
+            throw new DomainException("ACCOUNT_INACTIVE",
+                    "Tài khoản khách hàng không hoạt động hoặc đã bị khóa", 403);
         }
+
+        assertCategoryActive(cmd.getCategoryId());
+        assertAreaActive(cmd.getAreaId());
 
         RepairRequestJpaEntity entity = new RepairRequestJpaEntity();
         entity.setRequestCode(generateRequestCode());
         entity.setCustomerId(customerId);
         entity.setCategoryId(cmd.getCategoryId());
         entity.setAreaId(cmd.getAreaId());
-        entity.setTitle(cmd.getTitle());
-        entity.setDescription(cmd.getDescription());
-        entity.setAddress(cmd.getAddressLine() != null ? cmd.getAddressLine() : "");
+        entity.setTitle(trimOrNull(cmd.getTitle()));
+        entity.setDescription(trimOrNull(cmd.getDescription()));
+        entity.setAddress(cmd.getAddressLine() != null ? cmd.getAddressLine().trim() : "");
         entity.setLatitude(cmd.getLatitude());
         entity.setLongitude(cmd.getLongitude());
         entity.setRequestedTime(cmd.getPreferredTime() != null ? cmd.getPreferredTime() : LocalDateTime.now().plusDays(1));
@@ -400,11 +430,14 @@ public class RepairRequestService implements RepairRequestUseCase {
             }
         }
 
-        entity.setTitle(cmd.getTitle());
-        entity.setDescription(cmd.getDescription());
+        assertCategoryActive(cmd.getCategoryId());
+        assertAreaActive(cmd.getAreaId());
+
+        entity.setTitle(trimOrNull(cmd.getTitle()));
+        entity.setDescription(trimOrNull(cmd.getDescription()));
         entity.setCategoryId(cmd.getCategoryId());
         entity.setAreaId(cmd.getAreaId());
-        entity.setAddress(cmd.getAddressLine());
+        entity.setAddress(trimOrNull(cmd.getAddressLine()));
         entity.setLatitude(cmd.getLatitude());
         entity.setLongitude(cmd.getLongitude());
         if (cmd.getPreferredTime() != null) entity.setRequestedTime(cmd.getPreferredTime());
@@ -421,6 +454,9 @@ public class RepairRequestService implements RepairRequestUseCase {
             mediaRepo.deleteByOwnerTypeAndOwnerId(Media.OWNER_REPAIR_REQUEST, requestId);
             saveMedia(requestId, cmd.getMediaUrls(), customerId);
         }
+
+        recordProgress(requestId, entity.getStatus(), entity.getStatus(),
+                "Khách cập nhật thông tin yêu cầu", customerId);
 
         return toResponse(entity);
     }
@@ -443,6 +479,19 @@ public class RepairRequestService implements RepairRequestUseCase {
         entity.setCancelReason(reason);
         entity.setUpdatedBy(customerId);
         entity = requestRepo.save(entity);
+
+        // RC-34 (lay tu PR #1): chuyen toan bo bao gia dang PENDING sang REJECTED
+        // vi yeu cau da bi huy.
+        for (QuotationJpaEntity quote : quotationRepo.findByRequestIdOrderByCreatedAtDesc(requestId)) {
+            if (quote.getStatus() == QuotationStatus.PENDING) {
+                quote.setStatus(QuotationStatus.REJECTED);
+                quote.setNote(quote.getNote() != null
+                        ? quote.getNote() + " [Hủy do khách hủy yêu cầu]"
+                        : "[Hủy do khách hủy yêu cầu]");
+                quote.setUpdatedBy(customerId);
+                quotationRepo.save(quote);
+            }
+        }
 
         recordProgress(requestId, oldStatus, RequestStatus.CANCELLED, "Khách hủy: " + reason, customerId);
 

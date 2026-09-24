@@ -5,20 +5,17 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "refresh_tokens")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Entity
+@Table(name = "refresh_tokens")
 public class RefreshTokenJpaEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(name = "token", length = 255)
     private String token;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -28,17 +25,17 @@ public class RefreshTokenJpaEntity {
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
-    @Builder.Default
     @Column(name = "is_revoked", nullable = false)
-    private boolean revoked = false;
+    @Builder.Default
+    private boolean isRevoked = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
         }
     }
 }

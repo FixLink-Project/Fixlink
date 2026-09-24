@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface SpringDataTokenBlacklistRepository extends JpaRepository<TokenBlacklistJpaEntity, Long> {
+public interface SpringDataTokenBlacklistRepository extends JpaRepository<TokenBlacklistJpaEntity, String> {
 
     boolean existsByJti(String jti);
 }

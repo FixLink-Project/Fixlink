@@ -2,23 +2,25 @@ package com.fixlink.adapter.out.persistence.entity;
 
 import com.fixlink.domain.model.RequestStatus;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "repair_requests")
 @Getter
 @Setter
-public class RepairRequestJpaEntity extends BaseEntity {
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Entity
+@Table(name = "repair_requests")
+public class RepairRequestJpaEntity extends BaseJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "request_code", nullable = false, unique = true, length = 50)
+    @Column(name = "request_code", length = 50, nullable = false, unique = true)
     private String requestCode;
 
     @Column(name = "customer_id", nullable = false)
@@ -37,16 +39,17 @@ public class RepairRequestJpaEntity extends BaseEntity {
     private Long areaId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 30)
+    @Column(name = "status", length = 30, nullable = false)
+    @Builder.Default
     private RequestStatus status = RequestStatus.PENDING;
 
-    @Column(name = "title", nullable = false, length = 200)
+    @Column(name = "title", length = 200, nullable = false)
     private String title;
 
-    @Column(name = "description", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT", nullable = false)
     private String description;
 
-    @Column(name = "address", nullable = false)
+    @Column(name = "address", length = 255, nullable = false)
     private String address;
 
     @Column(name = "latitude", precision = 10, scale = 7)
@@ -58,13 +61,16 @@ public class RepairRequestJpaEntity extends BaseEntity {
     @Column(name = "requested_time", nullable = false)
     private LocalDateTime requestedTime;
 
-    @Column(name = "agreed_price")
+    @Column(name = "agreed_price", precision = 12, scale = 0)
+    @Builder.Default
     private BigDecimal agreedPrice = BigDecimal.ZERO;
 
-    @Column(name = "deposit_amount")
+    @Column(name = "deposit_amount", precision = 12, scale = 0)
+    @Builder.Default
     private BigDecimal depositAmount = BigDecimal.ZERO;
 
-    @Column(name = "budget_ref")
+    @Column(name = "budget_ref", precision = 12, scale = 0)
+    @Builder.Default
     private BigDecimal budgetRef = BigDecimal.ZERO;
 
     @Column(name = "bidding_deadline")
@@ -78,5 +84,6 @@ public class RepairRequestJpaEntity extends BaseEntity {
 
     @Version
     @Column(name = "version")
+    @Builder.Default
     private Long version = 0L;
 }

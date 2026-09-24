@@ -9,10 +9,9 @@ import java.util.Optional;
 
 @Repository
 public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, Long>, JpaSpecificationExecutor<UserJpaEntity> {
-
+    Optional<UserJpaEntity> findByUsername(String username);
     Optional<UserJpaEntity> findByUsernameAndDeletedAtIsNull(String username);
-
-    Optional<UserJpaEntity> findByIdAndDeletedAtIsNull(Long id);
-
+    boolean existsByUsername(String username);
     boolean existsByUsernameAndDeletedAtIsNull(String username);
+    Optional<UserJpaEntity> findByIdAndDeletedAtIsNull(Long id);
 }

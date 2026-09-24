@@ -11,13 +11,15 @@ import java.util.Optional;
 @Repository
 public interface SpringDataQuotationRepository extends JpaRepository<QuotationJpaEntity, Long> {
 
-    List<QuotationJpaEntity> findByRequestIdOrderByCreatedAtDesc(Long requestId);
-
-    List<QuotationJpaEntity> findByRequestIdAndStatus(Long requestId, QuotationStatus status);
-
-    Optional<QuotationJpaEntity> findByRequestIdAndTechnicianId(Long requestId, Long technicianId);
+    long countByRequestId(Long requestId);
 
     boolean existsByRequestIdAndTechnicianId(Long requestId, Long technicianId);
 
-    long countByRequestId(Long requestId);
+    List<QuotationJpaEntity> findByRequestIdOrderByCreatedAtDesc(Long requestId);
+
+    Optional<QuotationJpaEntity> findByRequestIdAndTechnicianId(Long requestId, Long technicianId);
+
+    List<QuotationJpaEntity> findByRequestIdAndStatus(Long requestId, QuotationStatus status);
+
+    List<QuotationJpaEntity> findByTechnicianIdOrderByCreatedAtDesc(Long technicianId);
 }

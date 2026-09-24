@@ -3,16 +3,16 @@ package com.fixlink.adapter.out.persistence.entity;
 import com.fixlink.domain.model.Role;
 import com.fixlink.domain.model.UserStatus;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
-@Entity
-@Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor
-public class UserJpaEntity extends BaseEntity {
+@AllArgsConstructor
+@Builder
+@Entity
+@Table(name = "users")
+public class UserJpaEntity extends BaseJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,16 +25,10 @@ public class UserJpaEntity extends BaseEntity {
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", length = 30, nullable = false)
+    @Column(name = "role", length = 20, nullable = false)
     private Role role;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20, nullable = false)
-    private UserStatus status = UserStatus.ACTIVE;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private CustomerProfileJpaEntity customerProfile;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private TechnicianProfileJpaEntity technicianProfile;
+    private UserStatus status;
 }

@@ -1,5 +1,8 @@
 package com.fixlink.adapter.in.web.dto.request;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -17,6 +20,7 @@ public class UpdateRepairRequestRequest {
     private String title;
 
     @NotBlank(message = "Mô tả không được để trống")
+    @Size(max = 2000, message = "Mô tả tối đa 2000 ký tự")
     private String description;
 
     @NotNull(message = "Danh mục dịch vụ là bắt buộc")
@@ -25,6 +29,7 @@ public class UpdateRepairRequestRequest {
     private Long areaId;
 
     @NotBlank(message = "Địa chỉ không được để trống")
+    @Size(max = 255, message = "Địa chỉ tối đa 255 ký tự")
     private String addressLine;
 
     private BigDecimal latitude;
@@ -32,9 +37,13 @@ public class UpdateRepairRequestRequest {
 
     private LocalDateTime preferredTime;
 
+    @DecimalMin(value = "0.0", inclusive = true, message = "Ngân sách tham khảo không được âm")
     private BigDecimal budgetRef;
 
+    @Min(value = 1, message = "Hạn nhận báo giá tối thiểu 1 ngày")
+    @Max(value = 30, message = "Hạn nhận báo giá tối đa 30 ngày")
     private Integer biddingDeadlineDays;
 
+    @Size(max = 10, message = "Tối đa 10 hình ảnh hoặc video đính kèm")
     private List<String> mediaUrls;
 }

@@ -8,8 +8,6 @@ import java.util.List;
 
 @Repository
 public interface SpringDataAuditLogRepository extends JpaRepository<AuditLogJpaEntity, Long> {
-
-    List<AuditLogJpaEntity> findByEntityNameAndEntityIdOrderByCreatedAtDesc(String entityName, String entityId);
-
     List<AuditLogJpaEntity> findByUserIdOrderByCreatedAtDesc(Long userId);
+    List<AuditLogJpaEntity> findByEntityNameAndEntityIdOrderByCreatedAtDesc(String entityName, String entityId);
 }

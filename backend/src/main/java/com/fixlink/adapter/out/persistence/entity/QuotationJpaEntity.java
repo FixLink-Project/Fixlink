@@ -2,18 +2,19 @@ package com.fixlink.adapter.out.persistence.entity;
 
 import com.fixlink.domain.model.QuotationStatus;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "quotations",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"request_id", "technician_id"}))
 @Getter
 @Setter
-public class QuotationJpaEntity extends BaseEntity {
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Entity
+@Table(name = "quotations")
+public class QuotationJpaEntity extends BaseJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,13 +26,15 @@ public class QuotationJpaEntity extends BaseEntity {
     @Column(name = "technician_id", nullable = false)
     private Long technicianId;
 
-    @Column(name = "solution", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "solution", columnDefinition = "TEXT", nullable = false)
     private String solution;
 
-    @Column(name = "price_labor_vnd", nullable = false)
+    @Column(name = "price_labor_vnd", precision = 12, scale = 0, nullable = false)
+    @Builder.Default
     private BigDecimal priceLaborVnd = BigDecimal.ZERO;
 
-    @Column(name = "price_materials_vnd", nullable = false)
+    @Column(name = "price_materials_vnd", precision = 12, scale = 0, nullable = false)
+    @Builder.Default
     private BigDecimal priceMaterialsVnd = BigDecimal.ZERO;
 
     @Column(name = "inspection_time")
@@ -44,6 +47,7 @@ public class QuotationJpaEntity extends BaseEntity {
     private String note;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "status", length = 20, nullable = false)
+    @Builder.Default
     private QuotationStatus status = QuotationStatus.PENDING;
 }

@@ -9,6 +9,7 @@ import java.util.List;
 
 @Repository
 public interface SpringDataMediaRepository extends JpaRepository<MediaJpaEntity, Long> {
+
     List<MediaJpaEntity> findByOwnerTypeAndOwnerId(String ownerType, Long ownerId);
 
     void deleteByOwnerTypeAndOwnerId(String ownerType, Long ownerId);

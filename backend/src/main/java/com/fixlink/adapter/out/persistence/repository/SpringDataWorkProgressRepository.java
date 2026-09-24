@@ -8,5 +8,6 @@ import java.util.List;
 
 @Repository
 public interface SpringDataWorkProgressRepository extends JpaRepository<WorkProgressJpaEntity, Long> {
+
     List<WorkProgressJpaEntity> findByRequestIdOrderByCreatedAtAsc(Long requestId);
 }

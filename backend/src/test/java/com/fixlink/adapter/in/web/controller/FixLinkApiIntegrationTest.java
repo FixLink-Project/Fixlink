@@ -577,7 +577,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(23)
-    @DisplayName("Core Entity & BaseEntity Audit Columns - Tạo yêu cầu sửa chữa (RepairRequest) với đủ 6 cột audit")
+    @DisplayName("Core Entity & BaseJpaEntity Audit Columns - Tạo yêu cầu sửa chữa (RepairRequest) với đủ 6 cột audit")
     void testRC8_RepairRequestAndAuditColumns() {
         com.fixlink.adapter.out.persistence.entity.RepairRequestJpaEntity req =
                 new com.fixlink.adapter.out.persistence.entity.RepairRequestJpaEntity();
@@ -594,8 +594,8 @@ class FixLinkApiIntegrationTest {
         com.fixlink.adapter.out.persistence.entity.RepairRequestJpaEntity saved = repairRequestRepository.save(req);
 
         assertNotNull(saved.getId());
-        assertNotNull(saved.getCreatedAt(), "Cột audit created_at phải tự động được gán bởi BaseEntity");
-        assertNotNull(saved.getUpdatedAt(), "Cột audit updated_at phải tự động được gán bởi BaseEntity");
+        assertNotNull(saved.getCreatedAt(), "Cột audit created_at phải tự động được gán bởi BaseJpaEntity");
+        assertNotNull(saved.getUpdatedAt(), "Cột audit updated_at phải tự động được gán bởi BaseJpaEntity");
     }
 
     @Test
