@@ -5,14 +5,15 @@ FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /build
 
-# Copy Maven descriptor and download dependencies
+# Copy Maven descriptor and download dependencies (kèm plugin, để Lombok
+# annotation processor có sẵn khi biên dịch offline)
 COPY pom.xml ./
-RUN mvn dependency:go-offline -B
+RUN mvn -B -ntp dependency:go-offline dependency:resolve-plugins
 
 # Copy source code and build production artifact
-COPY src ./src
 COPY checkstyle.xml ./
-RUN mvn clean package -DskipTests -B
+COPY src ./src
+RUN mvn -B -ntp clean package -DskipTests
 
 # =============================================================================
 # Stage 2: Runtime Image with Eclipse Temurin JRE 21 Alpine
@@ -28,7 +29,7 @@ RUN addgroup -S fixlink && adduser -S fixlink -G fixlink
 RUN apk add --no-cache wget
 
 # Copy artifact from builder stage
-COPY --from=builder /build/target/fixlink-backend-1.0.0.jar /app/app.jar
+COPY --from=builder /build/target/fixlink-backend-0.0.1-SNAPSHOT.jar /app/app.jar
 RUN chown -R fixlink:fixlink /app
 
 USER fixlink

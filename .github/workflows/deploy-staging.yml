@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -49,41 +49,51 @@ jobs:
         id: meta
         run: |
           SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           echo "tag=$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "IMAGE_TAG_BACKEND=ghcr.io/${{ github.repository }}/backend:$SHORT_SHA" >> $GITHUB_ENV
-          echo "IMAGE_TAG_BACKEND_LATEST=ghcr.io/${{ github.repository }}/backend:staging-latest" >> $GITHUB_ENV
-          echo "IMAGE_TAG_FRONTEND=ghcr.io/${{ github.repository }}/frontend:$SHORT_SHA" >> $GITHUB_ENV
-          echo "IMAGE_TAG_FRONTEND_LATEST=ghcr.io/${{ github.repository }}/frontend:staging-latest" >> $GITHUB_ENV
+          echo "REPO_LC=$REPO_LC" >> $GITHUB_ENV
+          echo "IMAGE_TAG_BACKEND=ghcr.io/$REPO_LC/backend:$SHORT_SHA" >> $GITHUB_ENV
+          echo "IMAGE_TAG_BACKEND_LATEST=ghcr.io/$REPO_LC/backend:staging-latest" >> $GITHUB_ENV
+          echo "IMAGE_TAG_FRONTEND=ghcr.io/$REPO_LC/frontend:$SHORT_SHA" >> $GITHUB_ENV
+          echo "IMAGE_TAG_FRONTEND_LATEST=ghcr.io/$REPO_LC/frontend:staging-latest" >> $GITHUB_ENV
 
       - name: Build & Push Backend Container Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
+          provenance: false
           tags: |
             ${{ env.IMAGE_TAG_BACKEND }}
             ${{ env.IMAGE_TAG_BACKEND_LATEST }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
 
       - name: Build & Push Frontend Container Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
+          provenance: false
           tags: |
             ${{ env.IMAGE_TAG_FRONTEND }}
             ${{ env.IMAGE_TAG_FRONTEND_LATEST }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
   # ===========================================================================
   # 2. Deploy to Staging Host via Secure SSH
+  #
+  # Chi chay THU CONG (Actions > Run workflow). Push len main chi build &
+  # push image, KHONG tu dong deploy — vi chua co server staging that va
+  # chua khai 3 secret STAGING_SERVER_HOST / STAGING_SSH_USER /
+  # STAGING_SSH_KEY. Khi da co server, chay tay workflow nay de deploy.
   # ===========================================================================
   deploy-to-staging:
     name: Deploy & Healthcheck on Staging
+    if: github.event_name == 'workflow_dispatch'
     needs: publish-container-images
     runs-on: ubuntu-latest
     environment: staging
@@ -115,8 +125,9 @@ jobs:
             export IMAGE_TAG="$IMAGE_TAG"
             export STAGING_DB_PASSWORD="$STAGING_DB_PASSWORD"
             export STAGING_JWT_SECRET="$STAGING_JWT_SECRET"
-            export DOCKER_IMAGE_BACKEND="ghcr.io/${{ github.repository }}/backend"
-            export DOCKER_IMAGE_FRONTEND="ghcr.io/${{ github.repository }}/frontend"
+            REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            export DOCKER_IMAGE_BACKEND="ghcr.io/$REPO_LC/backend"
+            export DOCKER_IMAGE_FRONTEND="ghcr.io/$REPO_LC/frontend"
 
             # Pull newest release images
             docker compose -f docker-compose.staging.yml pull backend frontend
