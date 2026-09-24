@@ -14,8 +14,7 @@ target/
 **/target/
 build/
 **/build/
-out/
-**/out/
+/out/
 bin/
 **/bin/
 *.class
@@ -40,7 +39,6 @@ gradle-app.setting
 *.iml
 *.iws
 *.ipr
-out/
 
 # Eclipse
 .apt_generated

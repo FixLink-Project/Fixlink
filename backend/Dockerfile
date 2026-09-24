@@ -28,7 +28,7 @@ RUN addgroup -S fixlink && adduser -S fixlink -G fixlink
 RUN apk add --no-cache wget
 
 # Copy artifact from builder stage
-COPY --from=builder /build/target/fixlink-backend-1.0.0.jar /app/app.jar
+COPY --from=builder /build/target/fixlink-backend-0.0.1-SNAPSHOT.jar /app/app.jar
 RUN chown -R fixlink:fixlink /app
 
 USER fixlink
