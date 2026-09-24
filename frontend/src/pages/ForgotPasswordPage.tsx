@@ -24,7 +24,6 @@ export default function ForgotPasswordPage() {
     setSubmitting(true);
     try {
       const res = await api.post<null>('/auth/forgot-password', { email: email.trim() });
-      // Máy chủ luôn trả cùng một thông báo, dù email có tồn tại hay không.
       setSentMessage(res.message);
     } catch (err) {
       setError(
@@ -44,7 +43,7 @@ export default function ForgotPasswordPage() {
       footer={
         <p className="text-sm text-ink-soft">
           Nhớ ra mật khẩu rồi?{' '}
-          <Link to="/dang-nhap" className="text-brand hover:text-brand-strong hover:underline">
+          <Link to="/login" className="text-brand-glow hover:text-brand hover:underline">
             Quay lại đăng nhập
           </Link>
           .

@@ -15,7 +15,7 @@ export default function RequireAuth({ roles, children }: RequireAuthProps) {
 
   if (!user) {
     // Nhớ trang đang muốn vào để quay lại sau khi đăng nhập.
-    return <Navigate to="/dang-nhap" replace state={{ from: location.pathname }} />;
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
   if (roles && !roles.includes(user.role)) {

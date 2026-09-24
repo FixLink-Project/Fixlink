@@ -22,7 +22,6 @@ export default function ResetPasswordPage() {
     setFormError(null);
 
     const clientErrors: Record<string, string> = {};
-    // Chính sách mật khẩu của máy chủ: chữ hoa, chữ thường, số và ký tự đặc biệt.
     if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(newPassword)) {
       clientErrors.newPassword =
         'Mật khẩu cần ít nhất 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt.';
@@ -38,7 +37,7 @@ export default function ResetPasswordPage() {
     setSubmitting(true);
     try {
       await api.post('/auth/reset-password', { token, newPassword, confirmPassword });
-      navigate('/dang-nhap', { replace: true, state: { passwordReset: true } });
+      navigate('/login', { replace: true, state: { passwordReset: true } });
     } catch (err) {
       const fieldErrors = toFieldErrors(err);
       if (Object.keys(fieldErrors).length > 0) {
@@ -53,7 +52,6 @@ export default function ResetPasswordPage() {
     }
   }
 
-  // Mở trang mà không có token thì không thể làm gì; nói thẳng thay vì hiện form vô dụng.
   if (!token) {
     return (
       <AuthLayout title="Đặt lại mật khẩu">
@@ -64,7 +62,7 @@ export default function ResetPasswordPage() {
           </Alert>
           <Link
             to="/quen-mat-khau"
-            className="flex min-h-[44px] w-full items-center justify-center rounded-lg bg-brand px-5 text-sm font-medium text-white hover:bg-brand-strong"
+            className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-gradient-to-r from-brand to-brand-glow px-5 text-sm font-medium text-white shadow-glow transition-all hover:shadow-glow-lg"
           >
             Yêu cầu liên kết mới
           </Link>
@@ -80,7 +78,7 @@ export default function ResetPasswordPage() {
       footer={
         <p className="text-sm text-ink-soft">
           Liên kết đã hết hạn?{' '}
-          <Link to="/quen-mat-khau" className="text-brand hover:text-brand-strong hover:underline">
+          <Link to="/quen-mat-khau" className="text-brand-glow hover:text-brand hover:underline">
             Yêu cầu gửi lại
           </Link>
           .

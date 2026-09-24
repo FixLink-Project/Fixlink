@@ -17,8 +17,7 @@ interface TabsProps<T extends string> {
 }
 
 /**
- * Tab đang chọn được đánh dấu bằng viền dưới màu brand; các tab còn lại để chữ
- * mờ. Điều hướng bằng phím mũi tên trái/phải theo đúng thông lệ của tablist.
+ * Pill-style tabs với glow active state cho dark theme.
  */
 export default function Tabs<T extends string>({
   items,
@@ -47,7 +46,11 @@ export default function Tabs<T extends string>({
 
   return (
     <div>
-      <div role="tablist" aria-label={label} className="flex flex-wrap gap-1 border-b border-line">
+      <div
+        role="tablist"
+        aria-label={label}
+        className="flex flex-wrap gap-1 rounded-2xl border border-slate-200 bg-slate-100/80 p-1.5 shadow-xs"
+      >
         {items.map((item) => {
           const selected = item.id === active;
           return (
@@ -61,17 +64,19 @@ export default function Tabs<T extends string>({
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(item.id)}
               onKeyDown={handleKeyDown}
-              className={`-mb-px flex min-h-[44px] items-center gap-2 border-b-2 px-3 text-sm transition-colors ${
+              className={`flex min-h-[40px] items-center gap-2 rounded-xl px-4 text-sm transition-all duration-200 ${
                 selected
-                  ? 'border-brand font-medium text-brand-ink'
-                  : 'border-transparent text-ink-soft hover:text-ink'
+                  ? 'bg-white font-bold text-slate-900 shadow-sm border border-slate-200/80'
+                  : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60 font-medium'
               }`}
             >
               {item.label}
               {item.badge != null && item.badge > 0 && (
                 <span
-                  className={`rounded-full px-1.5 py-0.5 text-xs ${
-                    selected ? 'bg-brand/10 text-brand-ink' : 'bg-surface text-ink-soft'
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    selected
+                      ? 'bg-blue-50 text-brand border border-blue-200'
+                      : 'bg-slate-200/80 text-slate-700'
                   }`}
                 >
                   {item.badge}

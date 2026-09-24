@@ -56,7 +56,6 @@ export default function CustomerRegisterPage() {
 
   function update(field: keyof typeof EMPTY, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
-    // Xoá lỗi của riêng trường đang sửa để người dùng thấy phản hồi ngay.
     setErrors((current) => {
       if (!current[field]) return current;
       const next = { ...current };
@@ -84,8 +83,7 @@ export default function CustomerRegisterPage() {
         phone: form.phone.trim(),
         email: form.email.trim()
       });
-      // Chuyển sang trang đăng nhập kèm tên tài khoản vừa tạo.
-      navigate('/dang-nhap', {
+      navigate('/login', {
         replace: true,
         state: { username: form.username.trim(), justRegistered: true }
       });
@@ -110,11 +108,11 @@ export default function CustomerRegisterPage() {
       footer={
         <p className="text-sm text-ink-soft">
           Đã có tài khoản?{' '}
-          <Link to="/dang-nhap" className="text-brand hover:text-brand-strong hover:underline">
+          <Link to="/login" className="text-brand-glow hover:text-brand hover:underline">
             Đăng nhập
           </Link>
           . Bạn là thợ muốn nhận việc?{' '}
-          <Link to="/dang-ky-tho" className="text-brand hover:text-brand-strong hover:underline">
+          <Link to="/dang-ky-tho" className="text-brand-glow hover:text-brand hover:underline">
             Đăng ký làm thợ
           </Link>
           .

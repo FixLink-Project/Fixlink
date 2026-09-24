@@ -184,18 +184,57 @@ export default function CustomerDashboardPage() {
   return (
     <DashboardLayout
       nav={CUSTOMER_NAV}
-      title={`Chào ${profile?.fullName?.trim() || user?.username || 'bạn'}`}
-      description="Giữ thông tin liên hệ chính xác để thợ gọi đúng số khi tới sửa."
+      title={`Chào ${profile?.fullName?.trim() || user?.username || 'bạn'} 👋`}
+      description="Quản lý thông tin tài khoản và đối chiếu lịch sử sửa chữa thiết bị."
     >
+      {/* Quick customer shortcuts */}
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <a
+          href="/dang-yeu-cau"
+          className="flex items-center gap-3.5 p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 shadow-xs hover:shadow-card hover:border-brand/40 transition-all"
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-white text-xl shadow-xs">
+            ⚡
+          </span>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-brand">Cần sửa gấp?</p>
+            <p className="text-sm font-bold text-slate-900 mt-0.5">Đăng yêu cầu mới →</p>
+          </div>
+        </a>
+
+        <a
+          href="/yeu-cau-cua-toi"
+          className="flex items-center gap-3.5 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:shadow-card hover:border-slate-300 transition-all"
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 text-xl border border-amber-200">
+            📋
+          </span>
+          <div>
+            <p className="text-xs font-semibold text-slate-500">Đơn sửa chữa</p>
+            <p className="text-sm font-bold text-slate-900 mt-0.5">Xem tiến độ & báo giá</p>
+          </div>
+        </a>
+
+        <div className="flex items-center gap-3.5 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 text-xl border border-emerald-200">
+            🛡️
+          </span>
+          <div>
+            <p className="text-xs font-semibold text-slate-500">Bảo vệ khách hàng</p>
+            <p className="text-sm font-bold text-emerald-700 mt-0.5">Bảo hiểm Escrow 100%</p>
+          </div>
+        </div>
+      </div>
+
       {status === 'loading' && (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           {[0, 1].map((i) => (
-            <div key={i} className="animate-pulse rounded-xl border border-line bg-card p-5">
-              <div className="h-5 w-40 rounded bg-line" />
+            <div key={i} className="animate-pulse rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
+              <div className="h-5 w-40 rounded bg-slate-200" />
               <div className="mt-4 space-y-3">
-                <div className="h-11 rounded bg-line/70" />
-                <div className="h-11 rounded bg-line/70" />
-                <div className="h-11 rounded bg-line/70" />
+                <div className="h-11 rounded bg-slate-100" />
+                <div className="h-11 rounded bg-slate-100" />
+                <div className="h-11 rounded bg-slate-100" />
               </div>
             </div>
           ))}
@@ -210,7 +249,7 @@ export default function CustomerDashboardPage() {
 
       {status === 'ready' && (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <Card title="Hồ sơ của tôi" description="Thông tin này hiển thị cho thợ nhận việc.">
+          <Card title="Hồ sơ của tôi" description="Thông tin này hiển thị cho thợ nhận việc khi họ liên hệ với bạn.">
             <form onSubmit={handleSave} noValidate className="space-y-5">
               {saveError && <Alert tone="error">{saveError}</Alert>}
               {saved && !saveError && (
@@ -258,8 +297,8 @@ export default function CustomerDashboardPage() {
                   {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </Button>
                 {profile && (
-                  <p className="text-sm text-ink-soft">
-                    Cập nhật lần cuối {formatDateTime(profile.updatedAt)}
+                  <p className="text-xs text-slate-400">
+                    Cập nhật lần cuối: {formatDateTime(profile.updatedAt)}
                   </p>
                 )}
               </div>
@@ -267,39 +306,40 @@ export default function CustomerDashboardPage() {
           </Card>
 
           <Card
-            title="Lịch sử thay đổi"
-            description="Mọi chỉnh sửa hồ sơ đều được ghi lại để đối chiếu khi có tranh chấp."
+            title="Lịch sử thay đổi tài khoản"
+            description="Mọi chỉnh sửa hồ sơ đều được ghi lại an toàn trên hệ thống."
           >
             {audit.length === 0 ? (
-              <div className="py-6 text-center">
-                <p className="font-medium">Chưa có thay đổi nào được ghi nhận.</p>
-                <p className="mt-1 text-sm text-ink-soft">
-                  Lần đầu bạn sửa hồ sơ, bản ghi sẽ xuất hiện ở đây.
+              <div className="py-8 text-center">
+                <p className="text-3xl">📋</p>
+                <p className="mt-2 font-bold text-slate-800">Chưa có thay đổi nào được ghi nhận</p>
+                <p className="mt-1 text-xs text-slate-500 max-w-xs mx-auto">
+                  Lần đầu bạn sửa đổi thông tin cá nhân, bản ghi đối chiếu sẽ xuất hiện ở đây.
                 </p>
               </div>
             ) : (
-              <ol className="divide-y divide-line">
+              <ol className="divide-y divide-slate-100">
                 {audit.map((entry) => {
                   const changes = diffFields(entry.oldValues, entry.newValues);
                   return (
-                    <li key={entry.id} className="py-4 first:pt-0 last:pb-0">
+                    <li key={entry.id} className="py-3.5 first:pt-0 last:pb-0">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <p className="font-display font-semibold">Cập nhật hồ sơ</p>
-                        <time className="text-sm text-ink-soft" dateTime={entry.createdAt}>
+                        <p className="font-bold text-slate-800 text-sm">Cập nhật hồ sơ</p>
+                        <time className="text-xs text-slate-400" dateTime={entry.createdAt}>
                           {formatDateTime(entry.createdAt)}
                         </time>
                       </div>
                       {changes.length > 0 ? (
-                        <ul className="mt-2 space-y-1 text-sm">
+                        <ul className="mt-2 space-y-1 text-xs">
                           {changes.map((change) => (
-                            <li key={change.field} className="text-ink-soft">
-                              <span className="text-ink">{change.field}:</span> {change.before}{' '}
-                              thành <span className="text-ink">{change.after}</span>
+                            <li key={change.field} className="text-slate-600">
+                              <span className="font-semibold text-slate-700">{change.field}:</span> {change.before}{' '}
+                              → <span className="font-bold text-brand">{change.after}</span>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="mt-1 text-sm text-ink-soft">Không có trường nào đổi giá trị.</p>
+                        <p className="mt-1 text-xs text-slate-400">Không có trường nào đổi giá trị.</p>
                       )}
                     </li>
                   );

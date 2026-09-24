@@ -3,15 +3,14 @@ type Tone = 'pending' | 'success' | 'danger' | 'neutral';
 /**
  * Chip trạng thái dùng chung cho mọi màn hình.
  *
- * <p>Quy ước màu: chờ duyệt → amber, đã duyệt/hoàn tất → teal, bị từ chối/khoá →
- * rose, còn lại → xám. Chữ luôn dùng màu mực để giữ độ tương phản; màu trạng thái
- * nằm ở nền nhạt và chấm tròn bên trái.
+ * <p>Quy ước màu: chờ duyệt → amber, đã duyệt/hoàn tất → teal/green, bị từ chối/khoá →
+ * rose, còn lại → xám. Dark theme với glowing dot indicators.
  */
 const TONES: Record<Tone, { chip: string; dot: string }> = {
-  pending: { chip: 'bg-amber-soft text-ink', dot: 'bg-amber' },
-  success: { chip: 'bg-brand/10 text-brand-ink', dot: 'bg-brand' },
-  danger: { chip: 'bg-rose-soft text-ink', dot: 'bg-rose' },
-  neutral: { chip: 'bg-surface text-ink-soft', dot: 'bg-ink-soft' }
+  pending: { chip: 'bg-amber-50 text-amber-700 border border-amber-200 font-medium', dot: 'bg-amber-500' },
+  success: { chip: 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium', dot: 'bg-emerald-500' },
+  danger: { chip: 'bg-rose-50 text-rose-700 border border-rose-200 font-medium', dot: 'bg-rose-500' },
+  neutral: { chip: 'bg-slate-100 text-slate-600 border border-slate-200 font-medium', dot: 'bg-slate-400' }
 };
 
 const LABELS: Record<string, { label: string; tone: Tone }> = {

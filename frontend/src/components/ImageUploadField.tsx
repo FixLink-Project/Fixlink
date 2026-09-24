@@ -78,11 +78,13 @@ export default function ImageUploadField({
       <span className="mb-1.5 block text-sm font-medium text-ink">{label}</span>
 
       {shownImage && (
-        <img
-          src={shownImage}
-          alt={`Ảnh đã chọn cho ${label}`}
-          className="mb-3 h-36 w-full rounded-xl border border-line bg-surface object-contain"
-        />
+        <div className="mb-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2 shadow-xs">
+          <img
+            src={shownImage}
+            alt={`Ảnh đã chọn cho ${label}`}
+            className="h-40 w-full object-contain rounded-xl"
+          />
+        </div>
       )}
 
       {configured ? (
@@ -96,22 +98,40 @@ export default function ImageUploadField({
             disabled={disabled || uploading}
             onChange={handleFile}
           />
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
+
+          {!shownImage && !uploading && (
+            <button
               type="button"
-              variant="secondary"
-              loading={uploading}
               disabled={disabled}
               onClick={() => fileInputRef.current?.click()}
+              className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-4 py-8 text-slate-500 shadow-xs transition-all duration-200 hover:border-brand hover:bg-blue-50/40 hover:text-brand"
             >
-              {uploading ? `Đang tải ${progress}%` : shownImage ? 'Chọn ảnh khác' : 'Chọn ảnh'}
-            </Button>
-            {shownImage && !uploading && (
-              <Button type="button" variant="quiet" disabled={disabled} onClick={clearImage}>
-                Gỡ ảnh
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-2xl shadow-xs border border-slate-200">
+                📷
+              </span>
+              <span className="text-sm font-semibold">Nhấn để tải ảnh sự cố / linh kiện</span>
+              <span className="text-xs text-slate-400">JPG, PNG, WebP tối đa 5 MB</span>
+            </button>
+          )}
+
+          {(shownImage || uploading) && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                loading={uploading}
+                disabled={disabled}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploading ? `Đang tải ${progress}%` : 'Chọn ảnh khác'}
               </Button>
-            )}
-          </div>
+              {shownImage && !uploading && (
+                <Button type="button" variant="quiet" disabled={disabled} onClick={clearImage}>
+                  Gỡ ảnh
+                </Button>
+              )}
+            </div>
+          )}
 
           {uploading && (
             <div
@@ -120,10 +140,10 @@ export default function ImageUploadField({
               aria-valuemin={0}
               aria-valuemax={100}
               aria-label={`Tiến trình tải ${label}`}
-              className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-line"
+              className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100"
             >
               <div
-                className="h-full bg-brand transition-[width] duration-200"
+                className="h-full rounded-full bg-brand transition-[width] duration-200"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -138,17 +158,16 @@ export default function ImageUploadField({
             disabled={disabled}
             placeholder="https://..."
             onChange={(e) => onChange(e.target.value)}
-            className="min-h-[44px] w-full rounded-lg border border-line bg-card px-3.5 text-ink placeholder:text-ink-soft/60"
+            className="min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-xs transition-all duration-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
           />
-          <p className="mt-1.5 text-sm text-ink-soft">
-            Chưa bật kho ảnh nên tạm dán đường dẫn. Thêm các biến VITE_FIREBASE_* vào tệp .env
-            của frontend để chọn ảnh trực tiếp từ máy.
+          <p className="mt-1.5 text-xs text-slate-500">
+            Dán đường link ảnh hiện trạng hoặc linh kiện thay thế.
           </p>
         </>
       )}
 
-      {(uploadError || error) && <p className="mt-1.5 text-sm text-rose">{uploadError ?? error}</p>}
-      {hint && !uploadError && !error && <p className="mt-1.5 text-sm text-ink-soft">{hint}</p>}
+      {(uploadError || error) && <p className="mt-1.5 text-sm text-danger">{uploadError ?? error}</p>}
+      {hint && !uploadError && !error && <p className="mt-1.5 text-sm text-ink-muted">{hint}</p>}
     </div>
   );
 }

@@ -1,45 +1,37 @@
-import { useId, type InputHTMLAttributes } from 'react';
+import type { InputHTMLAttributes } from 'react';
 
-interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> {
+interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
-  /** Thông báo lỗi của riêng trường này; có giá trị thì viền chuyển đỏ. */
   error?: string;
   hint?: string;
 }
 
-export default function TextField({ label, error, hint, className = '', ...rest }: TextFieldProps) {
-  const id = useId();
-  const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
-
+export default function TextField({ label, error, hint, id, ...rest }: TextFieldProps) {
+  const fieldId = id ?? rest.name;
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink">
+      <label htmlFor={fieldId} className="mb-1.5 block text-sm font-medium text-ink">
         {label}
+        {rest.required && <span className="ml-0.5 text-brand-glow">*</span>}
       </label>
       <input
         {...rest}
-        id={id}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : hint ? hintId : undefined}
+        id={fieldId}
         className={[
-          'w-full min-h-[44px] rounded-lg border bg-card px-3.5 text-ink',
-          'placeholder:text-ink-soft/60 disabled:cursor-not-allowed disabled:bg-surface disabled:text-ink-soft',
-          error ? 'border-rose focus-visible:ring-rose' : 'border-line',
-          className
-        ]
-          .filter(Boolean)
-          .join(' ')}
+          'min-h-[44px] w-full rounded-xl border bg-white px-3.5 text-sm text-ink',
+          'placeholder:text-ink-muted transition-all duration-200 shadow-sm',
+          'focus:outline-none focus:ring-4 focus:ring-brand/10 focus:border-brand',
+          error
+            ? 'border-danger focus:ring-danger/10 focus:border-danger'
+            : 'border-line hover:border-line-strong'
+        ].join(' ')}
       />
-      {error ? (
-        <p id={errorId} className="mt-1.5 text-sm text-rose">
+      {hint && !error && <p className="mt-1.5 text-sm text-ink-muted">{hint}</p>}
+      {error && (
+        <p className="mt-1.5 text-sm text-danger" role="alert">
           {error}
         </p>
-      ) : hint ? (
-        <p id={hintId} className="mt-1.5 text-sm text-ink-soft">
-          {hint}
-        </p>
-      ) : null}
+      )}
     </div>
   );
 }

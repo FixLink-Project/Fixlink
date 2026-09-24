@@ -99,7 +99,7 @@ export default function TechnicianRegisterPage() {
         bio: form.bio.trim() || null,
         yearsExperience: form.yearsExperience.trim() ? Number(form.yearsExperience) : null
       });
-      navigate('/dang-nhap', {
+      navigate('/login', {
         replace: true,
         state: { username: form.username.trim(), justRegistered: true }
       });
@@ -120,34 +120,34 @@ export default function TechnicianRegisterPage() {
   return (
     <AuthLayout
       wide
-      title="Đăng ký làm thợ"
-      description="Khai đúng thông tin trên căn cước. Quản trị viên sẽ đối chiếu trước khi bạn nhận việc đầu tiên."
+      title="Đăng ký làm thợ kỹ thuật"
+      description="Gia nhập mạng lưới thợ điện tử FixLink. Khai đúng thông tin để được duyệt nhanh nhất."
       footer={
         <p className="text-sm text-ink-soft">
           Đã có tài khoản?{' '}
-          <Link to="/dang-nhap" className="text-brand hover:text-brand-strong hover:underline">
+          <Link to="/login" className="font-medium text-brand-glow hover:text-brand hover:underline">
             Đăng nhập
           </Link>
           . Bạn là khách cần sửa đồ?{' '}
-          <Link to="/dang-ky" className="text-brand hover:text-brand-strong hover:underline">
+          <Link to="/dang-ky" className="font-medium text-brand-glow hover:text-brand hover:underline">
             Đăng ký khách hàng
           </Link>
           .
         </p>
       }
     >
-      <div className="mt-6 flex items-start gap-3 rounded-xl border border-amber/30 bg-amber-soft px-4 py-3">
+      <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 shadow-xs">
         <StatusChip status="PENDING" />
-        <p className="text-sm text-ink-soft">
-          Hồ sơ mới luôn ở trạng thái chờ duyệt. Bạn xem được bảng điều khiển ngay, nhưng chỉ
-          nhận được yêu cầu sửa chữa sau khi quản trị viên xác minh danh tính.
+        <p className="text-xs sm:text-sm text-amber-900 leading-relaxed">
+          Hồ sơ mới luôn ở trạng thái chờ duyệt eKYC. Bạn xem được bảng điều khiển ngay, nhưng chỉ
+          nhận được yêu cầu sửa chữa sau khi quản trị viên xác minh căn cước công dân.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-8">
         {formError && <Alert tone="error">{formError}</Alert>}
 
-        <FormSection title="Tài khoản đăng nhập">
+        <FormSection title="Tài khoản đăng nhập" description="Thông tin dùng để đăng nhập vào hệ thống">
           <TextField
             label="Tên đăng nhập"
             name="username"
@@ -185,7 +185,7 @@ export default function TechnicianRegisterPage() {
 
         <FormSection
           title="Thông tin liên hệ"
-          description="Khách hàng thấy tên và gọi vào số này khi hẹn giờ sửa."
+          description="Khách hàng thấy tên và gọi vào số này khi hẹn giờ sửa thiết bị."
         >
           <TextField
             label="Họ và tên"
@@ -225,7 +225,7 @@ export default function TechnicianRegisterPage() {
 
         <FormSection
           title="Xác minh danh tính"
-          description="Ảnh căn cước chỉ dùng để đối chiếu, không hiển thị cho khách hàng."
+          description="Ảnh căn cước chỉ dùng để đối chiếu, bảo mật tuyệt đối không hiển thị công khai."
         >
           <TextField
             label="Số căn cước công dân"
@@ -257,8 +257,8 @@ export default function TechnicianRegisterPage() {
         </FormSection>
 
         <FormSection
-          title="Tay nghề"
-          description="Phần này giúp khách chọn đúng thợ. Có thể bỏ trống và bổ sung sau."
+          title="Tay nghề & Chuyên môn"
+          description="Giúp khách hàng tin tưởng và chọn bạn để sửa chữa thiết bị."
         >
           <TextField
             label="Số năm kinh nghiệm"
@@ -273,11 +273,11 @@ export default function TechnicianRegisterPage() {
             onChange={(e) => update('yearsExperience', e.target.value)}
           />
           <TextArea
-            label="Giới thiệu ngắn"
+            label="Giới thiệu chuyên môn"
             name="bio"
             rows={4}
             maxLength={500}
-            placeholder="Ví dụ: Chuyên sửa điều hòa, tủ lạnh, máy giặt tại nhà khu vực Cầu Giấy."
+            placeholder="Ví dụ: Chuyên sửa điện thoại, máy tính bảng, laptop, bo mạch điện tử gia dụng tại nhà..."
             value={form.bio}
             error={errors.bio}
             hint={`${form.bio.length}/500 ký tự`}
@@ -286,7 +286,7 @@ export default function TechnicianRegisterPage() {
         </FormSection>
 
         <Button type="submit" fullWidth loading={submitting}>
-          {submitting ? 'Đang gửi hồ sơ...' : 'Gửi hồ sơ đăng ký'}
+          {submitting ? 'Đang gửi hồ sơ...' : 'Gửi hồ sơ đăng ký thợ'}
         </Button>
       </form>
     </AuthLayout>

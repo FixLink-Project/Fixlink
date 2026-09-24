@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cổng Khách Hàng - FixLink</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --purple: #8b5cf6;
+            --bg-dark: #0a0f1d;
+            --card-bg: rgba(17, 24, 39, 0.88);
+            --card-border: rgba(255, 255, 255, 0.09);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --radius-lg: 20px;
+            --radius-md: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; padding-bottom: 70px; }
+
+        .navbar {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--card-border);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-weight: 800; font-size: 19px; }
+        .nav-brand svg { color: var(--primary); }
+        .nav-user { display: flex; align-items: center; gap: 16px; }
+        .badge-role { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.35); padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; }
+        .btn-profile { background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: #93c5fd; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .btn-profile:hover { background: var(--primary); color: #fff; }
+        .btn-logout { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+        .container { max-width: 1120px; margin: 30px auto; padding: 0 24px; }
+
+        .welcome-card {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.25) 0%, rgba(99, 102, 241, 0.18) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            margin-bottom: 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .user-quick-info { display: flex; gap: 24px; margin-top: 10px; font-size: 13px; color: #cbd5e1; }
+        .user-quick-info span { display: flex; align-items: center; gap: 6px; }
+
+        .section-title { font-size: 18px; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .jira-tag { background: #0284c7; color: #fff; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; }
+
+        .rc17-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        @media (max-width: 860px) { .rc17-container { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 13px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; }
+        .form-control {
+            width: 100%;
+            padding: 11px 14px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); }
+        .field-error { color: #f87171; font-size: 12px; margin-top: 4px; display: none; }
+
+        .test-btn-group { display: flex; flex-direction: column; gap: 10px; }
+        .test-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .test-btn-ac1 { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7; }
+        .test-btn-ac1:hover { background: rgba(16, 185, 129, 0.25); }
+        .test-btn-ac2 { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; }
+        .test-btn-ac2:hover { background: rgba(239, 68, 68, 0.25); }
+        .test-btn-ac3 { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fcd34d; }
+        .test-btn-ac3:hover { background: rgba(245, 158, 11, 0.25); }
+        .test-btn-ac4 { background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.4); color: #c4b5fd; }
+        .test-btn-ac4:hover { background: rgba(139, 92, 246, 0.25); }
+
+        .test-result-box {
+            margin-top: 18px;
+            padding: 16px;
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--card-border);
+            font-size: 13px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        .status-200 { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .status-403 { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .status-400 { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+        /* Audit table */
+        .audit-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 14px;
+        }
+        .audit-table th, .audit-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .audit-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+            background: rgba(15, 23, 42, 0.6);
+        }
+        .audit-badge {
+            background: rgba(139, 92, 246, 0.2);
+            color: #c4b5fd;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .toast-notify {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 14px 20px;
+            border-radius: 12px;
+            color: #fff;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 9999;
+            transition: all 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <a href="/" class="nav-brand">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            FixLink Customer
+        </a>
+        <div class="nav-user">
+            <div>
+                <span id="navName" style="font-weight: 700; color: #fff;">Khách Hàng</span>
+                <span class="badge-role">CUSTOMER</span>
+            </div>
+            <a class="btn-profile" href="/customer-repair-requests.html" style="text-decoration: none; display: inline-flex; align-items: center;">🧰 Yêu Cầu Sửa Chữa (RC-30)</a>
+            <button class="btn-profile" onclick="scrollToProfile()">👤 Hồ Sơ Của Tôi (RC-17)</button>
+            <button class="btn-logout" onclick="logout()">Đăng Xuất</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Welcome Banner -->
+        <div class="welcome-card">
+            <div>
+                <h1 style="font-size: 22px; font-weight: 800; margin-bottom: 6px;">
+                    Xin chào, <span id="welcomeName" style="color: #93c5fd;">Khách Hàng FixLink</span>! 👋
+                </h1>
+                <p style="color: #cbd5e1; font-size: 14px;">Bạn đang đăng nhập vào Cổng Khách Hàng (Role Home - RC-12 AC 1).</p>
+                <div class="user-quick-info">
+                    <span>📱 SĐT: <strong id="quickPhone" style="color: #fff;">0912345678</strong></span>
+                    <span>✉️ Email: <strong id="quickEmail" style="color: #fff;">customer@fixlink.vn</strong></span>
+                    <span>⭐ Hạng: <strong id="quickTier" style="color: #fbbf24;">STANDARD</strong></span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <a href="/customer-repair-requests.html" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; border: none; padding: 12px 22px; border-radius: 10px; font-weight: 700; cursor: pointer; text-decoration: none; box-shadow: 0 4px 14px rgba(16,185,129,0.35);">
+                    🧰 Yêu Cầu Sửa Chữa (RC-30)
+                </a>
+                <button onclick="scrollToProfile()" style="background: var(--primary); color: #fff; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(37,99,235,0.4);">
+                    ✏️ Cập Nhật Hồ Sơ (RC-17)
+                </button>
+            </div>
+        </div>
+
+        <!-- RC-17 SECTION: Quản lý hồ sơ & Test Nghiệm Thu -->
+        <div id="profileSection">
+            <h2 class="section-title">
+                <span class="jira-tag">RC-17</span> Quản Lý Hồ Sơ & Nghiệm Thu Tiêu Chí (Jira Test Suite)
+            </h2>
+
+            <div class="rc17-container">
+                <!-- FORM CHỈNH SỬA HỒ SƠ -->
+                <div class="card">
+                    <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #93c5fd; display: flex; align-items: center; gap: 8px;">
+                        📝 Chỉnh Sửa Hồ Sơ Cá Nhân (AC 1)
+                    </h3>
+                    <form id="profileForm" onsubmit="handleProfileSubmit(event)">
+                        <div class="form-group">
+                            <label class="form-label" for="inputFullName">Họ và tên</label>
+                            <input type="text" id="inputFullName" class="form-control" placeholder="Nhập họ và tên đầy đủ" required>
+                            <div id="errFullName" class="field-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="inputPhone">Số điện thoại</label>
+                            <input type="tel" id="inputPhone" class="form-control" placeholder="Ví dụ: 0912345678" required>
+                            <div id="errPhone" class="field-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="inputEmail">Địa chỉ Email</label>
+                            <input type="email" id="inputEmail" class="form-control" placeholder="Ví dụ: example@gmail.com" required>
+                            <div id="errEmail" class="field-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="inputAvatar">URL Ảnh Đại Diện (Tùy chọn)</label>
+                            <input type="url" id="inputAvatar" class="form-control" placeholder="https://...">
+                        </div>
+                        <button type="submit" id="btnSaveProfile" style="width: 100%; background: var(--primary); color: #fff; border: none; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                            💾 Lưu Thay Đổi (Cập Nhật Hồ Sơ Của Tôi)
+                        </button>
+                    </form>
+                </div>
+
+                <!-- TEST SUITE NGHIỆM THU 4 TIÊU CHÍ JIRA RC-17 -->
+                <div class="card">
+                    <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #a78bfa; display: flex; align-items: center; gap: 8px;">
+                        🧪 Bộ Công Cụ Test Nghiệm Thu RC-17 (Jira Verification)
+                    </h3>
+                    <div class="test-btn-group">
+                        <button class="test-btn test-btn-ac1" onclick="runTestAC1()">
+                            <span>✅ <strong>Test AC 1:</strong> Cập nhật hồ sơ chính mình (Hợp lệ)</span>
+                            <span>➔ Chạy</span>
+                        </button>
+                        <button class="test-btn test-btn-ac2" onclick="runTestAC2()">
+                            <span>🛡️ <strong>Test AC 2:</strong> Cố tình sửa user khác (IDOR ➔ 403)</span>
+                            <span>➔ Chạy</span>
+                        </button>
+                        <button class="test-btn test-btn-ac3" onclick="runTestAC3()">
+                            <span>⚠️ <strong>Test AC 3:</strong> Gửi dữ liệu không hợp lệ (Validation 400)</span>
+                            <span>➔ Chạy</span>
+                        </button>
+                        <button class="test-btn test-btn-ac4" onclick="runTestAC4()">
+                            <span>📜 <strong>Test AC 4:</strong> Tra cứu Nhật Ký Kiểm Toán (Audit Trail)</span>
+                            <span>➔ Xem Log</span>
+                        </button>
+                    </div>
+
+                    <!-- Hộp hiển thị kết quả kiểm thử trực tiếp -->
+                    <div id="testResultBox" class="test-result-box" style="display: none;">
+                        <div id="statusBadge" class="status-pill status-200">HTTP 200 OK</div>
+                        <pre id="jsonResult" style="color: #94a3b8; font-family: monospace; font-size: 12px; white-space: pre-wrap;"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BẢNG AUDIT TRAIL (RC-17 AC 4) -->
+            <div class="card" style="margin-bottom: 32px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="font-size: 16px; font-weight: 700; color: #c4b5fd;">
+                        📜 Lịch Sử Nhật Ký Kiểm Toán (Audit Trail - RC-17 AC 4)
+                    </h3>
+                    <button onclick="loadAuditTrail()" style="background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4); color: #c4b5fd; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                        🔄 Làm Mới Nhật Ký
+                    </button>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Thời Điểm</th>
+                                <th>Hành Động</th>
+                                <th>Bảng Dữ Liệu</th>
+                                <th>ID Bản Ghi</th>
+                                <th>Dữ Liệu Cũ (Trước khi sửa)</th>
+                                <th>Dữ Liệu Mới (Sau khi sửa)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                                    Đang tải lịch sử kiểm toán...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dịch Vụ Sửa Chữa Nổi Bật -->
+        <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 16px;">Dịch Vụ Sửa Chữa Của Bạn</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+            <div class="card" style="text-align: center; cursor: pointer;">
+                <div style="font-size: 32px; margin-bottom: 8px;">❄️</div>
+                <h4 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">Sửa Điều Hòa</h4>
+                <p style="font-size: 12px; color: var(--text-muted);">Bảo dưỡng, nạp gas, sửa rò nước</p>
+            </div>
+            <div class="card" style="text-align: center; cursor: pointer;">
+                <div style="font-size: 32px; margin-bottom: 8px;">🧺</div>
+                <h4 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">Sửa Máy Giặt</h4>
+                <p style="font-size: 12px; color: var(--text-muted);">Vệ sinh lồng, sửa rung lắc</p>
+            </div>
+            <div class="card" style="text-align: center; cursor: pointer;">
+                <div style="font-size: 32px; margin-bottom: 8px;">🧊</div>
+                <h4 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">Sửa Tủ Lạnh</h4>
+                <p style="font-size: 12px; color: var(--text-muted);">Khắc phục không lạnh, thay quạt</p>
+            </div>
+            <div class="card" style="text-align: center; cursor: pointer;">
+                <div style="font-size: 32px; margin-bottom: 8px;">⚡</div>
+                <h4 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">Điện Dân Dụng</h4>
+                <p style="font-size: 12px; color: var(--text-muted);">Chập điện, thay aptomat, ổ cắm</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast" class="toast-notify"></div>
+
+    <script>
+        let currentUserId = "1";
+        let token = localStorage.getItem('fixlink_token');
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            const stored = localStorage.getItem('fixlink_user');
+            if (stored) {
+                try {
+                    const u = JSON.parse(stored);
+                    if (u.userId) currentUserId = u.userId;
+                    if (u.id) currentUserId = u.id;
+                    if (u.fullName) {
+                        document.getElementById('navName').innerText = u.fullName;
+                        document.getElementById('welcomeName').innerText = u.fullName;
+                        document.getElementById('inputFullName').value = u.fullName;
+                    }
+                    if (u.phone) {
+                        document.getElementById('quickPhone').innerText = u.phone;
+                        document.getElementById('inputPhone').value = u.phone;
+                    }
+                    if (u.email) {
+                        document.getElementById('quickEmail').innerText = u.email;
+                        document.getElementById('inputEmail').value = u.email;
+                    }
+                } catch (e) {}
+            }
+
+            await loadCustomerProfile();
+            await loadAuditTrail();
+        });
+
+        async function loadCustomerProfile() {
+            try {
+                const res = await fetch(`/api/v1/customers/${currentUserId}/profile`, {
+                    headers: {
+                        'Authorization': token ? `Bearer ${token}` : '',
+                        'X-User-Id': currentUserId
+                    }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const p = data.data;
+                    if (p) {
+                        document.getElementById('navName').innerText = p.fullName || 'Khách Hàng';
+                        document.getElementById('welcomeName').innerText = p.fullName || 'Khách Hàng';
+                        document.getElementById('quickPhone').innerText = p.phone || '--';
+                        document.getElementById('quickEmail').innerText = p.email || '--';
+                        document.getElementById('quickTier').innerText = p.membershipTier || 'STANDARD';
+
+                        document.getElementById('inputFullName').value = p.fullName || '';
+                        document.getElementById('inputPhone').value = p.phone || '';
+                        document.getElementById('inputEmail').value = p.email || '';
+                        document.getElementById('inputAvatar').value = p.avatarUrl || '';
+                    }
+                }
+            } catch (err) {
+                console.log("Chưa có profile động, sử dụng thông tin hiện có.");
+            }
+        }
+
+        async function handleProfileSubmit(e) {
+            e.preventDefault();
+            clearValidationErrors();
+
+            const fullName = document.getElementById('inputFullName').value.trim();
+            const phone = document.getElementById('inputPhone').value.trim();
+            const email = document.getElementById('inputEmail').value.trim();
+            const avatarUrl = document.getElementById('inputAvatar').value.trim();
+
+            try {
+                const res = await fetch(`/api/v1/customers/${currentUserId}/profile`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : '',
+                        'X-User-Id': currentUserId
+                    },
+                    body: JSON.stringify({ fullName, phone, email, avatarUrl })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    showToast("Cập nhật hồ sơ thành công! (RC-17 AC 1)", "success");
+                    showTestResult(res.status, data);
+                    await loadCustomerProfile();
+                    await loadAuditTrail();
+                } else if (res.status === 400 && data.errors) {
+                    showValidationErrors(data.errors);
+                    showToast("Dữ liệu không hợp lệ! (RC-17 AC 3)", "warning");
+                    showTestResult(res.status, data);
+                } else {
+                    showToast(data.message || "Thao tác thất bại", "danger");
+                    showTestResult(res.status, data);
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối máy chủ", "danger");
+            }
+        }
+
+        // Test AC 1: Lưu hợp lệ hồ sơ của chính mình
+        async function runTestAC1() {
+            clearValidationErrors();
+            const originalName = document.getElementById('inputFullName').value || 'Khách Hàng Test';
+            const updatedName = originalName.includes('(Đã cập nhật)') ? originalName.replace(' (Đã cập nhật)', '') : originalName + ' (Đã cập nhật)';
+            const phone = document.getElementById('inputPhone').value || '0912345678';
+            const email = document.getElementById('inputEmail').value || 'khachhang@fixlink.vn';
+
+            document.getElementById('inputFullName').value = updatedName;
+
+            const res = await fetch(`/api/v1/customers/${currentUserId}/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : '',
+                    'X-User-Id': currentUserId
+                },
+                body: JSON.stringify({
+                    fullName: updatedName,
+                    phone: phone,
+                    email: email,
+                    avatarUrl: "https://fixlink.vn/avatar.png"
+                })
+            });
+            const data = await res.json();
+            showTestResult(res.status, data);
+            if (res.ok) {
+                showToast("RC-17 AC 1: Cập nhật thành công hồ sơ của chính mình!", "success");
+                await loadCustomerProfile();
+                await loadAuditTrail();
+            } else {
+                showToast(data.message || "Lỗi cập nhật", "danger");
+            }
+        }
+
+        // Test AC 2: Cố tình sửa profile người khác (Chặn IDOR)
+        async function runTestAC2() {
+            clearValidationErrors();
+            const targetOtherUserId = "999999"; // User khác
+            const res = await fetch(`/api/v1/customers/${targetOtherUserId}/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : '',
+                    'X-User-Id': currentUserId // Caller là current user, nhưng target là 999999
+                },
+                body: JSON.stringify({
+                    fullName: "Hacker Cố Tình Sửa Profile Người Khác",
+                    phone: "0999888777",
+                    email: "hacker@domain.com"
+                })
+            });
+            const data = await res.json();
+            showTestResult(res.status, data);
+            if (res.status === 403) {
+                showToast("RC-17 AC 2: Bị chặn 403 Forbidden thành công (Chống IDOR)!", "danger");
+            } else {
+                showToast("Kết quả: " + res.status, "warning");
+            }
+        }
+
+        // Test AC 3: Gửi dữ liệu không hợp lệ (per-field validation)
+        async function runTestAC3() {
+            clearValidationErrors();
+            const res = await fetch(`/api/v1/customers/${currentUserId}/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : '',
+                    'X-User-Id': currentUserId
+                },
+                body: JSON.stringify({
+                    fullName: "", // Trống -> Báo lỗi
+                    phone: "12345", // Sai format VN -> Báo lỗi
+                    email: "email-sai-dinh-dang" // Sai format email -> Báo lỗi
+                })
+            });
+            const data = await res.json();
+            showTestResult(res.status, data);
+            if (res.status === 400 && data.errors) {
+                showValidationErrors(data.errors);
+                showToast("RC-17 AC 3: Hiển thị lỗi per-field validation và không lưu DB!", "warning");
+            } else {
+                showToast("Kết quả: " + res.status, "danger");
+            }
+        }
+
+        // Test AC 4: Tải và hiển thị Audit Trail
+        async function runTestAC4() {
+            await loadAuditTrail();
+            showToast("RC-17 AC 4: Đã tải toàn bộ lịch sử Audit Trail từ CSDL!", "purple");
+        }
+
+        async function loadAuditTrail() {
+            try {
+                const res = await fetch(`/api/v1/customers/${currentUserId}/audit-trail`, {
+                    headers: {
+                        'Authorization': token ? `Bearer ${token}` : '',
+                        'X-User-Id': currentUserId
+                    }
+                });
+                const data = await res.json();
+                const tbody = document.getElementById('auditTableBody');
+                if (res.ok && data.data && data.data.length > 0) {
+                    tbody.innerHTML = data.data.map(log => `
+                        <tr>
+                            <td style="color: #94a3b8;">#${log.id}</td>
+                            <td style="white-space: nowrap; color: #cbd5e1;">${formatDate(log.createdAt)}</td>
+                            <td><span class="audit-badge">${log.action}</span></td>
+                            <td style="color: #94a3b8;">${log.entityName}</td>
+                            <td style="color: #94a3b8;">${log.entityId}</td>
+                            <td><pre style="font-family: monospace; font-size: 11px; color: #f87171; max-width: 260px; overflow-x: auto;">${formatJsonValues(log.oldValues)}</pre></td>
+                            <td><pre style="font-family: monospace; font-size: 11px; color: #34d399; max-width: 260px; overflow-x: auto;">${formatJsonValues(log.newValues)}</pre></td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Chưa có bản ghi nhật ký kiểm toán nào cho hồ sơ này. Hãy thử bấm "Test AC 1" để cập nhật và ghi nhận!</td></tr>`;
+                }
+            } catch (err) {
+                document.getElementById('auditTableBody').innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--danger); padding: 20px;">Không thể tải lịch sử kiểm toán.</td></tr>`;
+            }
+        }
+
+        function showTestResult(status, data) {
+            const box = document.getElementById('testResultBox');
+            const badge = document.getElementById('statusBadge');
+            const pre = document.getElementById('jsonResult');
+
+            box.style.display = 'block';
+            badge.className = 'status-pill status-' + status;
+            badge.innerText = `HTTP ${status} ${status === 200 ? 'OK' : status === 403 ? 'FORBIDDEN (IDOR Blocked)' : status === 400 ? 'BAD REQUEST (Validation Error)' : 'RESPONSE'}`;
+            pre.innerText = JSON.stringify(data, null, 2);
+        }
+
+        function showValidationErrors(errors) {
+            if (errors.fullName) {
+                const el = document.getElementById('errFullName');
+                el.innerText = '❌ ' + errors.fullName;
+                el.style.display = 'block';
+            }
+            if (errors.phone) {
+                const el = document.getElementById('errPhone');
+                el.innerText = '❌ ' + errors.phone;
+                el.style.display = 'block';
+            }
+            if (errors.email) {
+                const el = document.getElementById('errEmail');
+                el.innerText = '❌ ' + errors.email;
+                el.style.display = 'block';
+            }
+        }
+
+        function clearValidationErrors() {
+            document.querySelectorAll('.field-error').forEach(el => {
+                el.innerText = '';
+                el.style.display = 'none';
+            });
+        }
+
+        function formatDate(isoStr) {
+            if (!isoStr) return '--';
+            const d = new Date(isoStr);
+            return d.toLocaleString('vi-VN');
+        }
+
+        function formatJsonValues(val) {
+            if (!val) return '--';
+            try {
+                const obj = JSON.parse(val);
+                return JSON.stringify(obj, null, 2);
+            } catch (e) {
+                return val;
+            }
+        }
+
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            if (type === 'success') toast.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+            else if (type === 'danger') toast.style.background = 'linear-gradient(135deg, #dc2626, #ef4444)';
+            else if (type === 'warning') toast.style.background = 'linear-gradient(135deg, #d97706, #f59e0b)';
+            else toast.style.background = 'linear-gradient(135deg, #7c3aed, #8b5cf6)';
+
+            setTimeout(() => { toast.style.display = 'none'; }, 4000);
+        }
+
+        function scrollToProfile() {
+            document.getElementById('profileSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function logout() {
+            localStorage.removeItem('fixlink_token');
+            localStorage.removeItem('fixlink_user');
+            window.location.href = '/login.html';
+        }
+    </script>
+</body>
+</html>

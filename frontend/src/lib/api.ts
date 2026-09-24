@@ -1,4 +1,13 @@
-import type { ApiErrorBody, ApiResponse, ServiceArea, ServiceCategory } from './types';
+import type {
+  ApiErrorBody,
+  ApiResponse,
+  Appointment,
+  CancelAppointmentPayload,
+  CreateAppointmentPayload,
+  RescheduleAppointmentPayload,
+  ServiceArea,
+  ServiceCategory
+} from './types';
 
 export const API_BASE_URL = '/api/v1';
 
@@ -82,6 +91,18 @@ export function fetchAreas(): Promise<ApiResponse<ServiceArea[]>> {
   return api.get<ServiceArea[]>('/areas');
 }
 
+export function fetchRequestTabs(): Promise<ApiResponse<Array<{ code: string; label: string; statuses: string[] }>>> {
+  return api.get('/repair-requests/tabs');
+}
+
+export function attachRequestMedia(requestId: number, mediaUrls: string[]): Promise<ApiResponse<any>> {
+  return api.post(`/repair-requests/${requestId}/media`, { mediaUrls });
+}
+
+export function updateRequestStatus(requestId: number, status: string, note?: string): Promise<ApiResponse<any>> {
+  return api.patch(`/repair-requests/${requestId}/status`, { status, note });
+}
+
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 }
@@ -98,3 +119,35 @@ export function toFieldErrors(error: unknown): Record<string, string> {
   }
   return error.fieldErrors;
 }
+
+// ── Jira RC-48: Appointment Status Lifecycle API ──
+
+export function createAppointment(payload: CreateAppointmentPayload): Promise<ApiResponse<Appointment>> {
+  return api.post<Appointment>('/appointments', payload);
+}
+
+export function getAppointmentDetail(id: number): Promise<ApiResponse<Appointment>> {
+  return api.get<Appointment>(`/appointments/${id}`);
+}
+
+export function fetchAppointmentsForRequest(requestId: number): Promise<ApiResponse<Appointment[]>> {
+  return api.get<Appointment[]>(`/repair-requests/${requestId}/appointments`);
+}
+
+export function fetchMyAppointments(): Promise<ApiResponse<Appointment[]>> {
+  return api.get<Appointment[]>('/appointments/my');
+}
+
+export function rescheduleAppointment(id: number, payload: RescheduleAppointmentPayload): Promise<ApiResponse<Appointment>> {
+  return api.patch<Appointment>(`/appointments/${id}/reschedule`, payload);
+}
+
+export function completeAppointment(id: number, note?: string): Promise<ApiResponse<Appointment>> {
+  const query = note ? `?note=${encodeURIComponent(note)}` : '';
+  return api.patch<Appointment>(`/appointments/${id}/complete${query}`);
+}
+
+export function cancelAppointment(id: number, payload: CancelAppointmentPayload): Promise<ApiResponse<Appointment>> {
+  return api.patch<Appointment>(`/appointments/${id}/cancel`, payload);
+}
+
