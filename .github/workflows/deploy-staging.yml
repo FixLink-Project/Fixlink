@@ -49,11 +49,13 @@ jobs:
         id: meta
         run: |
           SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           echo "tag=$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "IMAGE_TAG_BACKEND=ghcr.io/${{ github.repository }}/backend:$SHORT_SHA" >> $GITHUB_ENV
-          echo "IMAGE_TAG_BACKEND_LATEST=ghcr.io/${{ github.repository }}/backend:staging-latest" >> $GITHUB_ENV
-          echo "IMAGE_TAG_FRONTEND=ghcr.io/${{ github.repository }}/frontend:$SHORT_SHA" >> $GITHUB_ENV
-          echo "IMAGE_TAG_FRONTEND_LATEST=ghcr.io/${{ github.repository }}/frontend:staging-latest" >> $GITHUB_ENV
+          echo "REPO_LC=$REPO_LC" >> $GITHUB_ENV
+          echo "IMAGE_TAG_BACKEND=ghcr.io/$REPO_LC/backend:$SHORT_SHA" >> $GITHUB_ENV
+          echo "IMAGE_TAG_BACKEND_LATEST=ghcr.io/$REPO_LC/backend:staging-latest" >> $GITHUB_ENV
+          echo "IMAGE_TAG_FRONTEND=ghcr.io/$REPO_LC/frontend:$SHORT_SHA" >> $GITHUB_ENV
+          echo "IMAGE_TAG_FRONTEND_LATEST=ghcr.io/$REPO_LC/frontend:staging-latest" >> $GITHUB_ENV
 
       - name: Build & Push Backend Container Image
         uses: docker/build-push-action@v5
@@ -115,8 +117,9 @@ jobs:
             export IMAGE_TAG="$IMAGE_TAG"
             export STAGING_DB_PASSWORD="$STAGING_DB_PASSWORD"
             export STAGING_JWT_SECRET="$STAGING_JWT_SECRET"
-            export DOCKER_IMAGE_BACKEND="ghcr.io/${{ github.repository }}/backend"
-            export DOCKER_IMAGE_FRONTEND="ghcr.io/${{ github.repository }}/frontend"
+            REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            export DOCKER_IMAGE_BACKEND="ghcr.io/$REPO_LC/backend"
+            export DOCKER_IMAGE_FRONTEND="ghcr.io/$REPO_LC/frontend"
 
             # Pull newest release images
             docker compose -f docker-compose.staging.yml pull backend frontend
