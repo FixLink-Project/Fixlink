@@ -85,9 +85,15 @@ jobs:
 
   # ===========================================================================
   # 2. Deploy to Staging Host via Secure SSH
+  #
+  # Chi chay THU CONG (Actions > Run workflow). Push len main chi build &
+  # push image, KHONG tu dong deploy — vi chua co server staging that va
+  # chua khai 3 secret STAGING_SERVER_HOST / STAGING_SSH_USER /
+  # STAGING_SSH_KEY. Khi da co server, chay tay workflow nay de deploy.
   # ===========================================================================
   deploy-to-staging:
     name: Deploy & Healthcheck on Staging
+    if: github.event_name == 'workflow_dispatch'
     needs: publish-container-images
     runs-on: ubuntu-latest
     environment: staging
