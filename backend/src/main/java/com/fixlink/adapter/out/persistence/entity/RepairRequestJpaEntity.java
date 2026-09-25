@@ -49,6 +49,15 @@ public class RepairRequestJpaEntity extends BaseJpaEntity {
     @Column(name = "description", columnDefinition = "TEXT", nullable = false)
     private String description;
 
+    @Column(name = "device_brand", length = 100)
+    private String deviceBrand;
+
+    @Column(name = "device_model", length = 100)
+    private String deviceModel;
+
+    @Column(name = "serial_number", length = 100)
+    private String serialNumber;
+
     @Column(name = "address", length = 255, nullable = false)
     private String address;
 

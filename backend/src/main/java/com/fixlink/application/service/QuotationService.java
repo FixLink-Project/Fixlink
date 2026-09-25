@@ -140,7 +140,10 @@ public class QuotationService implements QuotationUseCase {
     @Override
     @Transactional
     public AcceptQuotationResponse accept(Long requestId, Long quotationId, Long customerId) {
-        RepairRequestJpaEntity request = findRequest(requestId);
+        // Serialize acceptance attempts for this request so concurrent customers cannot
+        // approve different quotations before the selected quotation is persisted.
+        RepairRequestJpaEntity request = requestRepo.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay yeu cau sua chua"));
         if (!request.getCustomerId().equals(customerId)) {
             throw new DomainException("ACCESS_DENIED", "Bạn không phải chủ yêu cầu này", 403);
         }

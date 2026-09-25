@@ -43,6 +43,9 @@ export default function CreateRepairRequestPage() {
     areaId: '',
     title: '',
     description: '',
+    deviceBrand: '',
+    deviceModel: '',
+    serialNumber: '',
     addressLine: '',
     budgetRef: '',
     biddingDeadlineDays: '3'
@@ -106,6 +109,9 @@ export default function CreateRepairRequestPage() {
       const body = {
         title: form.title.trim(),
         description: form.description.trim(),
+        deviceBrand: form.deviceBrand.trim() || null,
+        deviceModel: form.deviceModel.trim() || null,
+        serialNumber: form.serialNumber.trim() || null,
         categoryId: Number(form.categoryId),
         areaId: form.areaId ? Number(form.areaId) : null,
         address: form.addressLine.trim(),
@@ -241,6 +247,16 @@ export default function CreateRepairRequestPage() {
               error={errors.description}
               onChange={(e) => update('description', e.target.value)}
             />
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+              <h3 className="text-sm font-bold text-slate-900">Thông tin thiết bị (không bắt buộc)</h3>
+              <p className="mt-1 text-xs text-slate-500">Thông tin này giúp thợ chuẩn bị linh kiện và chẩn đoán chính xác hơn.</p>
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <TextField label="Thương hiệu" placeholder="Ví dụ: Samsung, Daikin" value={form.deviceBrand} onChange={(e) => update('deviceBrand', e.target.value)} />
+                <TextField label="Model" placeholder="Ví dụ: Inverter 1.5 HP" value={form.deviceModel} onChange={(e) => update('deviceModel', e.target.value)} />
+                <TextField label="Số serial" placeholder="Có trên tem thiết bị" value={form.serialNumber} onChange={(e) => update('serialNumber', e.target.value)} />
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <TextField

@@ -30,6 +30,15 @@ public class CreateRepairRequestRequest {
     @Size(min = 5, max = 5000, message = "Mô tả sự cố từ 5 đến 5000 ký tự")
     private String description;
 
+    @Size(max = 100)
+    private String deviceBrand;
+
+    @Size(max = 100)
+    private String deviceModel;
+
+    @Size(max = 100)
+    private String serialNumber;
+
     @NotBlank(message = "Địa chỉ thi công không được để trống")
     @Size(max = 255, message = "Địa chỉ tối đa 255 ký tự")
     private String address;

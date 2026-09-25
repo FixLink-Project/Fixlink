@@ -251,6 +251,9 @@ public class RepairRequestService implements RepairRequestUseCase {
         entity.setStatus(initialStatus);
         entity.setTitle(command.title().trim());
         entity.setDescription(command.description().trim());
+        entity.setDeviceBrand(normalizeDeviceInfo(command.deviceBrand()));
+        entity.setDeviceModel(normalizeDeviceInfo(command.deviceModel()));
+        entity.setSerialNumber(normalizeDeviceInfo(command.serialNumber()));
         entity.setAddress(command.address().trim());
         entity.setRequestedTime(command.requestedTime() != null
                 ? command.requestedTime()
@@ -669,6 +672,10 @@ public class RepairRequestService implements RepairRequestUseCase {
         }
 
         return List.copyOf(distinctUrls);
+    }
+
+    private String normalizeDeviceInfo(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private List<Media> saveMedia(Long requestId, List<String> mediaUrls, Long uploaderId) {

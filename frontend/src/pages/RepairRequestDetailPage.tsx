@@ -220,6 +220,9 @@ export default function RepairRequestDetailPage() {
             <Row label="Khu vực" value={req.areaName ?? 'Toàn khu vực'} />
             <Row label="Địa chỉ kiểm tra" value={req.address || req.addressLine} />
             <Row label="Mô tả sự cố" value={req.description} />
+            {req.deviceBrand && <Row label="Thương hiệu thiết bị" value={req.deviceBrand} />}
+            {req.deviceModel && <Row label="Model thiết bị" value={req.deviceModel} />}
+            {req.serialNumber && <Row label="Số serial" value={req.serialNumber} />}
             {req.budgetRef > 0 && <Row label="Ngân sách dự kiến" value={formatCurrency(req.budgetRef)} />}
             {req.biddingDeadline && (
               <Row label="Hạn nhận báo giá" value={new Date(req.biddingDeadline).toLocaleString('vi-VN')} />

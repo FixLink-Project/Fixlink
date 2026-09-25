@@ -116,6 +116,9 @@ export interface RepairRequest {
   statusLabel?: string;
   title: string;
   description: string;
+  deviceBrand?: string | null;
+  deviceModel?: string | null;
+  serialNumber?: string | null;
   address?: string;
   addressLine: string;
   latitude: number | null;
@@ -226,4 +229,3 @@ export interface RescheduleAppointmentPayload {
 export interface CancelAppointmentPayload {
   cancelReason: string;
 }
-
