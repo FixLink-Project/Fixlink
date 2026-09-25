@@ -204,6 +204,22 @@ public class QuotationService implements QuotationUseCase {
                 .build();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<QuotationResponse> getMyQuotations(Long technicianId, QuotationStatus status) {
+        List<QuotationJpaEntity> list = (status != null)
+                ? quotationRepo.findByTechnicianIdAndStatusOrderByCreatedAtDesc(technicianId, status)
+                : quotationRepo.findByTechnicianIdOrderByCreatedAtDesc(technicianId);
+        return list.stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public QuotationResponse getQuotationByIdForTechnician(Long quotationId, Long technicianId) {
+        QuotationJpaEntity entity = findOwnedQuotation(quotationId, technicianId);
+        return toResponse(entity);
+    }
+
     // ── helpers ──
 
     private RepairRequestJpaEntity findRequest(Long requestId) {

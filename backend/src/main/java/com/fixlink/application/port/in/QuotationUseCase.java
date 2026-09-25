@@ -21,6 +21,10 @@ public interface QuotationUseCase {
 
     AcceptQuotationResponse accept(Long requestId, Long quotationId, Long customerId);
 
+    List<QuotationResponse> getMyQuotations(Long technicianId, com.fixlink.domain.model.QuotationStatus status);
+
+    QuotationResponse getQuotationByIdForTechnician(Long quotationId, Long technicianId);
+
     @Data
     @Builder
     class CreateQuotationCommand {
