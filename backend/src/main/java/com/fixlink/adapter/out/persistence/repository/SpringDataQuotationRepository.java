@@ -22,4 +22,6 @@ public interface SpringDataQuotationRepository extends JpaRepository<QuotationJp
     List<QuotationJpaEntity> findByRequestIdAndStatus(Long requestId, QuotationStatus status);
 
     List<QuotationJpaEntity> findByTechnicianIdOrderByCreatedAtDesc(Long technicianId);
+
+    List<QuotationJpaEntity> findByTechnicianIdAndStatusOrderByCreatedAtDesc(Long technicianId, QuotationStatus status);
 }
