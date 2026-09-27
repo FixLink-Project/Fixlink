@@ -8,11 +8,13 @@ import com.fixlink.adapter.out.persistence.repository.SpringDataQuotationReposit
 import com.fixlink.adapter.out.persistence.repository.SpringDataRepairRequestRepository;
 import com.fixlink.adapter.out.persistence.repository.SpringDataTechnicianProfileRepository;
 import com.fixlink.adapter.out.persistence.repository.SpringDataUserRepository;
+import com.fixlink.adapter.out.persistence.repository.SpringDataWorkProgressRepository;
 import com.fixlink.application.port.in.QuotationUseCase;
 import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.model.QuotationStatus;
 import com.fixlink.domain.model.RequestStatus;
 import com.fixlink.domain.model.VerificationStatus;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,7 +25,9 @@ import org.springframework.test.context.ActiveProfiles;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
@@ -78,9 +82,23 @@ class ApplyForJobConcurrencyTest {
     @Autowired
     private SpringDataTechnicianProfileRepository techProfileRepo;
 
+    @Autowired
+    private SpringDataWorkProgressRepository progressRepo;
+
     private Long techAId;
     private Long techBId;
     private Long customerId;
+
+    /**
+     * H2 in-memory dùng chung cho cả JVM test và lớp này không bọc
+     * {@code @Transactional}, nên mọi thay đổi đều commit thật. Phải trả nguyên
+     * trạng hồ sơ thợ sau mỗi test, nếu không sẽ làm hỏng các test khác vốn
+     * mong thợ ở trạng thái PENDING (rò trạng thái phụ thuộc thứ tự chạy).
+     */
+    private final Map<Long, VerificationStatus> originalVerification = new HashMap<>();
+    private final Map<Long, LinkedHashSet<Long>> originalCategories = new HashMap<>();
+    private final Map<Long, LinkedHashSet<Long>> originalAreas = new HashMap<>();
+    private final java.util.List<Long> createdRequestIds = new java.util.ArrayList<>();
 
     @BeforeEach
     void setUp() {
@@ -89,10 +107,35 @@ class ApplyForJobConcurrencyTest {
         customerId = userRepo.findByUsernameAndDeletedAtIsNull("customer01").orElseThrow().getId();
     }
 
+    @AfterEach
+    void tearDown() {
+        for (Long requestId : createdRequestIds) {
+            // work_progress có FK trỏ về repair_requests nên phải xóa trước.
+            progressRepo.deleteAll(progressRepo.findByRequestIdOrderByCreatedAtAsc(requestId));
+            quotationRepo.deleteAll(quotationRepo.findByRequestIdOrderByCreatedAtDesc(requestId));
+            requestRepo.findById(requestId).ifPresent(requestRepo::delete);
+        }
+        createdRequestIds.clear();
+
+        originalVerification.forEach((techId, status) -> {
+            TechnicianProfileJpaEntity profile = techProfileRepo.findById(techId).orElseThrow();
+            profile.setVerificationStatus(status);
+            profile.setCategoryIds(originalCategories.get(techId));
+            profile.setAreaIds(originalAreas.get(techId));
+            techProfileRepo.save(profile);
+        });
+        originalVerification.clear();
+        originalCategories.clear();
+        originalAreas.clear();
+    }
+
     /** Đảm bảo thợ đã APPROVED và khớp category + area của yêu cầu sẽ tạo. */
     private Long approveTechnician(String username) {
         UserJpaEntity user = userRepo.findByUsernameAndDeletedAtIsNull(username).orElseThrow();
         TechnicianProfileJpaEntity profile = techProfileRepo.findById(user.getId()).orElseThrow();
+        originalVerification.put(user.getId(), profile.getVerificationStatus());
+        originalCategories.put(user.getId(), new LinkedHashSet<>(profile.getCategoryIds()));
+        originalAreas.put(user.getId(), new LinkedHashSet<>(profile.getAreaIds()));
         profile.setVerificationStatus(VerificationStatus.APPROVED);
         profile.setCategoryIds(new LinkedHashSet<>(List.of(CATEGORY_ID)));
         profile.setAreaIds(new LinkedHashSet<>(List.of(AREA_ID)));
@@ -114,7 +157,9 @@ class ApplyForJobConcurrencyTest {
         request.setApplyDeadline(LocalDateTime.now().plusDays(3));
         request.setRequestedTime(LocalDateTime.now().plusDays(1));
         request.setCreatedBy(customerId);
-        return requestRepo.save(request);
+        RepairRequestJpaEntity saved = requestRepo.save(request);
+        createdRequestIds.add(saved.getId());
+        return saved;
     }
 
     @Test

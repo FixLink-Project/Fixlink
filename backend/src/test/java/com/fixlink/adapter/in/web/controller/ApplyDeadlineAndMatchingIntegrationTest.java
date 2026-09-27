@@ -8,9 +8,11 @@ import com.fixlink.adapter.out.persistence.entity.UserJpaEntity;
 import com.fixlink.adapter.out.persistence.repository.SpringDataRepairRequestRepository;
 import com.fixlink.adapter.out.persistence.repository.SpringDataTechnicianProfileRepository;
 import com.fixlink.adapter.out.persistence.repository.SpringDataUserRepository;
+import com.fixlink.adapter.out.persistence.repository.SpringDataWorkProgressRepository;
 import com.fixlink.domain.model.RequestStatus;
 import com.fixlink.domain.model.VerificationStatus;
 import com.fixlink.infrastructure.scheduler.ExpiredRequestScheduler;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 
@@ -71,23 +74,58 @@ class ApplyDeadlineAndMatchingIntegrationTest {
     private SpringDataTechnicianProfileRepository techProfileRepo;
 
     @Autowired
+    private SpringDataWorkProgressRepository progressRepo;
+
+    @Autowired
     private ExpiredRequestScheduler expiredRequestScheduler;
 
     private String techToken;
     private Long customerId;
+
+    /**
+     * H2 in-memory dùng chung cho cả JVM test, lớp này không bọc
+     * {@code @Transactional} nên mọi thay đổi commit thật. Phải trả nguyên trạng
+     * hồ sơ thợ và dọn các yêu cầu đã tạo, nếu không sẽ làm hỏng các test khác
+     * theo thứ tự chạy.
+     */
+    private VerificationStatus originalVerification;
+    private LinkedHashSet<Long> originalCategories;
+    private LinkedHashSet<Long> originalAreas;
+    private Long techId;
+    private final List<Long> createdRequestIds = new ArrayList<>();
 
     @BeforeEach
     void setUp() throws Exception {
         techToken = login(TECH, PASSWORD);
 
         UserJpaEntity techUser = userRepo.findByUsernameAndDeletedAtIsNull(TECH).orElseThrow();
-        TechnicianProfileJpaEntity profile = techProfileRepo.findById(techUser.getId()).orElseThrow();
+        techId = techUser.getId();
+        TechnicianProfileJpaEntity profile = techProfileRepo.findById(techId).orElseThrow();
+        originalVerification = profile.getVerificationStatus();
+        originalCategories = new LinkedHashSet<>(profile.getCategoryIds());
+        originalAreas = new LinkedHashSet<>(profile.getAreaIds());
         profile.setVerificationStatus(VerificationStatus.APPROVED);
         profile.setCategoryIds(new LinkedHashSet<>(List.of(CATEGORY_ID)));
         profile.setAreaIds(new LinkedHashSet<>(List.of(AREA_ID)));
         techProfileRepo.save(profile);
 
         customerId = userRepo.findByUsernameAndDeletedAtIsNull("customer01").orElseThrow().getId();
+    }
+
+    @AfterEach
+    void tearDown() {
+        for (Long requestId : createdRequestIds) {
+            // work_progress có FK trỏ về repair_requests nên phải xóa trước.
+            progressRepo.deleteAll(progressRepo.findByRequestIdOrderByCreatedAtAsc(requestId));
+            requestRepo.findById(requestId).ifPresent(requestRepo::delete);
+        }
+        createdRequestIds.clear();
+
+        TechnicianProfileJpaEntity profile = techProfileRepo.findById(techId).orElseThrow();
+        profile.setVerificationStatus(originalVerification);
+        profile.setCategoryIds(originalCategories);
+        profile.setAreaIds(originalAreas);
+        techProfileRepo.save(profile);
     }
 
     private String login(String username, String password) throws Exception {
@@ -121,7 +159,9 @@ class ApplyDeadlineAndMatchingIntegrationTest {
         request.setApplyDeadline(applyDeadline);
         request.setRequestedTime(LocalDateTime.now().plusDays(1));
         request.setCreatedBy(customerId);
-        return requestRepo.save(request);
+        RepairRequestJpaEntity saved = requestRepo.save(request);
+        createdRequestIds.add(saved.getId());
+        return saved;
     }
 
     @Test
