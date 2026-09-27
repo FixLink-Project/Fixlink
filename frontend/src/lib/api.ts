@@ -1,4 +1,5 @@
 import type {
+  AcceptQuotationResult,
   ApiErrorBody,
   ApiResponse,
   Appointment,
@@ -101,6 +102,15 @@ export function attachRequestMedia(requestId: number, mediaUrls: string[]): Prom
 
 export function updateRequestStatus(requestId: number, status: string, note?: string): Promise<ApiResponse<any>> {
   return api.patch(`/repair-requests/${requestId}/status`, { status, note });
+}
+
+/**
+ * Thợ nhận việc (mô hình "ai nhận trước được trước").
+ *
+ * Lỗi 409 với errorCode JOB_ALREADY_TAKEN nghĩa là thợ khác vừa nhận trước.
+ */
+export function applyForJob(requestId: number): Promise<ApiResponse<AcceptQuotationResult>> {
+  return api.post<AcceptQuotationResult>(`/repair-requests/${requestId}/apply`);
 }
 
 export function formatCurrency(amount: number): string {

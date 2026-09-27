@@ -1151,7 +1151,7 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(38)
-    @DisplayName("F1: Khách tạo yêu cầu sửa chữa → 201 BIDDING_OPEN")
+    @DisplayName("F1: Khách tạo yêu cầu sửa chữa → 201 OPEN")
     void testCreateRepairRequest_Success() throws Exception {
         String custToken = bearerTokenOf("customer01", "Password@123");
 
@@ -1176,7 +1176,7 @@ class FixLinkApiIntegrationTest {
                         .content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.statusCode").value(201))
-                .andExpect(jsonPath("$.data.status").value("BIDDING_OPEN"))
+                .andExpect(jsonPath("$.data.status").value("OPEN"))
                 .andExpect(jsonPath("$.data.title").value("Máy lạnh không lạnh"))
                 .andExpect(jsonPath("$.data.categoryName").exists())
                 .andExpect(jsonPath("$.data.mediaUrls", hasSize(1)))
@@ -1235,7 +1235,7 @@ class FixLinkApiIntegrationTest {
                         .header("Authorization", custToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.request.id").value(createdRequestId))
-                .andExpect(jsonPath("$.data.request.status").value("BIDDING_OPEN"))
+                .andExpect(jsonPath("$.data.request.status").value("OPEN"))
                 .andExpect(jsonPath("$.data.workProgress", hasSize(greaterThanOrEqualTo(1))));
     }
 
@@ -1256,73 +1256,56 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(43)
-    @DisplayName("F2: Thợ gửi báo giá → 201 PENDING")
-    void testCreateQuotation_Success() throws Exception {
+    @DisplayName("F2 (pivot): Thợ bấm Nhận việc → 200 ASSIGNED, giá = ngân sách khách")
+    void testApplyForJob_Success() throws Exception {
         String techToken = bearerTokenOf("test_technician", "Password@123");
 
-        String body = """
-            {
-                "solution": "Cần thay gas R32, vệ sinh dàn nóng",
-                "priceLaborVnd": 200000,
-                "priceMaterialsVnd": 350000,
-                "note": "Bảo hành 3 tháng"
-            }
-            """;
-
-        MvcResult result = mockMvc.perform(post("/api/v1/repair-requests/" + createdRequestId + "/quotations")
-                        .header("Authorization", techToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.statusCode").value(201))
-                .andExpect(jsonPath("$.data.status").value("PENDING"))
-                .andExpect(jsonPath("$.data.totalPrice").value(550000))
+        MvcResult result = mockMvc.perform(post("/api/v1/repair-requests/" + createdRequestId + "/apply")
+                        .header("Authorization", techToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.requestId").value(createdRequestId))
+                .andExpect(jsonPath("$.data.selectedQuotationId").exists())
                 .andExpect(jsonPath("$.data.technicianName").exists())
+                // budgetRef cua don F1 la 500000 -> coc 30% = 150000
+                .andExpect(jsonPath("$.data.agreedPrice").value(500000))
+                .andExpect(jsonPath("$.data.depositAmount").value(150000))
+                .andExpect(jsonPath("$.data.status").value("ASSIGNED"))
                 .andReturn();
 
         createdQuotationId = objectMapper.readTree(result.getResponse().getContentAsString())
-                .path("data").path("id").asLong();
+                .path("data").path("selectedQuotationId").asLong();
     }
 
     @Test
     @Order(44)
-    @DisplayName("F2: Thợ gửi báo giá trùng → lỗi BR02")
-    void testCreateQuotation_DuplicateRejected() throws Exception {
+    @DisplayName("F2 (pivot): Nhận việc lần hai khi job đã có thợ → 409 JOB_ALREADY_TAKEN")
+    void testApplyForJob_AlreadyTaken() throws Exception {
         String techToken = bearerTokenOf("test_technician", "Password@123");
 
-        String body = """
-            {
-                "solution": "Báo giá lần 2",
-                "priceLaborVnd": 100000,
-                "priceMaterialsVnd": 100000
-            }
-            """;
-
-        mockMvc.perform(post("/api/v1/repair-requests/" + createdRequestId + "/quotations")
-                        .header("Authorization", techToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("INVALID_OPERATION"));
+        mockMvc.perform(post("/api/v1/repair-requests/" + createdRequestId + "/apply")
+                        .header("Authorization", techToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("JOB_ALREADY_TAKEN"));
     }
 
     @Test
     @Order(45)
-    @DisplayName("F2: Khách xem danh sách báo giá cho đơn → có thông tin thợ")
+    @DisplayName("F2 (pivot): Khách xem thợ đã nhận việc → đúng 1 bản ghi ACCEPTED")
     void testGetQuotationsForRequest() throws Exception {
         String custToken = bearerTokenOf("customer01", "Password@123");
 
         mockMvc.perform(get("/api/v1/repair-requests/" + createdRequestId + "/quotations")
                         .header("Authorization", custToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(greaterThanOrEqualTo(1))))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].status").value("ACCEPTED"))
                 .andExpect(jsonPath("$.data[0].technicianName").exists())
                 .andExpect(jsonPath("$.data[0].avgRating").exists());
     }
 
     @Test
     @Order(46)
-    @DisplayName("F1: Khách không sửa được đơn khi đã có báo giá")
+    @DisplayName("F1: Khách không sửa được đơn khi đã có thợ nhận")
     void testUpdateRepairRequest_RejectedWhenQuotationExists() throws Exception {
         String custToken = bearerTokenOf("customer01", "Password@123");
 
@@ -1345,31 +1328,14 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(47)
-    @DisplayName("F3: Khách chọn thợ → accept, auto-reject others, trạng thái MATCHED_AWAITING_DEPOSIT")
-    void testAcceptQuotation_Success() throws Exception {
-        String custToken = bearerTokenOf("customer01", "Password@123");
-
-        mockMvc.perform(post("/api/v1/repair-requests/" + createdRequestId
-                        + "/quotations/" + createdQuotationId + "/accept")
-                        .header("Authorization", custToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.requestId").value(createdRequestId))
-                .andExpect(jsonPath("$.data.selectedQuotationId").value(createdQuotationId))
-                .andExpect(jsonPath("$.data.agreedPrice").value(550000))
-                .andExpect(jsonPath("$.data.depositAmount").value(165000))
-                .andExpect(jsonPath("$.data.status").value("MATCHED_AWAITING_DEPOSIT"));
-    }
-
-    @Test
-    @Order(48)
-    @DisplayName("F3: Sau accept, chi tiết đơn hiện MATCHED_AWAITING_DEPOSIT + thợ đã chọn")
-    void testAfterAccept_RequestDetailShowsNewStatus() throws Exception {
+    @DisplayName("F2 (pivot): Chi tiết đơn sau khi thợ nhận → ASSIGNED + thợ đã gán")
+    void testAfterApply_RequestDetailShowsAssigned() throws Exception {
         String custToken = bearerTokenOf("customer01", "Password@123");
 
         mockMvc.perform(get("/api/v1/repair-requests/" + createdRequestId)
                         .header("Authorization", custToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.request.status").value("MATCHED_AWAITING_DEPOSIT"))
+                .andExpect(jsonPath("$.data.request.status").value("ASSIGNED"))
                 .andExpect(jsonPath("$.data.request.selectedQuotationId").value(createdQuotationId))
                 .andExpect(jsonPath("$.data.quotations[0].status").value("ACCEPTED"))
                 .andExpect(jsonPath("$.data.workProgress", hasSize(greaterThanOrEqualTo(2))));
@@ -1562,7 +1528,9 @@ class FixLinkApiIntegrationTest {
                 "title", "Test",
                 "description", "Test desc",
                 "categoryId", 1,
-                "addressLine", "123 Test"));
+                "addressLine", "123 Test",
+                // budgetRef gio la bat buoc; thieu se bi 400 truoc khi toi buoc phan quyen
+                "budgetRef", 500000));
 
         mockMvc.perform(post("/api/v1/repair-requests")
                         .header("Authorization", techToken)
@@ -1573,19 +1541,12 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(61)
-    @DisplayName("R0: Khách không gửi được báo giá → 403 (chỉ TECHNICIAN)")
-    void testCustomerCannotCreateQuotation() throws Exception {
+    @DisplayName("R0 (pivot): Khách không nhận được việc → 403 (chỉ TECHNICIAN)")
+    void testCustomerCannotApplyForJob() throws Exception {
         String custToken = bearerTokenOf("customer01", "Password@123");
 
-        String body = objectMapper.writeValueAsString(java.util.Map.of(
-                "solution", "Test",
-                "priceLaborVnd", 100000,
-                "priceMaterialsVnd", 50000));
-
-        mockMvc.perform(post("/api/v1/repair-requests/1/quotations")
-                        .header("Authorization", custToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+        mockMvc.perform(post("/api/v1/repair-requests/1/apply")
+                        .header("Authorization", custToken))
                 .andExpect(status().isForbidden());
     }
 }

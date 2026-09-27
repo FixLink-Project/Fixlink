@@ -98,7 +98,7 @@ class AppointmentLifecycleIntegrationTest {
             req.setDescription("Bình nóng lạnh chảy nước ngấm tường");
             req.setAddress("123 Nguyễn Thị Minh Khai, Q1, TP.HCM");
             req.setRequestedTime(LocalDateTime.now().plusDays(2));
-            req.setStatus(RequestStatus.MATCHED_AWAITING_DEPOSIT);
+            req.setStatus(RequestStatus.ASSIGNED);
             req.setAgreedPrice(new BigDecimal("350000"));
             req.setDepositAmount(new BigDecimal("105000"));
             req.setCreatedBy(customer01Id);

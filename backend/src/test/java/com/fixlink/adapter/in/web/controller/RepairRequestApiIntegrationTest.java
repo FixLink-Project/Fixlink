@@ -19,6 +19,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -89,6 +90,7 @@ class RepairRequestApiIntegrationTest {
                 .description("Quạt trần phòng khách chạy số 3 thì rung lắc và phát ra tiếng kêu lạch cạch.")
                 .address("25 Nguyễn Huệ, Quận 1, TP.HCM")
                 .categoryId(1L)
+                .budgetRef(new BigDecimal("600000"))
                 .requestedTime(LocalDateTime.now().plusDays(2))
                 .saveAsDraft(false)
                 .mediaUrls(List.of(
@@ -104,8 +106,8 @@ class RepairRequestApiIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.statusCode").value(201))
                 .andExpect(jsonPath("$.data.requestCode", startsWith("REQ-")))
-                .andExpect(jsonPath("$.data.status").value("PENDING"))
-                .andExpect(jsonPath("$.data.statusLabel").value("Chờ báo giá"))
+                .andExpect(jsonPath("$.data.status").value("OPEN"))
+                .andExpect(jsonPath("$.data.statusLabel").value("Đang chờ thợ nhận"))
                 .andExpect(jsonPath("$.data.media", hasSize(2)))
                 .andExpect(jsonPath("$.data.media[0].mediaType").value("IMAGE"))
                 .andReturn();
@@ -141,7 +143,7 @@ class RepairRequestApiIntegrationTest {
                         .param("limit", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[*].status",
-                        everyItem(oneOf("DRAFT", "PENDING", "BIDDING_OPEN", "MATCHED_AWAITING_DEPOSIT"))));
+                        everyItem(oneOf("DRAFT", "PENDING", "OPEN"))));
 
         // Tab "Hoàn thành" chỉ trả về trạng thái COMPLETED
         mockMvc.perform(get("/api/v1/repair-requests")

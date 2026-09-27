@@ -50,7 +50,8 @@ public class RepairRequestResponse {
     private BigDecimal agreedPrice;
     private BigDecimal depositAmount;
     private BigDecimal budgetRef;
-    private LocalDateTime biddingDeadline;
+    /** Hạn chót thợ nhận việc (createdAt + 3 ngày). */
+    private LocalDateTime applyDeadline;
     private String cancelReason;
     private Long selectedQuotationId;
     private List<String> mediaUrls;
@@ -99,7 +100,7 @@ public class RepairRequestResponse {
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
                 .budgetRef(entity.getBudgetRef())
-                .biddingDeadline(entity.getBiddingDeadline())
+                .applyDeadline(entity.getApplyDeadline())
                 .cancelReason(entity.getCancelReason())
                 .selectedQuotationId(entity.getSelectedQuotationId())
                 .requestedTime(entity.getRequestedTime())
@@ -120,6 +121,7 @@ public class RepairRequestResponse {
         return switch (status) {
             case DRAFT -> "Bản nháp";
             case PENDING -> "Chờ báo giá";
+            case OPEN -> "Đang chờ thợ nhận";
             case BIDDING_OPEN -> "Đang nhận báo giá";
             case MATCHED_AWAITING_DEPOSIT -> "Chờ khách cọc";
             case ASSIGNED -> "Đã nhận việc";

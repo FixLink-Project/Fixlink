@@ -45,7 +45,6 @@ export default function CreateRepairRequestPage() {
     description: '',
     addressLine: '',
     budgetRef: '',
-    biddingDeadlineDays: '3'
   });
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -111,7 +110,6 @@ export default function CreateRepairRequestPage() {
         address: form.addressLine.trim(),
         addressLine: form.addressLine.trim(),
         budgetRef: form.budgetRef ? Number(form.budgetRef) : null,
-        biddingDeadlineDays: Number(form.biddingDeadlineDays) || 3,
         saveAsDraft,
         mediaUrls
       };
@@ -140,7 +138,7 @@ export default function CreateRepairRequestPage() {
     <DashboardLayout
       nav={CUSTOMER_NAV}
       title="Đăng yêu cầu sửa chữa"
-      description="Kết nối với đội ngũ thợ điện tử uy tín, nhận báo giá cạnh tranh chỉ trong vài phút."
+      description="Đăng yêu cầu kèm ngân sách của bạn. Thợ phù hợp đầu tiên nhận việc sẽ được giao ngay."
     >
       {/* Stepper indicator */}
       <div className="mb-8 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm" aria-label="Tiến trình">
@@ -269,26 +267,16 @@ export default function CreateRepairRequestPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <TextField
-                label="Ngân sách dự kiến (VND)"
-                type="number"
-                min={0}
-                placeholder="VD: 500000"
-                hint="Để trống nếu bạn muốn thợ tự đề xuất báo giá"
-                value={form.budgetRef}
-                onChange={(e) => update('budgetRef', e.target.value)}
-              />
-              <TextField
-                label="Thời hạn nhận báo giá (Ngày)"
-                type="number"
-                min={1}
-                max={7}
-                value={form.biddingDeadlineDays}
-                hint="Thời gian tối đa để các thợ gửi báo giá (1-7 ngày)"
-                onChange={(e) => update('biddingDeadlineDays', e.target.value)}
-              />
-            </div>
+            <TextField
+              label="Ngân sách của bạn (VND)"
+              type="number"
+              min={1}
+              required
+              placeholder="VD: 500000"
+              hint="Đây sẽ là giá cuối cùng cho công việc — thợ nhận việc theo đúng mức này, không thương lượng."
+              value={form.budgetRef}
+              onChange={(e) => update('budgetRef', e.target.value)}
+            />
 
             {/* RC-30 & RC-8: Ảnh đính kèm Firebase Storage */}
             <div className="pt-2 border-t border-slate-100">
@@ -341,10 +329,10 @@ export default function CreateRepairRequestPage() {
                 <Row label="Địa chỉ" value={form.addressLine} />
                 <Row
                   label="Ngân sách dự kiến"
-                  value={form.budgetRef ? formatCurrency(Number(form.budgetRef)) : 'Thợ tự đề xuất báo giá'}
+                  value={form.budgetRef ? formatCurrency(Number(form.budgetRef)) : 'Chưa nhập ngân sách'}
                   accent={Boolean(form.budgetRef)}
                 />
-                <Row label="Thời hạn nhận giá" value={`${form.biddingDeadlineDays} ngày`} />
+                <Row label="Thời hạn nhận thợ" value="3 ngày (cố định)" />
 
                 {mediaUrls.length > 0 && (
                   <div className="flex flex-col gap-2 p-4 sm:flex-row sm:gap-6">
@@ -367,7 +355,7 @@ export default function CreateRepairRequestPage() {
             </div>
 
             <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-blue-900 shadow-xs">
-              💡 <strong>Lưu ý:</strong> Sau khi đăng, yêu cầu của bạn sẽ được gửi tới các thợ phù hợp. Bạn có thể chọn <em>Lưu bản nháp</em> để tiếp tục hoàn thiện sau, hoặc <em>Phát sóng ngay</em> để nhận báo giá minh bạch.
+              💡 <strong>Lưu ý:</strong> Sau khi đăng, yêu cầu của bạn sẽ được gửi tới các thợ phù hợp. Bạn có thể chọn <em>Lưu bản nháp</em> để tiếp tục hoàn thiện sau, hoặc <em>Phát sóng ngay</em> để thợ có thể nhận việc.
             </div>
 
             <div className="flex flex-col sm:flex-row justify-between gap-3 pt-2">

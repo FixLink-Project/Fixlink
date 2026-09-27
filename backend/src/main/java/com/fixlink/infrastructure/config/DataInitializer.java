@@ -255,12 +255,12 @@ public class DataInitializer implements CommandLineRunner {
                         "Khóa tay gạt bị kẹt, đôi khi phải đẩy mạnh mới mở được. Cần thợ khảo sát và báo giá.",
                         "17 Nguyễn Văn Cừ, Quận Bình Thạnh, TP.HCM", 0, "0"));
 
-                demoRequests.add(demoRequest("REQ-DEMO-0006", customerId, thoId, 2L, RequestStatus.BIDDING_OPEN,
+                demoRequests.add(demoRequest("REQ-DEMO-0006", customerId, thoId, 2L, RequestStatus.OPEN,
                         "Thông tắc đường ống thoát sàn nhà tắm",
                         "Sàn nhà tắm thoát nước rất chậm, có mùi hôi bốc lên, nghi ngờ tắc tại cổ góp.",
                         "56 Điện Biên Phủ, Quận 3, TP.HCM", 4, "0"));
 
-                demoRequests.add(demoRequest("REQ-DEMO-0007", customerId, null, 1L, RequestStatus.MATCHED_AWAITING_DEPOSIT,
+                demoRequests.add(demoRequest("REQ-DEMO-0007", customerId, null, 1L, RequestStatus.ASSIGNED,
                         "Sửa tủ lạnh kêu to và không đủ lạnh",
                         "Tủ lạnh Side-by-side kêu rè rè, ngăn mát chỉ đạt 12 độ, ngăn đá vẫn đông bình thường.",
                         "302 Võ Văn Ngân, Thủ Đức, TP.HCM", 5, "380000"));
@@ -302,7 +302,7 @@ public class DataInitializer implements CommandLineRunner {
                         "Máy giặt cửa trước báo lỗi UE, lồng giặt không vắt được và còn nhiều nước.",
                         "66 Nguyễn Ảnh Thủ, Quận 12, TP.HCM", 11, "0"));
 
-                demoRequests.add(demoRequest("REQ-DEMO-0015", customerId, thoId, 2L, RequestStatus.BIDDING_OPEN,
+                demoRequests.add(demoRequest("REQ-DEMO-0015", customerId, thoId, 2L, RequestStatus.OPEN,
                         "Lắp đặt bình nóng lạnh năng lượng mặt trời",
                         "Cần khảo sát mái nhà và lắp bình nóng lạnh 150L đã mua sẵn, kèm đường ống và van.",
                         "404 Lạc Long Quân, Tây Hồ, Hà Nội", 13, "0"));
@@ -381,7 +381,7 @@ public class DataInitializer implements CommandLineRunner {
         else if (address != null && address.contains("Cầu Giấy")) areaId = 4L;
         else if (address != null && address.contains("Thanh Xuân")) areaId = 5L;
         request.setAreaId(areaId);
-        request.setBiddingDeadline(LocalDateTime.now().plusDays(7));
+        request.setApplyDeadline(LocalDateTime.now().plusDays(3));
         request.setRequestedTime(LocalDateTime.now().plusDays(2).minusDays(daysAgo));
         request.setAgreedPrice(new BigDecimal(agreedPrice));
         request.setDepositAmount(BigDecimal.ZERO);

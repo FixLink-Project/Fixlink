@@ -101,7 +101,7 @@ class RepairRequestServiceTest {
                 .title("Sửa máy giặt LG")
                 .description("Máy giặt kêu to khi vắt")
                 .address("123 Lê Lợi, Quận 1")
-                .status(RequestStatus.BIDDING_OPEN)
+                .status(RequestStatus.OPEN)
                 .requestedTime(LocalDateTime.now().plusDays(1))
                 .budgetRef(new BigDecimal("500000"))
                 .build();
@@ -121,8 +121,7 @@ class RepairRequestServiceTest {
                 .areaId(20L)
                 .addressLine("456 Hai Bà Trưng")
                 .budgetRef(new BigDecimal("600000"))
-                .biddingDeadlineDays(5)
-                .mediaUrls(List.of("https://s3.example.com/img1.jpg"))
+                                .mediaUrls(List.of("https://s3.example.com/img1.jpg"))
                 .build();
 
         when(userRepo.findById(1L)).thenReturn(Optional.of(activeCustomer));
@@ -138,7 +137,7 @@ class RepairRequestServiceTest {
 
         assertNotNull(response);
         assertEquals("Sửa điều hòa Panasonic", response.getTitle());
-        assertEquals(RequestStatus.BIDDING_OPEN.name(), response.getStatus());
+        assertEquals(RequestStatus.OPEN.name(), response.getStatus());
         assertTrue(response.getRequestCode().startsWith("REQ-"));
         verify(mediaRepo, times(1)).saveAll(anyList());
         verify(progressRepo, times(1)).save(any(WorkProgressJpaEntity.class));

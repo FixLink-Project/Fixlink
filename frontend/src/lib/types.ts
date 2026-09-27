@@ -71,6 +71,8 @@ export interface AuthResult {
 export type RequestStatus =
   | 'DRAFT'
   | 'PENDING'
+  | 'OPEN'
+  // Hai trạng thái dưới thuộc mô hình đấu giá cũ, chỉ còn xuất hiện ở dữ liệu cũ.
   | 'BIDDING_OPEN'
   | 'MATCHED_AWAITING_DEPOSIT'
   | 'ASSIGNED'
@@ -125,7 +127,8 @@ export interface RepairRequest {
   agreedPrice: number;
   depositAmount: number;
   budgetRef: number;
-  biddingDeadline: string | null;
+  /** Hạn chót thợ nhận việc (createdAt + 3 ngày). */
+  applyDeadline: string | null;
   cancelReason: string | null;
   selectedQuotationId: number | null;
   mediaUrls: string[];
@@ -152,6 +155,8 @@ export interface Quotation {
   note: string | null;
   status: QuotationStatus;
   createdAt: string;
+  /** Thời điểm thợ bấm "Nhận việc" (mô hình ai nhận trước được trước). */
+  acceptedAt?: string | null;
 }
 
 export interface WorkProgress {

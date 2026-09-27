@@ -114,7 +114,7 @@ class RepairRequestTechnicianDetailIntegrationTest {
 
         UserJpaEntity custUser = userRepo.findByUsernameAndDeletedAtIsNull(CUSTOMER).orElseThrow();
 
-        // 1. Đơn mở thầu BIDDING_OPEN chưa có báo giá
+        // 1. Đơn đang mở (OPEN) chưa có thợ nhận
         RepairRequestJpaEntity reqOpen = repairRequestRepo.findByRequestCode("REQ-TEST-RC39-OPEN")
                 .orElseGet(() -> {
                     RepairRequestJpaEntity r = new RepairRequestJpaEntity();
@@ -125,9 +125,9 @@ class RepairRequestTechnicianDetailIntegrationTest {
                     r.setCustomerId(custUser.getId());
                     r.setCategoryId(1L);
                     r.setAreaId(1L);
-                    r.setStatus(RequestStatus.BIDDING_OPEN);
+                    r.setStatus(RequestStatus.OPEN);
                     r.setBudgetRef(new BigDecimal("500000"));
-                    r.setBiddingDeadline(LocalDateTime.now().plusDays(3));
+                    r.setApplyDeadline(LocalDateTime.now().plusDays(3));
                     r.setRequestedTime(LocalDateTime.now().plusDays(1));
                     return repairRequestRepo.save(r);
                 });
@@ -180,7 +180,7 @@ class RepairRequestTechnicianDetailIntegrationTest {
                 .andExpect(jsonPath("$.data.request.id", is(openRequestId.intValue())))
                 .andExpect(jsonPath("$.data.request.requestCode", is("REQ-TEST-RC39-OPEN")))
                 .andExpect(jsonPath("$.data.request.title", is("Sửa máy rửa chén Bosch lỗi E15 tràn nước")))
-                .andExpect(jsonPath("$.data.request.status", is("BIDDING_OPEN")))
+                .andExpect(jsonPath("$.data.request.status", is("OPEN")))
                 .andExpect(jsonPath("$.data.request.address", notNullValue()))
                 .andExpect(jsonPath("$.data.request.budgetRef", is(500000)))
                 .andExpect(jsonPath("$.data.quotations", empty()));
