@@ -13,6 +13,8 @@ import com.fixlink.application.port.in.QuotationUseCase;
 import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.model.QuotationStatus;
 import com.fixlink.domain.model.RequestStatus;
+import com.fixlink.domain.model.Role;
+import com.fixlink.domain.model.UserStatus;
 import com.fixlink.domain.model.VerificationStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -85,6 +89,9 @@ class ApplyForJobConcurrencyTest {
     @Autowired
     private SpringDataWorkProgressRepository progressRepo;
 
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     private Long techAId;
     private Long techBId;
     private Long customerId;
@@ -99,6 +106,9 @@ class ApplyForJobConcurrencyTest {
     private final Map<Long, LinkedHashSet<Long>> originalCategories = new HashMap<>();
     private final Map<Long, LinkedHashSet<Long>> originalAreas = new HashMap<>();
     private final java.util.List<Long> createdRequestIds = new java.util.ArrayList<>();
+
+    /** Thợ được tạo mới trong test (không phải seed), phải xóa hẳn khi dọn. */
+    private final java.util.List<Long> createdTechIds = new java.util.ArrayList<>();
 
     @BeforeEach
     void setUp() {
@@ -127,6 +137,48 @@ class ApplyForJobConcurrencyTest {
         originalVerification.clear();
         originalCategories.clear();
         originalAreas.clear();
+
+        // Thợ tạo mới trong test: xóa profile trước rồi tới user (FK user_id).
+        for (Long techId : createdTechIds) {
+            techProfileRepo.findById(techId).ifPresent(techProfileRepo::delete);
+            userRepo.findById(techId).ifPresent(userRepo::delete);
+        }
+        createdTechIds.clear();
+    }
+
+    /**
+     * Tạo một thợ mới, đã APPROVED và khớp category + area, dùng cho test nhiều thợ.
+     *
+     * <p>Vì {@code @MapsId} cần entity user còn được quản lý (managed) đúng lúc
+     * persist profile, phải tạo cả user lẫn profile trong <b>cùng một transaction</b>;
+     * nếu để hai lần {@code save()} riêng, user sẽ bị detach và persist báo lỗi.
+     */
+    private Long createApprovedTechnician(int index) {
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        Long techId = tx.execute(statusIgnored -> {
+            UserJpaEntity user = new UserJpaEntity();
+            user.setUsername("race_tech_" + index + "_" + System.nanoTime());
+            user.setPasswordHash("$2a$10$placeholderplaceholderplaceholderplaceholderplacehold");
+            user.setRole(Role.TECHNICIAN);
+            user.setStatus(UserStatus.ACTIVE);
+            UserJpaEntity savedUser = userRepo.saveAndFlush(user);
+
+            long unique = System.nanoTime();
+            TechnicianProfileJpaEntity profile = new TechnicianProfileJpaEntity();
+            profile.setUser(savedUser);
+            profile.setFullName("Thợ tranh chấp #" + index);
+            profile.setPhone("09" + String.format("%09d", unique % 1_000_000_000L));
+            profile.setEmail("race_tech_" + index + "_" + unique + "@test.local");
+            profile.setCitizenId(String.format("%012d", unique % 1_000_000_000_000L));
+            profile.setVerificationStatus(VerificationStatus.APPROVED);
+            profile.setCategoryIds(new LinkedHashSet<>(List.of(CATEGORY_ID)));
+            profile.setAreaIds(new LinkedHashSet<>(List.of(AREA_ID)));
+            techProfileRepo.save(profile);
+            return savedUser.getId();
+        });
+
+        createdTechIds.add(techId);
+        return techId;
     }
 
     /** Đảm bảo thợ đã APPROVED và khớp category + area của yêu cầu sẽ tạo. */
@@ -226,5 +278,75 @@ class ApplyForJobConcurrencyTest {
         assertEquals(QuotationStatus.ACCEPTED, records.get(0).getStatus());
         assertEquals(saved.getTechnicianId(), records.get(0).getTechnicianId());
         assertNotNull(records.get(0).getAcceptedAt(), "Phải ghi lại thời điểm nhận việc");
+    }
+
+    @Test
+    @DisplayName("Pivot: 5 thợ nhận việc cùng lúc → đúng 1 thắng, 4 người còn lại đều JOB_ALREADY_TAKEN")
+    void manyTechniciansApplyingSimultaneously_onlyOneWins() throws Exception {
+        int techCount = 5;
+        List<Long> technicianIds = new ArrayList<>();
+        for (int i = 0; i < techCount; i++) {
+            technicianIds.add(createApprovedTechnician(i));
+        }
+
+        RepairRequestJpaEntity request = createOpenRequest();
+        Long requestId = request.getId();
+
+        // Tất cả thread cùng chờ ở barrier rồi nhả ra một lúc -> tranh chấp thật giữa 5 thợ.
+        CyclicBarrier startLine = new CyclicBarrier(techCount);
+        ExecutorService pool = Executors.newFixedThreadPool(techCount);
+
+        try {
+            List<Future<Throwable>> results = new ArrayList<>();
+            for (Long technicianId : technicianIds) {
+                Callable<Throwable> attempt = () -> {
+                    try {
+                        startLine.await(10, TimeUnit.SECONDS);
+                        quotationUseCase.apply(requestId, technicianId);
+                        return null; // null = nhận việc thành công
+                    } catch (Throwable t) {
+                        return t;
+                    }
+                };
+                results.add(pool.submit(attempt));
+            }
+
+            List<Throwable> outcomes = new ArrayList<>();
+            for (Future<Throwable> future : results) {
+                outcomes.add(future.get(30, TimeUnit.SECONDS));
+            }
+
+            long winners = outcomes.stream().filter(java.util.Objects::isNull).count();
+            List<Throwable> losers = outcomes.stream().filter(java.util.Objects::nonNull).toList();
+
+            assertEquals(1, winners, "Phải có đúng một thợ nhận được việc, thực tế: " + winners);
+            assertEquals(techCount - 1, losers.size(),
+                    "Bốn thợ còn lại đều phải bị từ chối, thực tế: " + losers.size());
+
+            for (Throwable loser : losers) {
+                if (!(loser instanceof DomainException domainException)) {
+                    fail("Mọi thợ thua phải nhận DomainException rõ ràng, không phải lỗi chung: " + loser);
+                    return;
+                }
+                assertEquals("JOB_ALREADY_TAKEN", domainException.getErrorCode(),
+                        "Mọi thợ thua phải nhận đúng errorCode JOB_ALREADY_TAKEN");
+                assertEquals(409, domainException.getStatusCode(),
+                        "JOB_ALREADY_TAKEN phải map sang HTTP 409 Conflict");
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        // Trạng thái cuối cùng vẫn phải nhất quán dù có 5 thợ tranh nhau.
+        RepairRequestJpaEntity saved = requestRepo.findById(requestId).orElseThrow();
+        assertEquals(RequestStatus.ASSIGNED, saved.getStatus());
+        assertNotNull(saved.getTechnicianId(), "Yêu cầu phải được gán cho thợ thắng");
+        assertTrue(technicianIds.contains(saved.getTechnicianId()),
+                "Thợ được gán phải là một trong 5 thợ dự tranh");
+
+        List<QuotationJpaEntity> records = quotationRepo.findByRequestIdOrderByCreatedAtDesc(requestId);
+        assertEquals(1, records.size(), "Dù 5 thợ bấm, chỉ được tạo đúng một bản ghi nhận việc");
+        assertEquals(QuotationStatus.ACCEPTED, records.get(0).getStatus());
+        assertEquals(saved.getTechnicianId(), records.get(0).getTechnicianId());
     }
 }
