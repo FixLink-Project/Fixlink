@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Alert from '../components/Alert';
 import AuthLayout from '../components/AuthLayout';
 import Button from '../components/Button';
@@ -74,23 +74,10 @@ export default function LoginPage() {
       title="Đăng nhập"
       description="Dùng chung một tài khoản cho khách hàng, thợ và quản trị viên."
       footer={
-        <>
-          <p className="text-sm text-ink-soft">Chưa có tài khoản?</p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <Link
-              to="/dang-ky"
-              className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-xs transition-all duration-200 hover:border-brand hover:text-brand hover:bg-blue-50/50"
-            >
-              👤 Đăng ký khách hàng
-            </Link>
-            <Link
-              to="/dang-ky-tho"
-              className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-xs transition-all duration-200 hover:border-brand hover:text-brand hover:bg-blue-50/50"
-            >
-              🔧 Đăng ký làm thợ
-            </Link>
-          </div>
-        </>
+        <p className="text-sm text-ink-soft">
+          Chưa có tài khoản? Vui lòng liên hệ quản trị viên để được cấp tài khoản
+          khách hàng hoặc thợ.
+        </p>
       }
     >
       <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
@@ -138,15 +125,6 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Nhập mật khẩu của bạn"
         />
-
-        <div className="flex justify-end">
-          <Link
-            to="/quen-mat-khau"
-            className="rounded-lg py-1 text-sm text-brand-glow transition-colors hover:text-brand hover:underline"
-          >
-            Quên mật khẩu?
-          </Link>
-        </div>
 
         <Button type="submit" fullWidth loading={submitting} disabled={locked}>
           {submitting ? 'Đang kiểm tra...' : 'Đăng nhập'}

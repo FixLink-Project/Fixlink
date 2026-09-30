@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -248,6 +249,22 @@ export default function AdminUsersPage() {
       description="Tìm tài khoản, duyệt hồ sơ thợ và khoá tài khoản vi phạm."
     >
       <div className="space-y-6">
+        {/* VIỆC 2: đăng ký giờ do ADMIN thực hiện — lối tạo tài khoản nằm ở đây. */}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link
+            to="/dang-ky"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-strong"
+          >
+            Tạo tài khoản khách
+          </Link>
+          <Link
+            to="/dang-ky-tho"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-ink transition-colors hover:bg-surface"
+          >
+            Tạo tài khoản thợ
+          </Link>
+        </div>
+
         {actionNote && <Alert tone="success">{actionNote}</Alert>}
         {actionError && <Alert tone="error">{actionError}</Alert>}
 
