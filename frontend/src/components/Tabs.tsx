@@ -75,7 +75,7 @@ export default function Tabs<T extends string>({
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                     selected
-                      ? 'bg-blue-50 text-brand border border-blue-200'
+                      ? 'bg-teal-50 text-brand border border-teal-200'
                       : 'bg-slate-200/80 text-slate-700'
                   }`}
                 >

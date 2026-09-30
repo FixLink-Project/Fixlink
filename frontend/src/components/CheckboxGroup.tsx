@@ -41,7 +41,7 @@ export default function CheckboxGroup({
                 key={option.id}
                 className={`flex min-h-[42px] cursor-pointer items-center gap-2 rounded-xl border px-3.5 text-xs sm:text-sm transition-all duration-200 ${
                   checked
-                    ? 'border-brand bg-blue-50/90 text-brand font-bold shadow-xs ring-1 ring-brand/30'
+                    ? 'border-brand bg-teal-50/90 text-brand font-bold shadow-xs ring-1 ring-brand/30'
                     : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 shadow-xs font-medium'
                 }`}
               >

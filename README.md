@@ -3,8 +3,30 @@
 Nền tảng kết nối khách hàng có đồ gia dụng hỏng với thợ sửa chữa đã xác minh danh tính
 tại Việt Nam: điện lạnh, điện dân dụng, ống nước, đồ gia dụng, khóa cửa.
 
-Khách đăng yêu cầu kèm ảnh và khu vực, thợ quanh đó gửi báo giá, khách so rồi chọn.
-Tiền cọc giữ ở tài khoản trung gian cho tới khi khách nghiệm thu.
+Khách đăng yêu cầu kèm ảnh và khu vực với một mức giá cố định; thợ phù hợp bấm
+"Nhận việc" — ai nhận trước được trước, không còn đấu giá. Tiền cọc giữ ở tài khoản
+trung gian cho tới khi khách nghiệm thu.
+
+---
+
+## Ghi chú thay đổi mô hình nghiệp vụ (pivot)
+
+Mô hình đã **pivot từ "đấu giá ngược" sang "ai nhận trước được trước"
+(first-come-first-served)** theo góp ý giảng viên ngày 27/09/2026.
+
+- **Lý do:** mô hình đấu giá (nhiều thợ gửi báo giá, khách so rồi chọn) quá phức
+  tạp cho phạm vi môn học và tạo độ trễ cho khách; mô hình mới cho khách ra giá cố
+  định, thợ đầu tiên nhận việc sẽ được giao ngay, đơn giản và nhanh hơn.
+- **Cơ chế tranh chấp:** endpoint `POST /api/v1/repair-requests/{id}/apply` dùng
+  khóa bi quan (`SELECT … FOR UPDATE`) để chỉ một thợ nhận được mỗi yêu cầu; thợ
+  đến sau nhận lỗi `JOB_ALREADY_TAKEN` (HTTP 409). Có test race condition thực sự
+  trong `ApplyForJobConcurrencyTest`.
+- **Code luồng đấu giá cũ được GIỮ LẠI dạng `@Deprecated`** (không xóa) để dễ khôi
+  phục nếu đổi mô hình lần nữa:
+  - `domain/model/RequestStatus`: các trạng thái `BIDDING_OPEN`,
+    `MATCHED_AWAITING_DEPOSIT`.
+  - `application/port/in/QuotationUseCase` và `application/service/QuotationService`:
+    các thao tác `create/update/withdraw/accept` của luồng báo giá cạnh tranh.
 
 ---
 

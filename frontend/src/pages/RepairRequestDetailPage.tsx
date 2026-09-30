@@ -330,7 +330,7 @@ export default function RepairRequestDetailPage() {
         {/* Timeline tiến trình */}
         {detail.workProgress.length > 0 && (
           <Card title="Tiến trình sửa chữa" description="Nhật ký các bước thực hiện trên thiết bị của bạn.">
-            <ol className="relative border-l-2 border-blue-100 pl-6 ml-2 space-y-5 my-2">
+            <ol className="relative border-l-2 border-teal-100 pl-6 ml-2 space-y-5 my-2">
               {detail.workProgress.map((wp) => (
                 <li key={wp.id} className="relative">
                   <div className="absolute -left-[31px] top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-brand bg-white shadow-xs">
@@ -557,7 +557,7 @@ function QuotationCard({ quotation: q }: { quotation: Quotation }) {
     <div
       className={`rounded-2xl border p-5 transition-all duration-200 ${
         isAccepted
-          ? 'border-brand bg-blue-50/60 shadow-sm ring-1 ring-brand'
+          ? 'border-brand bg-teal-50/60 shadow-sm ring-1 ring-brand'
           : q.status === 'REJECTED'
             ? 'border-slate-200 bg-slate-50/60 opacity-60'
             : 'border-slate-200 bg-white shadow-xs hover:border-brand/40 hover:shadow-card'
@@ -565,13 +565,13 @@ function QuotationCard({ quotation: q }: { quotation: Quotation }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 font-bold text-brand text-base">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-100 font-bold text-brand text-base">
             {q.technicianName ? q.technicianName.charAt(0).toUpperCase() : 'T'}
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <p className="font-bold text-slate-900 text-sm">{q.technicianName ?? 'Thợ kỹ thuật'}</p>
-              <span className="text-blue-600 text-xs" title="Thợ đã xác minh eKYC">✓</span>
+              <span className="text-teal-600 text-xs" title="Thợ đã xác minh eKYC">✓</span>
             </div>
             <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
               {q.avgRating != null && (
