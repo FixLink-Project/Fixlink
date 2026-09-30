@@ -25,6 +25,7 @@ const LABELS: Record<string, { label: string; tone: Tone }> = {
   BLOCKED: { label: 'Bị khoá', tone: 'danger' },
   // Trạng thái yêu cầu sửa chữa
   DRAFT: { label: 'Bản nháp', tone: 'neutral' },
+  OPEN: { label: 'Đang chờ thợ nhận', tone: 'pending' },
   BIDDING_OPEN: { label: 'Đang nhận báo giá', tone: 'pending' },
   MATCHED_AWAITING_DEPOSIT: { label: 'Chờ đặt cọc', tone: 'pending' },
   ASSIGNED: { label: 'Đã nhận việc', tone: 'success' },

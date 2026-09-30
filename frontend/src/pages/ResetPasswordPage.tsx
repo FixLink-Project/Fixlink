@@ -62,7 +62,7 @@ export default function ResetPasswordPage() {
           </Alert>
           <Link
             to="/quen-mat-khau"
-            className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-gradient-to-r from-brand to-brand-glow px-5 text-sm font-medium text-white shadow-glow transition-all hover:shadow-glow-lg"
+            className="flex min-h-[44px] w-full items-center justify-center rounded-lg bg-brand px-5 text-sm font-medium text-white transition-colors hover:bg-brand-strong"
           >
             Yêu cầu liên kết mới
           </Link>

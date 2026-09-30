@@ -39,7 +39,7 @@ export default function DashboardLayout({
       <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur-md shadow-sm">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5 font-display text-lg font-bold">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-strong text-sm text-white shadow-sm">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-sm text-white">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>

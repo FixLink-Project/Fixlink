@@ -104,7 +104,7 @@ export default function ImageUploadField({
               type="button"
               disabled={disabled}
               onClick={() => fileInputRef.current?.click()}
-              className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-4 py-8 text-slate-500 shadow-xs transition-all duration-200 hover:border-brand hover:bg-blue-50/40 hover:text-brand"
+              className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-4 py-8 text-slate-500 shadow-xs transition-all duration-200 hover:border-brand hover:bg-teal-50/40 hover:text-brand"
             >
               <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-2xl shadow-xs border border-slate-200">
                 📷

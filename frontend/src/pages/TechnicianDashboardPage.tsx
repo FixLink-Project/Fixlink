@@ -290,7 +290,7 @@ export default function TechnicianDashboardPage() {
             {[
               { icon: '✅', label: 'Việc đã hoàn tất', value: profile.completedJobs, badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
               { icon: '⭐', label: 'Điểm đánh giá', value: profile.completedJobs > 0 ? Number(profile.avgRating).toFixed(1) : 'Chưa có', badgeBg: 'bg-amber-50 text-amber-700 border-amber-200' },
-              { icon: '💰', label: 'Số dư ví FixLink', value: formatCurrency(profile.walletBalance), badgeBg: 'bg-blue-50 text-brand border-blue-200' }
+              { icon: '💰', label: 'Số dư ví FixLink', value: formatCurrency(profile.walletBalance), badgeBg: 'bg-teal-50 text-brand border-teal-200' }
             ].map((stat) => (
               <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
                 <dt className="flex items-center justify-between text-xs font-semibold text-slate-500">
@@ -466,7 +466,7 @@ export default function TechnicianDashboardPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold text-slate-500">Đang lọc theo:</span>
                     {selectedAreaId ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 font-medium text-brand border border-blue-200">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-0.5 font-medium text-brand border border-teal-200">
                         📍 {allAreas.find((a) => String(a.id) === selectedAreaId)?.name || profile.areas.find((a) => String(a.id) === selectedAreaId)?.name || `Khu vực #${selectedAreaId}`}
                         <button
                           type="button"
