@@ -6,6 +6,7 @@ import com.fixlink.adapter.in.web.dto.request.CreateRepairRequestRequest;
 import com.fixlink.adapter.in.web.dto.request.UpdateRepairRequestRequest;
 import com.fixlink.adapter.in.web.dto.request.UpdateRepairRequestStatusRequest;
 import com.fixlink.adapter.in.web.dto.response.*;
+import com.fixlink.application.port.in.QuotationUseCase;
 import com.fixlink.application.port.in.RepairRequestUseCase;
 import com.fixlink.application.port.in.RepairRequestUseCase.CreateRepairRequestCommand;
 import com.fixlink.application.port.in.RepairRequestUseCase.RepairRequestDetail;
@@ -46,6 +47,7 @@ import java.util.Map;
 public class RepairRequestController {
 
     private final RepairRequestUseCase repairRequestUseCase;
+    private final QuotationUseCase quotationUseCase;
 
     // ==================================================================================
     // 1. RC-30 & RC-8 ENDPOINTS
@@ -193,7 +195,7 @@ public class RepairRequestController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('CUSTOMER')")
-    @Operation(summary = "Sửa yêu cầu (chỉ khi DRAFT hoặc BIDDING_OPEN chưa có báo giá)")
+    @Operation(summary = "Sửa yêu cầu (chỉ khi DRAFT hoặc OPEN và chưa có thợ nhận)")
     public ResponseEntity<ApiResponse<RepairRequestResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody UpdateRepairRequestRequest req,
@@ -254,10 +256,25 @@ public class RepairRequestController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/{requestId}/apply")
+    @PreAuthorize("hasRole('TECHNICIAN')")
+    @Operation(summary = "Thợ nhận việc (TECHNICIAN)",
+            description = "Mô hình \"ai nhận trước được trước\": thợ đầu tiên bấm nhận sẽ được giao "
+                    + "việc ngay, giá lấy từ ngân sách khách đã ấn định, khách không cần xác nhận. "
+                    + "Nếu yêu cầu vừa bị thợ khác nhận, trả về 409 với errorCode JOB_ALREADY_TAKEN.")
+    public ResponseEntity<ApiResponse<AcceptQuotationResponse>> apply(
+            @PathVariable String requestId,
+            @AuthenticationPrincipal UserPrincipal user
+    ) {
+        AcceptQuotationResponse result =
+                quotationUseCase.apply(parseRequestId(requestId), requireUserId(user));
+        return ResponseEntity.ok(ApiResponse.success("Bạn đã nhận việc thành công", result));
+    }
+
     @GetMapping("/matching")
     @PreAuthorize("hasRole('TECHNICIAN')")
     @Operation(summary = "Yêu cầu phù hợp với thợ (TECHNICIAN)",
-            description = "Tìm kiếm và lọc các yêu cầu sửa chữa đang mở thầu theo khu vực hoạt động (RC-38) và từ khóa.")
+            description = "Các yêu cầu đang mở cho thợ nhận (status OPEN, còn trong hạn 3 ngày), lọc theo chuyên môn + khu vực hoạt động (RC-38) và từ khóa.")
     public ResponseEntity<ApiPageResponse<RepairRequestResponse>> getMatching(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestParam(defaultValue = "1") int page,

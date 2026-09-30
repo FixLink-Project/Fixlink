@@ -46,6 +46,10 @@ public class QuotationJpaEntity extends BaseJpaEntity {
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;
 
+    /** Thời điểm thợ bấm "Nhận việc" (mô hình ai nhận trước được trước). */
+    @Column(name = "accepted_at")
+    private LocalDateTime acceptedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20, nullable = false)
     @Builder.Default

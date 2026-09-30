@@ -48,9 +48,21 @@ public class CreateRepairRequestRequest {
     private BigDecimal latitude;
     private BigDecimal longitude;
 
-    @DecimalMin(value = "0.0", inclusive = true, message = "Ngân sách tham khảo không được âm")
+    /**
+     * Ngân sách khách đưa ra — trong mô hình "ai nhận trước được trước" đây
+     * chính là <b>giá cuối cùng</b> của công việc, không thương lượng. Vì vậy
+     * bắt buộc phải có và phải lớn hơn 0.
+     */
+    @NotNull(message = "Ngân sách không được để trống")
+    @DecimalMin(value = "1", inclusive = true, message = "Ngân sách phải lớn hơn 0")
     private BigDecimal budgetRef;
 
+    /**
+     * @deprecated Thời hạn nhận việc giờ cố định 3 ngày kể từ lúc đăng, khách
+     *     không tự đặt được nữa. Field giữ lại để client cũ gửi lên không bị
+     *     lỗi 400, nhưng giá trị bị bỏ qua.
+     */
+    @Deprecated
     private Integer biddingDeadlineDays;
 
     private LocalDateTime preferredTime;

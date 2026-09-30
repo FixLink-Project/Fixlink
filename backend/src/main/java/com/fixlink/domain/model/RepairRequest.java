@@ -33,7 +33,7 @@ public class RepairRequest {
     private BigDecimal agreedPrice;
     private BigDecimal depositAmount;
     private BigDecimal budgetRef;
-    private LocalDateTime biddingDeadline;
+    private LocalDateTime applyDeadline;
     private String cancelReason;
     private Long selectedQuotationId;
     private Long version;
@@ -47,7 +47,7 @@ public class RepairRequest {
     private List<String> mediaUrls;
 
     public boolean canEdit() {
-        return status == RequestStatus.DRAFT || status == RequestStatus.BIDDING_OPEN;
+        return status == RequestStatus.DRAFT || status == RequestStatus.OPEN;
     }
 
     public boolean canCancel() {
@@ -58,6 +58,6 @@ public class RepairRequest {
     }
 
     public boolean isBiddingExpired() {
-        return biddingDeadline != null && LocalDateTime.now().isAfter(biddingDeadline);
+        return applyDeadline != null && LocalDateTime.now().isAfter(applyDeadline);
     }
 }

@@ -73,8 +73,9 @@ public class RepairRequestJpaEntity extends BaseJpaEntity {
     @Builder.Default
     private BigDecimal budgetRef = BigDecimal.ZERO;
 
-    @Column(name = "bidding_deadline")
-    private LocalDateTime biddingDeadline;
+    /** Hạn chót để thợ nhận việc: createdAt + 3 ngày (cố định). */
+    @Column(name = "apply_deadline")
+    private LocalDateTime applyDeadline;
 
     @Column(name = "cancel_reason", columnDefinition = "TEXT")
     private String cancelReason;

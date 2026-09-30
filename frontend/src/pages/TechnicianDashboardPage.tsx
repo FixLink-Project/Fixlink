@@ -6,9 +6,7 @@ import Card from '../components/Card';
 import DashboardLayout from '../components/DashboardLayout';
 import Pagination from '../components/Pagination';
 import StatusChip from '../components/StatusChip';
-import TextArea from '../components/TextArea';
-import TextField from '../components/TextField';
-import { ApiError, api, formatCurrency } from '../lib/api';
+import { ApiError, api, applyForJob, formatCurrency } from '../lib/api';
 import type { PageMeta, RepairRequest as MatchingRequest, VerificationStatus } from '../lib/types';
 
 interface SimpleRef {
@@ -87,14 +85,9 @@ export default function TechnicianDashboardPage() {
   const [searchInput, setSearchInput] = useState<string>('');
   const [appliedSearch, setAppliedSearch] = useState<string>('');
 
-  const [quoteFor, setQuoteFor] = useState<MatchingRequest | null>(null);
-  const [quoteForm, setQuoteForm] = useState({
-    solution: '',
-    priceLaborVnd: '',
-    priceMaterialsVnd: '',
-    note: ''
-  });
-  const [quoteSaving, setQuoteSaving] = useState(false);
+  // Mô hình "ai nhận trước được trước": không còn form nhập giá, chỉ cần biết
+  // đang gọi API cho job nào.
+  const [applyingId, setApplyingId] = useState<number | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteSuccess, setQuoteSuccess] = useState<string | null>(null);
 
@@ -224,25 +217,30 @@ export default function TechnicianDashboardPage() {
     }
   }
 
-  async function handleQuoteSubmit() {
-    if (!quoteFor) return;
+  async function handleApply(req: MatchingRequest) {
+    const confirmed = window.confirm(
+      `Bạn sẽ nhận việc với giá ${formatCurrency(req.budgetRef)}. Xác nhận?`
+    );
+    if (!confirmed) return;
+
     setQuoteError(null);
-    setQuoteSaving(true);
+    setQuoteSuccess(null);
+    setApplyingId(req.id);
     try {
-      await api.post(`/repair-requests/${quoteFor.id}/quotations`, {
-        solution: quoteForm.solution.trim(),
-        priceLaborVnd: Number(quoteForm.priceLaborVnd),
-        priceMaterialsVnd: Number(quoteForm.priceMaterialsVnd),
-        note: quoteForm.note.trim() || null
-      });
-      setQuoteSuccess(`Đã gửi báo giá cho "${quoteFor.title}".`);
-      setQuoteFor(null);
-      setQuoteForm({ solution: '', priceLaborVnd: '', priceMaterialsVnd: '', note: '' });
+      await applyForJob(req.id);
+      setQuoteSuccess(`Bạn đã nhận việc "${req.title}". Hãy liên hệ khách để hẹn lịch.`);
       loadMatching(matchingPage);
     } catch (err) {
-      setQuoteError(err instanceof ApiError ? err.message : 'Không gửi được báo giá.');
+      // 409 JOB_ALREADY_TAKEN: thợ khác vừa nhận trước -> làm mới danh sách để
+      // job đó biến mất, tránh cho thợ bấm lại vô ích.
+      if (err instanceof ApiError && err.errorCode === 'JOB_ALREADY_TAKEN') {
+        setQuoteError('Yêu cầu này vừa được thợ khác nhận. Danh sách đã được làm mới.');
+        loadMatching(matchingPage);
+      } else {
+        setQuoteError(err instanceof ApiError ? err.message : 'Không nhận được việc. Vui lòng thử lại.');
+      }
     } finally {
-      setQuoteSaving(false);
+      setApplyingId(null);
     }
   }
 
@@ -398,6 +396,11 @@ export default function TechnicianDashboardPage() {
               title="Yêu cầu phù hợp & Tìm kiếm theo khu vực"
               description="Tìm kiếm và lọc các yêu cầu sửa chữa theo khu vực hoạt động để nhận đơn đúng địa bàn."
             >
+              {quoteError && (
+                <div className="mb-4">
+                  <Alert tone="error">{quoteError}</Alert>
+                </div>
+              )}
               {quoteSuccess && (
                 <div className="mb-4">
                   <Alert tone="success">{quoteSuccess}</Alert>
@@ -564,9 +567,9 @@ export default function TechnicianDashboardPage() {
                             {req.budgetRef > 0 && (
                               <span className="font-semibold text-brand">💰 {formatCurrency(req.budgetRef)}</span>
                             )}
-                            {req.biddingDeadline && (
+                            {req.applyDeadline && (
                               <span>
-                                ⏰ {new Date(req.biddingDeadline).toLocaleDateString('vi-VN')}
+                                ⏰ {new Date(req.applyDeadline).toLocaleDateString('vi-VN')}
                               </span>
                             )}
                           </div>
@@ -576,14 +579,12 @@ export default function TechnicianDashboardPage() {
                             <Button variant="quiet">Xem chi tiết</Button>
                           </Link>
                           <Button
-                            variant="secondary"
-                            onClick={() => {
-                              setQuoteFor(req);
-                              setQuoteError(null);
-                              setQuoteSuccess(null);
-                            }}
+                            variant="primary"
+                            loading={applyingId === req.id}
+                            disabled={applyingId !== null}
+                            onClick={() => handleApply(req)}
                           >
-                            Gửi báo giá
+                            {applyingId === req.id ? 'Đang nhận...' : 'Nhận việc'}
                           </Button>
                         </div>
                       </div>
@@ -605,100 +606,6 @@ export default function TechnicianDashboardPage() {
             </Card>
           )}
 
-          {/* Quotation submission modal */}
-          {quoteFor && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
-              <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl animate-slide-up">
-                <h2 className="font-display text-lg font-bold text-slate-900">Gửi báo giá kỹ thuật</h2>
-                <p className="mt-1 text-xs text-slate-500">
-                  Đơn sửa chữa: <span className="font-semibold text-brand">{quoteFor.title}</span>
-                </p>
-
-                {quoteError && (
-                  <div className="mt-3">
-                    <Alert tone="error">{quoteError}</Alert>
-                  </div>
-                )}
-
-                <div className="mt-4 space-y-4">
-                  <TextArea
-                    label="Giải pháp kỹ thuật đề xuất"
-                    name="solution"
-                    rows={3}
-                    required
-                    placeholder="Mô tả nguyên nhân phỏng đoán và cách bạn sẽ xử lý sự cố..."
-                    value={quoteForm.solution}
-                    onChange={(e) =>
-                      setQuoteForm((f) => ({ ...f, solution: e.target.value }))
-                    }
-                  />
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <TextField
-                      label="Giá tiền công (VNĐ)"
-                      name="priceLaborVnd"
-                      type="number"
-                      min={0}
-                      required
-                      placeholder="300000"
-                      value={quoteForm.priceLaborVnd}
-                      onChange={(e) =>
-                        setQuoteForm((f) => ({ ...f, priceLaborVnd: e.target.value }))
-                      }
-                    />
-                    <TextField
-                      label="Giá linh kiện vật tư (VNĐ)"
-                      name="priceMaterialsVnd"
-                      type="number"
-                      min={0}
-                      required
-                      placeholder="250000"
-                      value={quoteForm.priceMaterialsVnd}
-                      onChange={(e) =>
-                        setQuoteForm((f) => ({ ...f, priceMaterialsVnd: e.target.value }))
-                      }
-                    />
-                  </div>
-                  {quoteForm.priceLaborVnd && quoteForm.priceMaterialsVnd && (
-                    <div className="rounded-xl bg-blue-50 border border-blue-100 p-3 text-sm font-semibold text-slate-800 flex justify-between items-center">
-                      <span>Tổng giá báo khách:</span>
-                      <span className="text-base text-brand font-bold">
-                        {formatCurrency(
-                          Number(quoteForm.priceLaborVnd) + Number(quoteForm.priceMaterialsVnd)
-                        )}
-                      </span>
-                    </div>
-                  )}
-                  <TextArea
-                    label="Ghi chú (không bắt buộc)"
-                    name="note"
-                    rows={2}
-                    placeholder="Chính sách bảo hành riêng, thời gian dự kiến có mặt..."
-                    value={quoteForm.note}
-                    onChange={(e) =>
-                      setQuoteForm((f) => ({ ...f, note: e.target.value }))
-                    }
-                  />
-                </div>
-
-                <div className="mt-6 flex justify-end gap-2">
-                  <Button variant="secondary" onClick={() => setQuoteFor(null)}>
-                    Hủy
-                  </Button>
-                  <Button
-                    onClick={handleQuoteSubmit}
-                    loading={quoteSaving}
-                    disabled={
-                      !quoteForm.solution.trim() ||
-                      !quoteForm.priceLaborVnd ||
-                      !quoteForm.priceMaterialsVnd
-                    }
-                  >
-                    {quoteSaving ? 'Đang gửi...' : 'Gửi báo giá tới khách'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </DashboardLayout>

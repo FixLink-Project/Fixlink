@@ -32,6 +32,91 @@ public class QuotationService implements QuotationUseCase {
     private final SpringDataTechnicianProfileRepository techProfileRepo;
     private final RepairRequestService repairRequestService;
 
+    // ==================================================================================
+    // MÔ HÌNH MỚI: "ai nhận trước được trước" (first-come-first-served)
+    // ==================================================================================
+
+    /**
+     * Thợ bấm "Nhận việc". Toàn bộ nằm trong một transaction và mở đầu bằng khóa
+     * ghi bi quan trên chính bản ghi yêu cầu, nên hai thợ bấm cùng lúc sẽ bị DB
+     * xếp hàng: người sau chỉ đọc được bản ghi khi người trước đã commit
+     * (status đã là ASSIGNED) và bị chặn bằng JOB_ALREADY_TAKEN.
+     */
+    @Override
+    @Transactional
+    public AcceptQuotationResponse apply(Long requestId, Long technicianId) {
+        // 1. Khóa trước, đọc sau — không được đọc bằng findById rồi mới khóa.
+        RepairRequestJpaEntity request = requestRepo.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy yêu cầu sửa chữa"));
+
+        // 2. Job đã bị thợ khác nhận -> 409 rõ ràng, không để lọt thành 500.
+        if (request.getStatus() != RequestStatus.OPEN) {
+            throw new DomainException("JOB_ALREADY_TAKEN",
+                    "Yêu cầu này vừa được thợ khác nhận. Vui lòng xem các yêu cầu khác.", 409);
+        }
+        if (request.getApplyDeadline() != null && LocalDateTime.now().isAfter(request.getApplyDeadline())) {
+            throw new DomainException("INVALID_OPERATION", "Yêu cầu này đã hết hạn nhận việc");
+        }
+
+        TechnicianProfileJpaEntity tech = techProfileRepo.findById(technicianId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ thợ"));
+        if (tech.getVerificationStatus() != VerificationStatus.APPROVED) {
+            throw new DomainException("UNVERIFIED_TECHNICIAN", "Tài khoản chưa được xác minh", 403);
+        }
+        if (!tech.getCategoryIds().contains(request.getCategoryId())) {
+            throw new DomainException("INVALID_OPERATION", "Chuyên môn của bạn không khớp với danh mục yêu cầu");
+        }
+        if (request.getAreaId() != null && !tech.getAreaIds().contains(request.getAreaId())) {
+            throw new DomainException("INVALID_OPERATION", "Khu vực của bạn không khớp với địa bàn yêu cầu");
+        }
+        if (quotationRepo.existsByRequestIdAndTechnicianId(requestId, technicianId)) {
+            throw new DomainException("INVALID_OPERATION", "Bạn đã nhận yêu cầu này rồi");
+        }
+
+        // 3. Giá = ngân sách khách ấn định, thợ không nhập giá nữa.
+        BigDecimal agreedPrice = request.getBudgetRef() != null ? request.getBudgetRef() : BigDecimal.ZERO;
+        BigDecimal deposit = agreedPrice.multiply(DEPOSIT_RATE).setScale(0, RoundingMode.CEILING);
+        LocalDateTime now = LocalDateTime.now();
+
+        // 4. Bản ghi "nhận việc" — vẫn lưu ở bảng quotations nhưng đổi vai trò.
+        QuotationJpaEntity record = new QuotationJpaEntity();
+        record.setRequestId(requestId);
+        record.setTechnicianId(technicianId);
+        record.setSolution("Thợ nhận việc theo ngân sách khách đưa ra");
+        record.setPriceLaborVnd(agreedPrice);
+        record.setPriceMaterialsVnd(BigDecimal.ZERO);
+        record.setStatus(QuotationStatus.ACCEPTED);
+        record.setAcceptedAt(now);
+        record.setCreatedBy(technicianId);
+        record = quotationRepo.save(record);
+
+        // 5. Gán thợ vào yêu cầu.
+        RequestStatus oldStatus = request.getStatus();
+        request.setTechnicianId(technicianId);
+        request.setSelectedQuotationId(record.getId());
+        request.setAgreedPrice(agreedPrice);
+        request.setDepositAmount(deposit);
+        request.setStatus(RequestStatus.ASSIGNED);
+        request.setUpdatedBy(technicianId);
+        requestRepo.save(request);
+
+        repairRequestService.recordProgress(requestId, oldStatus, RequestStatus.ASSIGNED,
+                "Thợ nhận việc (ai nhận trước được trước)", technicianId);
+
+        return AcceptQuotationResponse.builder()
+                .requestId(requestId)
+                .selectedQuotationId(record.getId())
+                .technicianName(tech.getFullName())
+                .agreedPrice(agreedPrice)
+                .depositAmount(deposit)
+                .status(RequestStatus.ASSIGNED)
+                .build();
+    }
+
+    // ==================================================================================
+    // LUỒNG CŨ (đấu giá ngược) — giữ lại tạm thời, sẽ xóa sau khi pivot ổn định
+    // ==================================================================================
+
     @Override
     @Transactional
     public QuotationResponse create(Long requestId, CreateQuotationCommand cmd, Long technicianId) {
@@ -40,7 +125,7 @@ public class QuotationService implements QuotationUseCase {
         if (request.getStatus() != RequestStatus.BIDDING_OPEN) {
             throw new DomainException("INVALID_OPERATION", "Yêu cầu không ở trạng thái nhận báo giá");
         }
-        if (request.getBiddingDeadline() != null && LocalDateTime.now().isAfter(request.getBiddingDeadline())) {
+        if (request.getApplyDeadline() != null && LocalDateTime.now().isAfter(request.getApplyDeadline())) {
             throw new DomainException("INVALID_OPERATION", "Đã hết hạn nhận báo giá cho yêu cầu này");
         }
 

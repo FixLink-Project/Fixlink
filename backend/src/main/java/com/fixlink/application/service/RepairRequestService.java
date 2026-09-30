@@ -49,6 +49,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RepairRequestService implements RepairRequestUseCase {
 
+    /** Số ngày yêu cầu được mở cho thợ nhận việc trước khi tự hủy. */
+    private static final int APPLY_WINDOW_DAYS = 3;
+
     private static final Set<String> ALLOWED_SORT_FIELDS =
             Set.of("createdAt", "requestedTime", "status", "title", "agreedPrice", "budgetRef");
     private static final int DEFAULT_PAGE_SIZE = 10;
@@ -227,14 +230,10 @@ public class RepairRequestService implements RepairRequestUseCase {
 
         List<String> mediaUrls = normalizeMediaUrls(command.mediaUrls());
 
-        RequestStatus initialStatus;
-        if (command.saveAsDraft()) {
-            initialStatus = RequestStatus.DRAFT;
-        } else if (command.biddingDeadlineDays() != null || command.budgetRef() != null) {
-            initialStatus = RequestStatus.BIDDING_OPEN;
-        } else {
-            initialStatus = RequestStatus.PENDING;
-        }
+        // Mô hình "ai nhận trước được trước": đăng là mở luôn cho thợ nhận (OPEN),
+        // không còn phân nhánh theo việc khách có đặt hạn thầu / ngân sách hay không
+        // (ngân sách giờ là bắt buộc).
+        RequestStatus initialStatus = command.saveAsDraft() ? RequestStatus.DRAFT : RequestStatus.OPEN;
 
         RepairRequestJpaEntity entity = new RepairRequestJpaEntity();
         entity.setRequestCode(generateRequestCode());
@@ -245,9 +244,8 @@ public class RepairRequestService implements RepairRequestUseCase {
         entity.setLatitude(command.latitude());
         entity.setLongitude(command.longitude());
         entity.setBudgetRef(command.budgetRef() != null ? command.budgetRef() : BigDecimal.ZERO);
-        if (command.biddingDeadlineDays() != null) {
-            entity.setBiddingDeadline(LocalDateTime.now().plusDays(command.biddingDeadlineDays()));
-        }
+        // Hạn nhận việc cố định 3 ngày, khách không tự đặt được nữa.
+        entity.setApplyDeadline(LocalDateTime.now().plusDays(APPLY_WINDOW_DAYS));
         entity.setStatus(initialStatus);
         entity.setTitle(command.title().trim());
         entity.setDescription(command.description().trim());
@@ -398,10 +396,9 @@ public class RepairRequestService implements RepairRequestUseCase {
         entity.setLongitude(cmd.getLongitude());
         entity.setRequestedTime(cmd.getPreferredTime() != null ? cmd.getPreferredTime() : LocalDateTime.now().plusDays(1));
         entity.setBudgetRef(cmd.getBudgetRef() != null ? cmd.getBudgetRef() : BigDecimal.ZERO);
-        entity.setStatus(RequestStatus.BIDDING_OPEN);
+        entity.setStatus(RequestStatus.OPEN);
 
-        int deadlineDays = cmd.getBiddingDeadlineDays() != null ? cmd.getBiddingDeadlineDays() : 3;
-        entity.setBiddingDeadline(LocalDateTime.now().plusDays(deadlineDays));
+        entity.setApplyDeadline(LocalDateTime.now().plusDays(APPLY_WINDOW_DAYS));
 
         entity.setCreatedBy(customerId);
         entity.setUpdatedBy(customerId);
@@ -409,7 +406,7 @@ public class RepairRequestService implements RepairRequestUseCase {
 
         saveMedia(entity.getId(), cmd.getMediaUrls(), customerId);
 
-        recordProgress(entity.getId(), null, RequestStatus.BIDDING_OPEN, "Khách tạo yêu cầu mới", customerId);
+        recordProgress(entity.getId(), null, RequestStatus.OPEN, "Khách tạo yêu cầu mới", customerId);
 
         return toResponse(entity);
     }
@@ -419,11 +416,11 @@ public class RepairRequestService implements RepairRequestUseCase {
     public RepairRequestResponse update(Long requestId, UpdateCommand cmd, Long customerId) {
         RepairRequestJpaEntity entity = findOwnedRequest(requestId, customerId);
 
-        if (entity.getStatus() != RequestStatus.DRAFT && entity.getStatus() != RequestStatus.BIDDING_OPEN) {
+        if (entity.getStatus() != RequestStatus.DRAFT && entity.getStatus() != RequestStatus.OPEN) {
             throw new DomainException("INVALID_OPERATION", "Chỉ có thể sửa đơn ở trạng thái Nháp hoặc Đang nhận báo giá");
         }
 
-        if (entity.getStatus() == RequestStatus.BIDDING_OPEN) {
+        if (entity.getStatus() == RequestStatus.OPEN) {
             long quoteCount = quotationRepo.countByRequestId(requestId);
             if (quoteCount > 0) {
                 throw new DomainException("INVALID_OPERATION", "Không thể sửa đơn khi đã có thợ gửi báo giá");
@@ -443,9 +440,7 @@ public class RepairRequestService implements RepairRequestUseCase {
         if (cmd.getPreferredTime() != null) entity.setRequestedTime(cmd.getPreferredTime());
         entity.setBudgetRef(cmd.getBudgetRef() != null ? cmd.getBudgetRef() : BigDecimal.ZERO);
 
-        if (cmd.getBiddingDeadlineDays() != null) {
-            entity.setBiddingDeadline(LocalDateTime.now().plusDays(cmd.getBiddingDeadlineDays()));
-        }
+        // Hạn nhận việc cố định, khách sửa yêu cầu cũng không đổi được hạn.
 
         entity.setUpdatedBy(customerId);
         entity = requestRepo.save(entity);
@@ -539,7 +534,7 @@ public class RepairRequestService implements RepairRequestUseCase {
 
             boolean isAssignedTech = entity.getTechnicianId() != null && entity.getTechnicianId().equals(userId);
             boolean hasQuotation = quotationRepo.existsByRequestIdAndTechnicianId(requestId, userId);
-            boolean isOpenForBidding = entity.getStatus() == RequestStatus.BIDDING_OPEN;
+            boolean isOpenForBidding = entity.getStatus() == RequestStatus.OPEN;
 
             // Thợ được xem chi tiết khi: đơn đang mở thầu, hoặc thợ đã được giao việc, hoặc thợ đã gửi báo giá
             if (!isOpenForBidding && !isAssignedTech && !hasQuotation) {
@@ -783,7 +778,7 @@ public class RepairRequestService implements RepairRequestUseCase {
                 .agreedPrice(e.getAgreedPrice())
                 .depositAmount(e.getDepositAmount())
                 .budgetRef(e.getBudgetRef())
-                .biddingDeadline(e.getBiddingDeadline())
+                .applyDeadline(e.getApplyDeadline())
                 .cancelReason(e.getCancelReason())
                 .selectedQuotationId(e.getSelectedQuotationId())
                 .mediaUrls(urls)

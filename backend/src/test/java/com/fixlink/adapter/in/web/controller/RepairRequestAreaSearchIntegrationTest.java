@@ -103,7 +103,7 @@ class RepairRequestAreaSearchIntegrationTest {
         profile.setAreaIds(new LinkedHashSet<>(List.of(1L, 2L, 3L)));
         techProfileRepo.save(profile);
 
-        // Chuẩn bị các yêu cầu mở thầu BIDDING_OPEN tại các khu vực khác nhau
+        // Chuẩn bị các yêu cầu đang mở cho thợ nhận (OPEN) tại các khu vực khác nhau
         UserJpaEntity custUser = userRepo.findByUsernameAndDeletedAtIsNull(CUSTOMER).orElseThrow();
 
         if (repairRequestRepo.findByRequestCode("REQ-TEST-RC38-Q1").isEmpty()) {
@@ -116,8 +116,8 @@ class RepairRequestAreaSearchIntegrationTest {
             reqQ1.setDescription("Máy giặt vắt kêu to tại Nguyễn Huệ Quận 1");
             reqQ1.setAddress("12 Lê Lợi, Quận 1, TP.HCM");
             reqQ1.setRequestedTime(LocalDateTime.now().plusDays(2));
-            reqQ1.setStatus(RequestStatus.BIDDING_OPEN);
-            reqQ1.setBiddingDeadline(LocalDateTime.now().plusDays(5));
+            reqQ1.setStatus(RequestStatus.OPEN);
+            reqQ1.setApplyDeadline(LocalDateTime.now().plusDays(5));
             reqQ1.setBudgetRef(new BigDecimal("600000"));
             repairRequestRepo.save(reqQ1);
         }
@@ -132,8 +132,8 @@ class RepairRequestAreaSearchIntegrationTest {
             reqQ7.setDescription("Ống nước âm tường rò rỉ tại Phú Mỹ Hưng Quận 7");
             reqQ7.setAddress("88 Nguyễn Thị Thập, Quận 7, TP.HCM");
             reqQ7.setRequestedTime(LocalDateTime.now().plusDays(2));
-            reqQ7.setStatus(RequestStatus.BIDDING_OPEN);
-            reqQ7.setBiddingDeadline(LocalDateTime.now().plusDays(5));
+            reqQ7.setStatus(RequestStatus.OPEN);
+            reqQ7.setApplyDeadline(LocalDateTime.now().plusDays(5));
             reqQ7.setBudgetRef(new BigDecimal("400000"));
             repairRequestRepo.save(reqQ7);
         }

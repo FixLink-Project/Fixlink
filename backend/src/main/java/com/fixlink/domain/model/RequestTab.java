@@ -11,9 +11,11 @@ import java.util.Set;
 public enum RequestTab {
 
     ALL("Tất cả", Set.of()),
-    AWAITING_QUOTE("Chờ báo giá", Set.of(
+    AWAITING_QUOTE("Chờ thợ nhận", Set.of(
             RequestStatus.PENDING,
             RequestStatus.DRAFT,
+            RequestStatus.OPEN,
+            // Hai trạng thái của mô hình đấu giá cũ, giữ để dữ liệu cũ vẫn vào tab này.
             RequestStatus.BIDDING_OPEN,
             RequestStatus.MATCHED_AWAITING_DEPOSIT
     )),

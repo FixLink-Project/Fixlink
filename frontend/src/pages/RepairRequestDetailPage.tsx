@@ -10,7 +10,7 @@ import StatusChip from '../components/StatusChip';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
 import { ApiError, api, attachRequestMedia, createAppointment, fetchAppointmentsForRequest, formatCurrency, updateRequestStatus } from '../lib/api';
-import type { AcceptQuotationResult, Appointment, Quotation, RepairRequestDetail } from '../lib/types';
+import type { Appointment, Quotation, RepairRequestDetail } from '../lib/types';
 
 const CUSTOMER_NAV = [
   { to: '/khach-hang', label: 'Bảng điều khiển' },
@@ -24,8 +24,7 @@ export default function RepairRequestDetailPage() {
   const [detail, setDetail] = useState<RepairRequestDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [accepting, setAccepting] = useState<number | null>(null);
-  const [acceptError, setAcceptError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [showCancelForm, setShowCancelForm] = useState(false);
@@ -73,25 +72,6 @@ export default function RepairRequestDetailPage() {
     }
   }
 
-  async function handleAccept(quotationId: number, techName: string | null, totalPrice: number) {
-    const deposit = Math.ceil(totalPrice * 0.3);
-    const confirmed = window.confirm(
-      `Chọn ${techName ?? 'thợ này'}?\n\nGiá chốt: ${formatCurrency(totalPrice)}\nTiền cọc 30%: ${formatCurrency(deposit)}\n\nSau khi chọn, các báo giá khác sẽ tự động bị từ chối.`
-    );
-    if (!confirmed) return;
-
-    setAccepting(quotationId);
-    setAcceptError(null);
-    try {
-      await api.post<AcceptQuotationResult>(`/repair-requests/${id}/quotations/${quotationId}/accept`);
-      loadDetail();
-    } catch (err) {
-      setAcceptError(err instanceof ApiError ? err.message : 'Lỗi khi chọn thợ.');
-    } finally {
-      setAccepting(null);
-    }
-  }
-
   async function handleCancel() {
     if (!cancelReason.trim()) return;
     setCancelling(true);
@@ -100,7 +80,7 @@ export default function RepairRequestDetailPage() {
       loadDetail();
       setShowCancelForm(false);
     } catch (err) {
-      setAcceptError(err instanceof ApiError ? err.message : 'Lỗi khi hủy đơn.');
+      setActionError(err instanceof ApiError ? err.message : 'Lỗi khi hủy đơn.');
     } finally {
       setCancelling(false);
     }
@@ -110,10 +90,10 @@ export default function RepairRequestDetailPage() {
     if (!detail) return;
     setPublishing(true);
     try {
-      await updateRequestStatus(detail.request.id, 'PENDING', 'Khách hàng đăng bản nháp');
+      await updateRequestStatus(detail.request.id, 'OPEN', 'Khách hàng đăng bản nháp');
       loadDetail();
     } catch (err) {
-      setAcceptError(err instanceof ApiError ? err.message : 'Lỗi khi phát sóng bản nháp.');
+      setActionError(err instanceof ApiError ? err.message : 'Lỗi khi phát sóng bản nháp.');
     } finally {
       setPublishing(false);
     }
@@ -128,7 +108,7 @@ export default function RepairRequestDetailPage() {
       setShowAttachModal(false);
       loadDetail();
     } catch (err) {
-      setAcceptError(err instanceof ApiError ? err.message : 'Lỗi khi gắn ảnh bằng chứng.');
+      setActionError(err instanceof ApiError ? err.message : 'Lỗi khi gắn ảnh bằng chứng.');
     } finally {
       setAttaching(false);
     }
@@ -189,9 +169,10 @@ export default function RepairRequestDetailPage() {
       description={<span className="font-mono text-xs text-slate-500 font-semibold">{req.requestCode}</span>}
       actions={<StatusChip status={req.status} label={req.statusLabel} />}
     >
-      {acceptError && (
-        <div className="mb-5">
-          <Alert tone="error">{acceptError}</Alert>
+
+      {actionError && (
+        <div className="mb-4">
+          <Alert tone="error">{actionError}</Alert>
         </div>
       )}
 
@@ -220,9 +201,15 @@ export default function RepairRequestDetailPage() {
             <Row label="Khu vực" value={req.areaName ?? 'Toàn khu vực'} />
             <Row label="Địa chỉ kiểm tra" value={req.address || req.addressLine} />
             <Row label="Mô tả sự cố" value={req.description} />
-            {req.budgetRef > 0 && <Row label="Ngân sách dự kiến" value={formatCurrency(req.budgetRef)} />}
-            {req.biddingDeadline && (
-              <Row label="Hạn nhận báo giá" value={new Date(req.biddingDeadline).toLocaleString('vi-VN')} />
+            {req.budgetRef > 0 && (
+              <Row label="Giá cố định khách đưa ra" value={formatCurrency(req.budgetRef)} highlight />
+            )}
+            {req.applyDeadline && req.status === 'OPEN' && (
+              <Row
+                label="Thời hạn nhận thợ"
+                value={`${describeRemaining(req.applyDeadline)} (hết hạn ${new Date(req.applyDeadline).toLocaleString('vi-VN')})`}
+                highlight
+              />
             )}
             {req.agreedPrice > 0 && <Row label="Giá chốt" value={formatCurrency(req.agreedPrice)} highlight />}
             {req.depositAmount > 0 && <Row label="Tiền cọc Escrow (30%)" value={formatCurrency(req.depositAmount)} highlight />}
@@ -272,33 +259,30 @@ export default function RepairRequestDetailPage() {
           </div>
         </Card>
 
-        {/* Báo giá từ thợ */}
+        {/* Thợ đã nhận việc — mô hình "ai nhận trước được trước" */}
         {detail.quotations.length > 0 && (
           <Card
-            title={`Báo giá từ thợ kỹ thuật (${detail.quotations.length})`}
-            description="So sánh giá công, chi phí linh kiện và đánh giá của từng thợ để chọn người phù hợp nhất."
+            title="Thợ đã nhận việc"
+            description="Yêu cầu này đã có thợ nhận. Giá là mức khách đã ấn định, không thương lượng."
           >
             <div className="grid gap-4 md:grid-cols-2">
               {detail.quotations.map((q) => (
-                <QuotationCard
-                  key={q.id}
-                  quotation={q}
-                  canAccept={req.status === 'BIDDING_OPEN' && q.status === 'PENDING'}
-                  accepting={accepting === q.id}
-                  onAccept={() => handleAccept(q.id, q.technicianName, q.totalPrice)}
-                />
+                <QuotationCard key={q.id} quotation={q} />
               ))}
             </div>
           </Card>
         )}
 
-        {detail.quotations.length === 0 && (req.status === 'BIDDING_OPEN' || req.status === 'PENDING') && !isDraft && (
-          <Card title="Báo giá từ thợ kỹ thuật">
+        {detail.quotations.length === 0 && req.status === 'OPEN' && !isDraft && (
+          <Card title="Chờ thợ nhận việc">
             <div className="py-6 text-center">
               <span className="text-3xl">⏳</span>
-              <p className="mt-2 font-semibold text-slate-800">Đang chờ thợ gần khu vực báo giá</p>
+              <p className="mt-2 font-semibold text-slate-800">Đang chờ thợ nhận việc</p>
               <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Yêu cầu của bạn đã được gửi tới các kỹ thuật viên. Thông thường bạn sẽ nhận được báo giá đầu tiên trong 15 – 30 phút.
+                Yêu cầu đã được gửi tới các thợ phù hợp với giá{' '}
+                <strong>{formatCurrency(req.budgetRef)}</strong>. Thợ đầu tiên bấm nhận sẽ được giao việc
+                ngay, bạn không cần xác nhận thêm.
+                {req.applyDeadline && <> Còn {describeRemaining(req.applyDeadline)} trước khi yêu cầu tự hủy.</>}
               </p>
             </div>
           </Card>
@@ -536,6 +520,23 @@ export default function RepairRequestDetailPage() {
   );
 }
 
+/**
+ * Đếm ngược tới hạn nhận việc, ví dụ "còn 2 ngày 5 giờ".
+ * Trả về "đã hết hạn" nếu mốc thời gian đã qua.
+ */
+function describeRemaining(deadlineIso: string): string {
+  const remainingMs = new Date(deadlineIso).getTime() - Date.now();
+  if (Number.isNaN(remainingMs) || remainingMs <= 0) return 'đã hết hạn';
+
+  const totalHours = Math.floor(remainingMs / 3_600_000);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+
+  if (days > 0) return `còn ${days} ngày${hours > 0 ? ` ${hours} giờ` : ''}`;
+  if (totalHours > 0) return `còn ${totalHours} giờ`;
+  return `còn ${Math.max(1, Math.floor(remainingMs / 60_000))} phút`;
+}
+
 function Row({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className="flex flex-col gap-1 py-3 sm:flex-row sm:gap-4">
@@ -545,17 +546,11 @@ function Row({ label, value, highlight = false }: { label: string; value: string
   );
 }
 
-function QuotationCard({
-  quotation: q,
-  canAccept,
-  accepting,
-  onAccept
-}: {
-  quotation: Quotation;
-  canAccept: boolean;
-  accepting: boolean;
-  onAccept: () => void;
-}) {
+/**
+ * Thẻ hiển thị thợ đã nhận việc. Không còn nút "Chọn thợ" vì mô hình mới không
+ * có bước khách duyệt — thợ bấm nhận là xong.
+ */
+function QuotationCard({ quotation: q }: { quotation: Quotation }) {
   const isAccepted = q.status === 'ACCEPTED';
 
   return (
@@ -618,13 +613,6 @@ function QuotationCard({
         </p>
       )}
 
-      {canAccept && (
-        <div className="mt-4 pt-2">
-          <Button onClick={onAccept} loading={accepting} className="w-full">
-            {accepting ? 'Đang xác nhận...' : 'Chọn thợ này (Cọc 30% Escrow)'}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
