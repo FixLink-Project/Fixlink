@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -71,7 +72,8 @@ public class AuthController {
     }
 
     @PostMapping("/register/customer")
-    @Operation(summary = "Đăng ký tài khoản Khách hàng", description = "Tạo tài khoản mới cho Khách hàng và khởi tạo Customer Profile.")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Đăng ký tài khoản Khách hàng (ADMIN)", description = "ADMIN tạo tài khoản mới cho Khách hàng và khởi tạo Customer Profile.")
     public ResponseEntity<ApiResponse<CustomerRegisterResult>> registerCustomer(@Valid @RequestBody RegisterCustomerRequest request) {
         RegisterCustomerCommand command = new RegisterCustomerCommand(
                 request.getUsername(),
@@ -87,7 +89,8 @@ public class AuthController {
     }
 
     @PostMapping("/register/technician")
-    @Operation(summary = "Đăng ký tài khoản Thợ / Kỹ thuật viên", description = "Đăng ký tài khoản Thợ kèm thông tin hồ sơ & CCCD để Admin duyệt.")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Đăng ký tài khoản Thợ / Kỹ thuật viên (ADMIN)", description = "ADMIN tạo tài khoản Thợ kèm thông tin hồ sơ & CCCD để duyệt.")
     public ResponseEntity<ApiResponse<TechnicianRegisterResult>> registerTechnician(@Valid @RequestBody RegisterTechnicianRequest request) {
         RegisterTechnicianCommand command = new RegisterTechnicianCommand(
                 request.getUsername(),

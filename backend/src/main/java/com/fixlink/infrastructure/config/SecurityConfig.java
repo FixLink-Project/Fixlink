@@ -78,26 +78,19 @@ public class SecurityConfig {
                         // Healthcheck cho container và pipeline triển khai
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
 
-                        // Xác thực: chỉ mở công khai những bước người dùng chưa thể có token
+                        // VIEC 2 - Cách 1 (tuân thủ tuyệt đối yêu cầu giảng viên):
+                        // TRỪ đăng nhập, mọi endpoint nghiệp vụ đều phải authenticated.
+                        // Đây là endpoint công khai DUY NHẤT của luồng nghiệp vụ.
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
-                        .requestMatchers("/api/v1/auth/register/**").permitAll()
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/v1/auth/forgot-password",
-                                "/api/v1/auth/reset-password"
-                        ).permitAll()
-                        // Refresh token tự mang credential trong body. Nếu bắt buộc access
-                        // token còn hiệu lực thì không thể làm mới sau khi nó hết hạn.
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh-token").permitAll()
 
-                        // Dữ liệu danh mục dùng chung: khách chưa đăng nhập vẫn cần xem
-                        // để chọn loại dịch vụ trước khi đăng yêu cầu.
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/v1/categories/**",
-                                "/api/v1/services/**",
-                                "/api/v1/areas/**"
-                        ).permitAll()
+                        // Tạo tài khoản khách/thợ giờ do ADMIN thực hiện (không self-register).
+                        .requestMatchers("/api/v1/auth/register/**").hasRole("ADMIN")
+
+                        // Đổi/khôi phục mật khẩu, làm mới token, danh mục, khu vực... KHÔNG còn
+                        // public: chúng rơi xuống quy tắc anyRequest().authenticated() bên dưới.
+                        // (forgot/reset-password dành cho user đã đăng nhập; luồng chưa đăng nhập
+                        //  dùng đổi mật khẩu PUT /auth/change-password. Frontend khi gặp 401 sẽ
+                        //  điều hướng về trang đăng nhập thay vì tự refresh token.)
 
                         // Phân quyền theo vai trò
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
