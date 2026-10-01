@@ -96,11 +96,14 @@ public class SecurityConfig {
                                 "/api/v1/areas/**")
                         .permitAll()
 
-                        // Đổi/khôi phục mật khẩu, làm mới token... KHÔNG public: chúng rơi xuống
-                        // quy tắc anyRequest().authenticated() bên dưới.
-                        // (forgot/reset-password dành cho user đã đăng nhập; luồng chưa đăng nhập
-                        //  dùng đổi mật khẩu PUT /auth/change-password. Frontend khi gặp 401 sẽ
-                        //  điều hướng về trang đăng nhập thay vì tự refresh token.)
+                        // Quên/đặt lại mật khẩu: người dùng chưa đăng nhập được mới cần, nên mở
+                        // công khai. (change-password vẫn yêu cầu đăng nhập; refresh-token vẫn
+                        //  rơi xuống anyRequest().authenticated() bên dưới.)
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/v1/auth/forgot-password",
+                                "/api/v1/auth/reset-password")
+                        .permitAll()
 
                         // Phân quyền theo vai trò
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
