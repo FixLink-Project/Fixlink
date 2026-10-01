@@ -152,7 +152,7 @@ export default function CreateRepairRequestPage() {
               <div
                 className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-semibold transition-all duration-300 ${
                   num === step
-                    ? 'bg-brand text-white shadow-sm ring-4 ring-teal-100'
+                    ? 'bg-brand text-white shadow-sm ring-4 ring-blue-100'
                     : num < step
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                       : 'bg-slate-100 text-slate-500 border border-slate-200'
@@ -188,7 +188,7 @@ export default function CreateRepairRequestPage() {
                     onClick={() => update('categoryId', String(cat.id))}
                     className={`flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl border text-center transition-all duration-200 ${
                       isSelected
-                        ? 'border-brand bg-teal-50/60 ring-2 ring-brand/30 shadow-sm'
+                        ? 'border-brand bg-blue-50/60 ring-2 ring-brand/30 shadow-sm'
                         : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 bg-white shadow-xs'
                     }`}
                   >
@@ -354,7 +354,7 @@ export default function CreateRepairRequestPage() {
               </dl>
             </div>
 
-            <div className="rounded-2xl border border-teal-100 bg-teal-50/70 p-4 text-sm text-teal-900 shadow-xs">
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-blue-900 shadow-xs">
               💡 <strong>Lưu ý:</strong> Sau khi đăng, yêu cầu của bạn sẽ được gửi tới các thợ phù hợp. Bạn có thể chọn <em>Lưu bản nháp</em> để tiếp tục hoàn thiện sau, hoặc <em>Phát sóng ngay</em> để thợ có thể nhận việc.
             </div>
 

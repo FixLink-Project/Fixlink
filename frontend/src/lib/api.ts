@@ -61,11 +61,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<ApiResp
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
-    // VIỆC 2: mọi API (trừ login) cần đăng nhập. Khi token thiếu/hết hạn/bị thu
-    // hồi, backend trả 401 — xoá token và điều hướng về trang đăng nhập thay vì
-    // cố refresh. Bỏ qua chính request login để giữ nguyên thông báo sai mật khẩu.
+    // Khi phiên đăng nhập hết hạn/bị thu hồi (ĐÃ có token mà vẫn 401) thì xoá
+    // token và đưa về trang đăng nhập. CHỈ làm vậy khi trước đó có token:
+    // khách vãng lai (chưa đăng nhập) xem trang công khai như "/" vẫn có thể gọi
+    // một số API cần auth (vd danh mục) và nhận 401 — không được đá họ về /login,
+    // để trang tự xử lý/ hiển thị dữ liệu thay thế. Bỏ qua chính request login.
     const isLoginCall = path.startsWith('/auth/login');
-    if (response.status === 401 && !isLoginCall) {
+    if (response.status === 401 && !isLoginCall && token) {
       setToken(null);
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
         window.location.assign('/login?phien=het-han');

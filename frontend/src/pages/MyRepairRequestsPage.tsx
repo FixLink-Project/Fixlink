@@ -117,7 +117,7 @@ export default function MyRepairRequestsPage() {
                 onClick={() => handleTabChange(f.code)}
                 className={`min-h-[40px] px-4 text-xs sm:text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${
                   isActive
-                    ? 'border-brand text-brand font-bold bg-teal-50/50 rounded-t-lg'
+                    ? 'border-brand text-brand font-bold bg-blue-50/50 rounded-t-lg'
                     : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
                 }`}
               >
@@ -140,7 +140,7 @@ export default function MyRepairRequestsPage() {
 
       {!loading && requests.length === 0 && (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-xs">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-2xl text-brand">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-2xl text-brand">
             📦
           </div>
           <h3 className="mt-4 font-display text-base font-bold text-slate-900">
@@ -178,7 +178,7 @@ export default function MyRepairRequestsPage() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="hidden xs:flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal-50 border border-teal-100 text-brand text-xl group-hover:bg-brand group-hover:text-white transition-colors">
+                    <div className="hidden xs:flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-brand text-xl group-hover:bg-brand group-hover:text-white transition-colors">
                       ⚡
                     </div>
                     <div>
@@ -210,13 +210,13 @@ export default function MyRepairRequestsPage() {
                         <span>• {new Date(req.createdAt).toLocaleDateString('vi-VN')}</span>
 
                         {mediaCount > 0 && (
-                          <span className="rounded-md bg-teal-50 px-2 py-0.5 font-medium text-teal-700 border border-teal-100 flex items-center gap-1">
+                          <span className="rounded-md bg-indigo-50 px-2 py-0.5 font-medium text-indigo-700 border border-indigo-100 flex items-center gap-1">
                             <span>📷</span> {mediaCount} ảnh
                           </span>
                         )}
 
                         {req.quotationCount > 0 ? (
-                          <span className="rounded-full bg-teal-50 px-2.5 py-0.5 font-bold text-brand border border-teal-200">
+                          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 font-bold text-brand border border-blue-200">
                             {req.quotationCount} báo giá từ thợ
                           </span>
                         ) : (

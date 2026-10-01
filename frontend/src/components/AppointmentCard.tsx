@@ -42,8 +42,8 @@ export default function AppointmentCard({
     switch (appt.status) {
       case 'CONFIRMED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-700 border border-teal-200">
-            <span className="h-2 w-2 rounded-full bg-teal-500 animate-pulse"></span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
             Đã xác nhận
           </span>
         );
@@ -150,7 +150,7 @@ export default function AppointmentCard({
           ? 'border-slate-200 bg-slate-50/50 opacity-80'
           : appt.status === 'RESCHEDULED'
           ? 'border-amber-200 bg-amber-50/20'
-          : 'border-teal-200 bg-white'
+          : 'border-blue-200 bg-white'
       }`}
     >
       {/* Thông báo trạng thái nhanh */}
@@ -188,7 +188,7 @@ export default function AppointmentCard({
           <p className="font-semibold text-slate-900">{appt.customerName || 'Khách hàng'}</p>
           {appt.customerPhone && (
             <p className="text-xs text-slate-600 flex items-center gap-1">
-              📞 <a href={`tel:${appt.customerPhone}`} className="text-teal-600 hover:underline">{appt.customerPhone}</a>
+              📞 <a href={`tel:${appt.customerPhone}`} className="text-blue-600 hover:underline">{appt.customerPhone}</a>
             </p>
           )}
           {appt.requestAddress && (
@@ -202,7 +202,7 @@ export default function AppointmentCard({
           <p className="font-semibold text-slate-900">{appt.technicianName || 'Kỹ thuật viên'}</p>
           {appt.technicianPhone && (
             <p className="text-xs text-slate-600 flex items-center gap-1">
-              📞 <a href={`tel:${appt.technicianPhone}`} className="text-teal-600 hover:underline">{appt.technicianPhone}</a>
+              📞 <a href={`tel:${appt.technicianPhone}`} className="text-blue-600 hover:underline">{appt.technicianPhone}</a>
             </p>
           )}
         </div>
@@ -210,7 +210,7 @@ export default function AppointmentCard({
 
       {/* Ghi chú cuộc hẹn */}
       {appt.notes && (
-        <div className="p-3 rounded-xl bg-teal-50/50 border border-teal-100 text-xs text-teal-900 my-3">
+        <div className="p-3 rounded-xl bg-blue-50/50 border border-blue-100 text-xs text-blue-900 my-3">
           <span className="font-bold">Ghi chú: </span>
           {appt.notes}
         </div>
