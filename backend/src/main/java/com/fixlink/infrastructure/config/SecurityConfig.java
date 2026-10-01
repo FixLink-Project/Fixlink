@@ -86,8 +86,18 @@ public class SecurityConfig {
                         // Tạo tài khoản khách/thợ giờ do ADMIN thực hiện (không self-register).
                         .requestMatchers("/api/v1/auth/register/**").hasRole("ADMIN")
 
-                        // Đổi/khôi phục mật khẩu, làm mới token, danh mục, khu vực... KHÔNG còn
-                        // public: chúng rơi xuống quy tắc anyRequest().authenticated() bên dưới.
+                        // Dữ liệu master công khai: trang chủ (landing) cho khách chưa đăng nhập
+                        // vẫn cần đọc danh mục ngành nghề / gói dịch vụ / khu vực để hiển thị.
+                        // Chỉ mở các GET này; mọi thao tác ghi master-data vẫn qua /admin/**.
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/v1/categories/**",
+                                "/api/v1/services/**",
+                                "/api/v1/areas/**")
+                        .permitAll()
+
+                        // Đổi/khôi phục mật khẩu, làm mới token... KHÔNG public: chúng rơi xuống
+                        // quy tắc anyRequest().authenticated() bên dưới.
                         // (forgot/reset-password dành cho user đã đăng nhập; luồng chưa đăng nhập
                         //  dùng đổi mật khẩu PUT /auth/change-password. Frontend khi gặp 401 sẽ
                         //  điều hướng về trang đăng nhập thay vì tự refresh token.)

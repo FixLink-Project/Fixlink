@@ -970,14 +970,14 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(31)
-    @DisplayName("VIỆC 2: mọi endpoint (trừ login) đều cần đăng nhập — master-data 401 khi thiếu token, 200 khi có")
-    void testMasterDataRequiresAuthentication() throws Exception {
-        // Không token -> 401 Unauthorized (đúng yêu cầu "trừ Login, còn lại authen hết")
-        mockMvc.perform(get("/api/v1/categories")).andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/v1/services")).andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/v1/areas")).andExpect(status().isUnauthorized());
+    @DisplayName("Master-data (categories/services/areas) là GET công khai — trang chủ cho khách chưa đăng nhập vẫn đọc được")
+    void testMasterDataIsPublic() throws Exception {
+        // GET master-data mở public để landing page hiển thị cho khách vãng lai.
+        mockMvc.perform(get("/api/v1/categories")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/services")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/areas")).andExpect(status().isOk());
 
-        // Có token hợp lệ -> 200 OK
+        // Có token hợp lệ cũng phải OK.
         String token = adminBearer();
         mockMvc.perform(get("/api/v1/categories").header("Authorization", token)).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/services").header("Authorization", token)).andExpect(status().isOk());
