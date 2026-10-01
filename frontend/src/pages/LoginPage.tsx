@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Alert from '../components/Alert';
 import AuthLayout from '../components/AuthLayout';
 import Button from '../components/Button';
@@ -125,6 +125,15 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Nhập mật khẩu của bạn"
         />
+
+        <div className="flex justify-end">
+          <Link
+            to="/quen-mat-khau"
+            className="rounded-lg py-1 text-sm text-brand-glow transition-colors hover:text-brand hover:underline"
+          >
+            Quên mật khẩu?
+          </Link>
+        </div>
 
         <Button type="submit" fullWidth loading={submitting} disabled={locked}>
           {submitting ? 'Đang kiểm tra...' : 'Đăng nhập'}
