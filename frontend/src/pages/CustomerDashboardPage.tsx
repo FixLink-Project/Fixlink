@@ -191,7 +191,7 @@ export default function CustomerDashboardPage() {
       <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
         <a
           href="/dang-yeu-cau"
-          className="flex items-center gap-3.5 p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 shadow-xs hover:shadow-card hover:border-brand/40 transition-all"
+          className="flex items-center gap-3.5 p-4 rounded-xl bg-blue-50 border border-blue-100 shadow-xs hover:border-brand/40 transition-colors"
         >
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-white text-xl shadow-xs">
             ⚡
