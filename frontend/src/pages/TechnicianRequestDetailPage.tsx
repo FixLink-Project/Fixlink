@@ -273,7 +273,7 @@ export default function TechnicianRequestDetailPage() {
                 <Alert tone="error">{applyError}</Alert>
               </div>
             )}
-            <div className="rounded-xl border border-teal-100 bg-teal-50 p-4">
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-semibold text-slate-700">Giá khách đưa ra (cố định):</span>
                 <span className="font-display text-lg font-bold text-brand">
@@ -354,7 +354,7 @@ export default function TechnicianRequestDetailPage() {
         {/* Tiến trình sửa chữa */}
         {detail.workProgress.length > 0 && (
           <Card title="Tiến trình công việc" description="Lịch sử các mốc trạng thái thực hiện trên đơn sửa chữa.">
-            <ol className="relative border-l-2 border-teal-100 pl-6 ml-2 space-y-5 my-2">
+            <ol className="relative border-l-2 border-blue-100 pl-6 ml-2 space-y-5 my-2">
               {detail.workProgress.map((wp) => (
                 <li key={wp.id} className="relative">
                   <div className="absolute -left-[31px] top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-brand bg-white shadow-xs">
@@ -444,7 +444,7 @@ export default function TechnicianRequestDetailPage() {
                       onClick={() => setNewApptType(type)}
                       className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
                         newApptType === type
-                          ? 'bg-teal-50 border-brand text-brand ring-1 ring-brand'
+                          ? 'bg-blue-50 border-brand text-brand ring-1 ring-brand'
                           : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >

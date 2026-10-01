@@ -24,7 +24,7 @@ const FEATURED_SERVICES = [
     warranty: 'Bảo hành 90 ngày',
     badge: 'Phổ biến nhất',
     icon: (
-      <svg className="w-6 h-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 3v18m0-18l3 3m-3-3l-3 3m0 12l3 3m-3-3l-3-3m15-6H3m18 0l-3-3m3 3l-3 3M6 9l-3 3m3 3l-3-3" />
       </svg>
     )
@@ -38,7 +38,7 @@ const FEATURED_SERVICES = [
     warranty: 'Bảo hành 90 ngày',
     badge: 'Kỹ sư chuyên sâu',
     icon: (
-      <svg className="w-6 h-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
       </svg>
     )
@@ -94,7 +94,7 @@ const FEATURED_SERVICES = [
     warranty: 'Bảo hành 30 ngày',
     badge: 'An toàn tuyệt đối',
     icon: (
-      <svg className="w-6 h-6 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
       </svg>
     )
@@ -164,9 +164,9 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-surface text-ink">
       {/* ===== TOP ANNOUNCEMENT BAR ===== */}
-      <div className="bg-brand-strong text-white text-xs sm:text-sm font-medium py-2 px-4 text-center">
+      <div className="bg-gradient-to-r from-blue-700 via-brand-strong to-indigo-800 text-white text-xs sm:text-sm font-medium py-2 px-4 text-center">
         <span className="inline-flex items-center gap-2">
-          <span className="flex h-2 w-2 rounded-full bg-emerald-300" />
+          <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
           <span>Dịch vụ gọi thợ sửa chữa đồ điện tử & điện lạnh khẩn cấp tận nhà — Có mặt sau 30 phút</span>
           <span className="hidden md:inline font-bold text-amber-300">| Hotline: 1900 8899</span>
         </span>
@@ -176,7 +176,7 @@ export default function HomePage() {
       <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur-md shadow-xs">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-white">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-strong text-white shadow-md">
               <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
@@ -207,7 +207,7 @@ export default function HomePage() {
             </Link>
             <Link
               to="/dang-yeu-cau"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-strong text-white px-4 py-2 text-sm font-semibold transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand hover:bg-brand-strong text-white px-4 py-2 text-sm font-semibold shadow-sm hover:shadow-glow transition-all"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -219,11 +219,11 @@ export default function HomePage() {
       </header>
 
       {/* ===== HERO SECTION ===== */}
-      <section className="relative overflow-hidden bg-surface pt-10 pb-16 sm:pt-14 sm:pb-20">
+      <section className="relative overflow-hidden bg-gradient-to-b from-blue-50/70 via-slate-50/50 to-surface pt-10 pb-16 sm:pt-14 sm:pb-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="text-center max-w-3xl mx-auto">
             {/* Top Tag */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50/90 px-3.5 py-1 text-xs font-semibold text-brand mb-5 shadow-xs">
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/90 px-3.5 py-1 text-xs font-semibold text-brand mb-5 shadow-xs">
               <span className="flex h-2 w-2 rounded-full bg-brand" />
               <span>Nền Tảng Gọi Thợ Sửa Chữa Đồ Điện Tử Uy Tín #1</span>
             </div>
@@ -330,7 +330,7 @@ export default function HomePage() {
             {status === 'loading' ? (
               <span className="text-xs text-slate-400">Đang kiểm tra danh mục...</span>
             ) : status === 'ready' && categories.length > 0 ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-brand border border-teal-200">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-brand border border-blue-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
                 {categories.length} thiết bị hỗ trợ
               </span>
@@ -350,11 +350,11 @@ export default function HomePage() {
           {FEATURED_SERVICES.map((srv) => (
             <div
               key={srv.code}
-              className="relative flex flex-col justify-between rounded-xl border border-border bg-white p-6 shadow-sm hover:border-brand/40 transition-colors"
+              className="relative flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-hover hover:border-brand/40 transition-all duration-300"
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 border border-teal-100">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 border border-blue-100">
                     {srv.icon}
                   </div>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
@@ -413,14 +413,14 @@ export default function HomePage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {PRICE_BENCHMARKS.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-teal-50/30 transition-colors">
+                    <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
                       <td className="px-6 py-4 font-semibold text-slate-900">{item.service}</td>
                       <td className="px-6 py-4 font-bold text-brand">{item.price}</td>
                       <td className="px-6 py-4 text-xs text-slate-500">{item.note}</td>
                       <td className="px-6 py-4 text-right">
                         <Link
                           to="/dang-yeu-cau"
-                          className="inline-flex rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors"
+                          className="inline-flex rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white transition-colors"
                         >
                           Đặt lịch
                         </Link>
@@ -473,7 +473,7 @@ export default function HomePage() {
               key={item.step}
               className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-card transition-all"
             >
-              <span className="font-display text-4xl font-black text-teal-100">{item.step}</span>
+              <span className="font-display text-4xl font-black text-blue-100">{item.step}</span>
               <h3 className="font-display text-base font-bold text-slate-900 mt-3">{item.title}</h3>
               <p className="text-xs text-slate-500 mt-2 leading-relaxed">{item.body}</p>
             </div>
@@ -510,7 +510,7 @@ export default function HomePage() {
                 className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-all"
               >
                 <div className="flex items-center gap-3.5 mb-4">
-                  <div className="h-12 w-12 rounded-full bg-teal-100 text-brand-strong font-bold flex items-center justify-center text-base">
+                  <div className="h-12 w-12 rounded-full bg-blue-100 text-brand-strong font-bold flex items-center justify-center text-base">
                     {tech.name.charAt(0)}
                   </div>
                   <div>
@@ -559,15 +559,16 @@ export default function HomePage() {
 
       {/* ===== 3 LAYERS OF CUSTOMER PROTECTION (ESCROW) ===== */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:py-24 sm:px-6">
-        <div className="rounded-2xl bg-ink text-white p-8 sm:p-12 relative overflow-hidden">
+        <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white p-8 sm:p-12 relative overflow-hidden shadow-xl">
+          <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-brand/10 blur-3xl" />
           <div className="relative max-w-2xl">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-semibold text-teal-200 mb-4 border border-white/15">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-semibold text-blue-200 mb-4 border border-white/15">
               <span>🛡️ An tâm 100% khi gọi thợ qua FixLink</span>
             </span>
             <h2 className="font-display text-2xl sm:text-4xl font-bold leading-tight">
               3 Tấm lá chắn bảo vệ quyền lợi khách hàng
             </h2>
-            <p className="mt-3 text-sm sm:text-base text-teal-100/90 leading-relaxed">
+            <p className="mt-3 text-sm sm:text-base text-blue-100/90 leading-relaxed">
               Giải quyết triệt để nỗi sợ thợ báo giá ảo, vẽ lỗi phát sinh hoặc bỏ rơi khách khi thiết bị gặp sự cố tái diễn.
             </p>
 
@@ -592,7 +593,7 @@ export default function HomePage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-white">{shield.title}</h3>
-                    <p className="text-xs text-teal-200 mt-1 leading-relaxed">{shield.desc}</p>
+                    <p className="text-xs text-blue-200 mt-1 leading-relaxed">{shield.desc}</p>
                   </div>
                 </div>
               ))}
@@ -601,7 +602,7 @@ export default function HomePage() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 to="/dang-yeu-cau"
-                className="rounded-lg bg-brand hover:bg-brand-strong text-white px-6 py-3 text-sm font-semibold transition-colors"
+                className="rounded-xl bg-brand hover:bg-brand-strong text-white px-6 py-3 text-sm font-semibold shadow-glow transition-all"
               >
                 Đăng sự cố ngay bây giờ
               </Link>

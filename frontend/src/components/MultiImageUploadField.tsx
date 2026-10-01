@@ -112,7 +112,7 @@ export default function MultiImageUploadField({
             type="button"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
-            className="aspect-square flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-teal-50/50 hover:border-brand text-slate-400 hover:text-brand transition-all shadow-xs"
+            className="aspect-square flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-blue-50/50 hover:border-brand text-slate-400 hover:text-brand transition-all shadow-xs"
           >
             <span className="text-2xl">📷</span>
             <span className="text-xs font-semibold">Thêm ảnh</span>

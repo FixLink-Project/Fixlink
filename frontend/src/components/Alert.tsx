@@ -25,8 +25,8 @@ const TONES: Record<Tone, { wrapper: string; icon: string; emoji: string }> = {
     emoji: '⚠'
   },
   info: {
-    wrapper: 'border-teal-500 bg-teal-50 text-teal-900',
-    icon: 'text-teal-600 bg-teal-100',
+    wrapper: 'border-blue-500 bg-blue-50 text-blue-900',
+    icon: 'text-blue-600 bg-blue-100',
     emoji: 'ℹ'
   }
 };
