@@ -5,6 +5,7 @@ import com.fixlink.adapter.out.persistence.repository.*;
 import com.fixlink.domain.model.AppointmentStatus;
 import com.fixlink.domain.model.Media;
 import com.fixlink.domain.model.MediaType;
+import com.fixlink.domain.model.QuotationStatus;
 import com.fixlink.domain.model.RequestStatus;
 import com.fixlink.domain.model.Role;
 import com.fixlink.domain.model.UserStatus;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -36,6 +38,8 @@ public class DataInitializer implements CommandLineRunner {
     private final SpringDataRepairRequestRepository repairRequestRepository;
     private final SpringDataMediaRepository mediaRepository;
     private final SpringDataAppointmentRepository appointmentRepository;
+    private final SpringDataQuotationRepository quotationRepository;
+    private final SpringDataWorkProgressRepository workProgressRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(SpringDataUserRepository userRepository,
@@ -45,6 +49,8 @@ public class DataInitializer implements CommandLineRunner {
                            SpringDataRepairRequestRepository repairRequestRepository,
                            SpringDataMediaRepository mediaRepository,
                            SpringDataAppointmentRepository appointmentRepository,
+                           SpringDataQuotationRepository quotationRepository,
+                           SpringDataWorkProgressRepository workProgressRepository,
                            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.customerProfileRepository = customerProfileRepository;
@@ -53,6 +59,8 @@ public class DataInitializer implements CommandLineRunner {
         this.repairRequestRepository = repairRequestRepository;
         this.mediaRepository = mediaRepository;
         this.appointmentRepository = appointmentRepository;
+        this.quotationRepository = quotationRepository;
+        this.workProgressRepository = workProgressRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -361,6 +369,330 @@ public class DataInitializer implements CommandLineRunner {
                 }
             }
         }
+
+        // 9. Seed Dữ liệu kiểm thử nâng cao cho Thợ: Hiệu lực nhận việc, Quy trình hoàn thành & Lịch dời lịch hẹn (RC-48)
+        seedTechnicianTestingScenarios();
+    }
+
+    private void seedTechnicianTestingScenarios() {
+        if (repairRequestRepository.findByRequestCode("REQ-TEST-VALID-01").isPresent()) {
+            return;
+        }
+
+        Long customerId = userRepository.findByUsernameAndDeletedAtIsNull("customer01")
+                .map(UserJpaEntity::getId)
+                .orElse(null);
+        Long thoId = userRepository.findByUsernameAndDeletedAtIsNull("tho_dien_lanh_01")
+                .map(UserJpaEntity::getId)
+                .orElse(null);
+        Long tech01Id = userRepository.findByUsernameAndDeletedAtIsNull("tech01")
+                .map(UserJpaEntity::getId)
+                .orElse(null);
+
+        if (customerId == null || tech01Id == null) {
+            log.warn(">>> Không tìm thấy customer01 hoặc tech01, bỏ qua seed kịch bản kiểm thử thợ.");
+            return;
+        }
+
+        log.info(">>> Đang nạp dữ liệu kiểm thử nâng cao cho Thợ (Hiệu lực nhận việc, Vòng đời hoàn thành, Lịch hẹn RC-48)...");
+
+        // ---------------------------------------------------------------------------------
+        // GROUP A: KIỂM THỬ HIỆU LỰC NHẬN VIỆC (Job Validity & Matching)
+        // ---------------------------------------------------------------------------------
+
+        // 1. Việc hợp lệ trong hạn 3 ngày, khớp chuyên môn & khu vực -> THỢ NHẬN ĐƯỢC NGAY
+        RepairRequestJpaEntity reqValid1 = createTestJob("REQ-TEST-VALID-01", customerId, null,
+                1L, 1L, RequestStatus.OPEN,
+                "[Nhận việc ngay] Sửa máy lạnh Daikin 1.5HP rò rỉ nước tại Quận 1",
+                "Máy lạnh Daikin Inverter 1.5HP chảy nước dàn lạnh xuống sàn gỗ, cần thợ kiểm tra máng thoát nước và nạp bổ sung ga R32.",
+                "120 Nguyễn Đình Chiểu, Quận 1, TP.HCM",
+                "450000",
+                LocalDateTime.now().plusDays(2).plusHours(12),
+                LocalDateTime.now().plusDays(2), 0);
+        saveMedia(reqValid1.getId(), customerId, 0);
+        recordProgress(reqValid1.getId(), null, RequestStatus.OPEN, "Khách tạo yêu cầu mới (Đang mở nhận việc)", customerId, LocalDateTime.now());
+
+        // 2. Việc sắp hết hạn (< 4 giờ), khớp chuyên môn & khu vực -> CÒN HIỆU LỰC
+        RepairRequestJpaEntity reqValid2 = createTestJob("REQ-TEST-VALID-02", customerId, null,
+                2L, 3L, RequestStatus.OPEN,
+                "[Sắp hết hạn] Khắc phục sự cố chập điện Aptomat tổng tại Bình Thạnh",
+                "Aptomat tổng tầng trệt nhảy liên tục khi cắm tải lớn, nghi ngờ rò điện âm tường sau ổ cắm. Cần thợ có đồng hồ đo điện qua gấp trong hôm nay.",
+                "45 Bạch Đằng, Quận Bình Thạnh, TP.HCM",
+                "350000",
+                LocalDateTime.now().plusHours(4),
+                LocalDateTime.now().plusHours(6), 0);
+        saveMedia(reqValid2.getId(), customerId, 1);
+        recordProgress(reqValid2.getId(), null, RequestStatus.OPEN, "Khách tạo yêu cầu mới (Sắp hết hạn trong 4 giờ)", customerId, LocalDateTime.now());
+
+        // 3. Việc ĐÃ QUÁ HẠN 3 ngày -> BỊ CHẶN KHÔNG CHO NHẬN
+        RepairRequestJpaEntity reqExpired = createTestJob("REQ-TEST-EXPIRED", customerId, null,
+                3L, 2L, RequestStatus.OPEN,
+                "[Đã hết hạn] Sửa bếp hồng ngoại Sanaky không nóng tại Quận 7",
+                "Bếp hồng ngoại đơn Sanaky cắm điện vẫn lên đèn nhưng mâm nhiệt không đỏ, không nóng.",
+                "88 Nguyễn Thị Thập, Quận 7, TP.HCM",
+                "250000",
+                LocalDateTime.now().minusHours(2),
+                LocalDateTime.now().minusHours(1), 3);
+        saveMedia(reqExpired.getId(), customerId, 2);
+        recordProgress(reqExpired.getId(), null, RequestStatus.OPEN, "Khách tạo yêu cầu (Đã quá hạn 3 ngày)", customerId, LocalDateTime.now().minusDays(3));
+
+        // 4. Việc KHÁC KHU VỰC (Cầu Giấy, Hà Nội vs TP.HCM) -> tech01 không khớp khu vực
+        RepairRequestJpaEntity reqDiffArea = createTestJob("REQ-TEST-DIFF-AREA", customerId, null,
+                2L, 4L, RequestStatus.OPEN,
+                "[Khác khu vực] Thông tắc đường ống bồn rửa chén tại Cầu Giấy, Hà Nội",
+                "Đường ống thoát bồn rửa chén bị tắc mỡ, nước trào ngược ra sàn bếp.",
+                "123 Cầu Giấy, P. Dịch Vọng, Quận Cầu Giấy, Hà Nội",
+                "300000",
+                LocalDateTime.now().plusDays(3),
+                LocalDateTime.now().plusDays(1), 0);
+        saveMedia(reqDiffArea.getId(), customerId, 3);
+        recordProgress(reqDiffArea.getId(), null, RequestStatus.OPEN, "Khách tạo yêu cầu tại Hà Nội", customerId, LocalDateTime.now());
+
+        // 5. Việc KHÁC CHUYÊN MÔN (Khóa & Cửa Cuốn vs Điện / Lạnh) -> tech01 không khớp chuyên môn
+        RepairRequestJpaEntity reqDiffCat = createTestJob("REQ-TEST-DIFF-CAT", customerId, null,
+                4L, 1L, RequestStatus.OPEN,
+                "[Khác chuyên môn] Mở khóa tay gạt cửa nhôm kính bị kẹt chìa tại Quận 1",
+                "Khóa tay gạt cửa nhôm Xingfa bị gãy chìa kẹt bên trong ổ, cần thợ khóa chuyên nghiệp xử lý.",
+                "18 Lê Duẩn, Quận 1, TP.HCM",
+                "250000",
+                LocalDateTime.now().plusDays(3),
+                LocalDateTime.now().plusDays(1), 0);
+        saveMedia(reqDiffCat.getId(), customerId, 4);
+        recordProgress(reqDiffCat.getId(), null, RequestStatus.OPEN, "Khách tạo yêu cầu khóa cửa", customerId, LocalDateTime.now());
+
+        // 6. Việc ĐÃ CÓ THỢ KHÁC NHẬN TRƯỚC (Ai nhận trước được trước -> 409 JOB_ALREADY_TAKEN)
+        Long otherTechId = thoId != null ? thoId : tech01Id;
+        RepairRequestJpaEntity reqTaken = createTestJob("REQ-TEST-TAKEN", customerId, otherTechId,
+                1L, 2L, RequestStatus.ASSIGNED,
+                "[Đã có thợ khác nhận] Vệ sinh 2 máy giặt lồng ngang LG tại Quận 7",
+                "Khách cần vệ sinh lồng giặt và bảo dưỡng khử khuẩn 2 máy giặt lồng ngang 9kg.",
+                "60 Đường số 7, KDC Jamona, Quận 7, TP.HCM",
+                "500000",
+                LocalDateTime.now().plusDays(2),
+                LocalDateTime.now().plusDays(1), 1);
+        saveMedia(reqTaken.getId(), customerId, 0);
+        QuotationJpaEntity qTaken = recordAcceptedQuotation(reqTaken.getId(), otherTechId, new BigDecimal("500000"), LocalDateTime.now().minusHours(12));
+        reqTaken.setSelectedQuotationId(qTaken.getId());
+        repairRequestRepository.save(reqTaken);
+        recordProgress(reqTaken.getId(), null, RequestStatus.OPEN, "Khách tạo yêu cầu", customerId, LocalDateTime.now().minusDays(1));
+        recordProgress(reqTaken.getId(), RequestStatus.OPEN, RequestStatus.ASSIGNED, "Thợ khác đã nhanh tay nhận trước", otherTechId, LocalDateTime.now().minusHours(12));
+
+        // ---------------------------------------------------------------------------------
+        // GROUP B: QUY TRÌNH TIẾN TRÌNH & HOÀN THÀNH CÔNG VIỆC CỦA THỢ tech01
+        // ---------------------------------------------------------------------------------
+
+        // 7. Đơn MỚI NHẬN VIỆC (ASSIGNED)
+        RepairRequestJpaEntity reqAssigned = createTestJob("REQ-TEST-ASSIGNED", customerId, tech01Id,
+                1L, 1L, RequestStatus.ASSIGNED,
+                "[Đã nhận việc] Sửa tủ lạnh Hitachi Inverter không đông đá tại Quận 1",
+                "Tủ lạnh Hitachi Inverter ngăn mát vẫn lạnh nhưng ngăn đá không đông kem và thịt cá, quạt gió ngăn đông chạy yếu.",
+                "72 Lê Thánh Tôn, Quận 1, TP.HCM",
+                "480000",
+                LocalDateTime.now().plusDays(2),
+                LocalDateTime.now().plusDays(1), 1);
+        saveMedia(reqAssigned.getId(), customerId, 1);
+        QuotationJpaEntity qAssigned = recordAcceptedQuotation(reqAssigned.getId(), tech01Id, new BigDecimal("480000"), LocalDateTime.now().minusHours(8));
+        reqAssigned.setSelectedQuotationId(qAssigned.getId());
+        repairRequestRepository.save(reqAssigned);
+        recordProgress(reqAssigned.getId(), null, RequestStatus.OPEN, "Khách tạo yêu cầu", customerId, LocalDateTime.now().minusDays(1));
+        recordProgress(reqAssigned.getId(), RequestStatus.OPEN, RequestStatus.ASSIGNED, "Thợ tech01 nhận việc thành công (ai nhận trước được trước)", tech01Id, LocalDateTime.now().minusHours(8));
+
+        // 8. Đơn ĐANG KHẢO SÁT HIỆN TRƯỜNG (INSPECTING)
+        RepairRequestJpaEntity reqInspect = createTestJob("REQ-TEST-INSPECT", customerId, tech01Id,
+                2L, 3L, RequestStatus.INSPECTING,
+                "[Đang khảo sát] Dò tìm chập điện âm tường phòng ngủ tại Bình Thạnh",
+                "Đường điện ổ cắm phòng ngủ tầng 2 bị nhảy CB sau mưa lớn, tường có hiện tượng rò điện tê tay.",
+                "88 Bạch Đằng, P. 24, Quận Bình Thạnh, TP.HCM",
+                "400000",
+                LocalDateTime.now().plusDays(2),
+                LocalDateTime.now().plusDays(1), 2);
+        saveMedia(reqInspect.getId(), customerId, 2);
+        QuotationJpaEntity qInspect = recordAcceptedQuotation(reqInspect.getId(), tech01Id, new BigDecimal("400000"), LocalDateTime.now().minusDays(1));
+        reqInspect.setSelectedQuotationId(qInspect.getId());
+        repairRequestRepository.save(reqInspect);
+        recordProgress(reqInspect.getId(), null, RequestStatus.OPEN, "Khách tạo yêu cầu", customerId, LocalDateTime.now().minusDays(2));
+        recordProgress(reqInspect.getId(), RequestStatus.OPEN, RequestStatus.ASSIGNED, "Thợ tech01 nhận việc", tech01Id, LocalDateTime.now().minusDays(1));
+        recordProgress(reqInspect.getId(), RequestStatus.ASSIGNED, RequestStatus.INSPECTING, "Thợ có mặt tại hiện trường đang đo điện trở cách điện bằng Megohmmeter", tech01Id, LocalDateTime.now().minusHours(2));
+
+        // 9. Đơn ĐANG THI CÔNG SỬA CHỮA (IN_PROGRESS)
+        RepairRequestJpaEntity reqProgress = createTestJob("REQ-TEST-PROGRESS", customerId, tech01Id,
+                2L, 2L, RequestStatus.IN_PROGRESS,
+                "[Đang thi công] Lắp máy bơm tăng áp điện tử Wilo cho căn hộ tại Quận 7",
+                "Áp lực nước vòi sen và bồn tắm yếu, cần lắp máy bơm tăng áp điện tử tự động 200W.",
+                "15 Đường Nguyễn Lương Bằng, Phú Mỹ Hưng, Quận 7, TP.HCM",
+                "650000",
+                LocalDateTime.now().plusDays(2),
+                LocalDateTime.now().plusDays(1), 3);
+        saveMedia(reqProgress.getId(), customerId, 3);
+        QuotationJpaEntity qProgress = recordAcceptedQuotation(reqProgress.getId(), tech01Id, new BigDecimal("650000"), LocalDateTime.now().minusDays(2));
+        reqProgress.setSelectedQuotationId(qProgress.getId());
+        repairRequestRepository.save(reqProgress);
+        recordProgress(reqProgress.getId(), null, RequestStatus.OPEN, "Khách tạo yêu cầu", customerId, LocalDateTime.now().minusDays(3));
+        recordProgress(reqProgress.getId(), RequestStatus.OPEN, RequestStatus.ASSIGNED, "Thợ tech01 nhận việc", tech01Id, LocalDateTime.now().minusDays(2));
+        recordProgress(reqProgress.getId(), RequestStatus.ASSIGNED, RequestStatus.INSPECTING, "Khảo sát vị trí lắp đặt trên trần thạch cao", tech01Id, LocalDateTime.now().minusDays(1));
+        recordProgress(reqProgress.getId(), RequestStatus.INSPECTING, RequestStatus.IN_PROGRESS, "Đang thi công cắt nối đường ống PPR và cố định chân máy bơm", tech01Id, LocalDateTime.now().minusHours(3));
+
+        // 10. Đơn CHỜ KHÁCH NGHIỆM THU (AWAITING_ACCEPTANCE)
+        RepairRequestJpaEntity reqAwaiting = createTestJob("REQ-TEST-AWAITING", customerId, tech01Id,
+                3L, 1L, RequestStatus.AWAITING_ACCEPTANCE,
+                "[Chờ nghiệm thu] Sửa bo mạch nguồn bếp từ âm Hafele báo lỗi F1 tại Quận 1",
+                "Bếp từ Hafele đôi bật nguồn báo lỗi F1 quạt không quay. Thợ đã thay linh kiện quạt và sửa bo nguồn.",
+                "45 Hai Bà Trưng, Quận 1, TP.HCM",
+                "520000",
+                LocalDateTime.now().plusDays(2),
+                LocalDateTime.now().plusDays(1), 4);
+        saveMedia(reqAwaiting.getId(), customerId, 4);
+        QuotationJpaEntity qAwaiting = recordAcceptedQuotation(reqAwaiting.getId(), tech01Id, new BigDecimal("520000"), LocalDateTime.now().minusDays(3));
+        reqAwaiting.setSelectedQuotationId(qAwaiting.getId());
+        repairRequestRepository.save(reqAwaiting);
+        recordProgress(reqAwaiting.getId(), null, RequestStatus.OPEN, "Khách tạo yêu cầu", customerId, LocalDateTime.now().minusDays(4));
+        recordProgress(reqAwaiting.getId(), RequestStatus.OPEN, RequestStatus.ASSIGNED, "Thợ tech01 nhận việc", tech01Id, LocalDateTime.now().minusDays(3));
+        recordProgress(reqAwaiting.getId(), RequestStatus.ASSIGNED, RequestStatus.INSPECTING, "Tháo bếp kiểm tra bo nguồn và cảm biến", tech01Id, LocalDateTime.now().minusDays(2));
+        recordProgress(reqAwaiting.getId(), RequestStatus.INSPECTING, RequestStatus.IN_PROGRESS, "Thay quạt DC 18V và tụ lọc nguồn 5uF", tech01Id, LocalDateTime.now().minusDays(1));
+        recordProgress(reqAwaiting.getId(), RequestStatus.IN_PROGRESS, RequestStatus.AWAITING_ACCEPTANCE, "Đã sửa xong, đun thử nước sôi 15 phút. Bàn giao chờ khách kiểm tra nghiệm thu", tech01Id, LocalDateTime.now().minusHours(4));
+
+        // 11. Đơn ĐÃ HOÀN THÀNH NGHIỆM THU (COMPLETED)
+        RepairRequestJpaEntity reqCompleted = createTestJob("REQ-TEST-COMPLETED", customerId, tech01Id,
+                1L, 3L, RequestStatus.COMPLETED,
+                "[Đã hoàn thành] Thay lốc máy lạnh Daikin Inverter tại Bình Thạnh",
+                "Thay máy nén (lốc) Daikin Inverter 1.5HP, hút chân không và nạp đủ gas R32 chuẩn áp suất.",
+                "210 Phan Xích Long, Quận Bình Thạnh, TP.HCM",
+                "1500000",
+                LocalDateTime.now().minusDays(3),
+                LocalDateTime.now().minusDays(4), 5);
+        saveMedia(reqCompleted.getId(), customerId, 0);
+        QuotationJpaEntity qCompleted = recordAcceptedQuotation(reqCompleted.getId(), tech01Id, new BigDecimal("1500000"), LocalDateTime.now().minusDays(5));
+        reqCompleted.setSelectedQuotationId(qCompleted.getId());
+        repairRequestRepository.save(reqCompleted);
+        recordProgress(reqCompleted.getId(), null, RequestStatus.OPEN, "Khách tạo yêu cầu", customerId, LocalDateTime.now().minusDays(5));
+        recordProgress(reqCompleted.getId(), RequestStatus.OPEN, RequestStatus.ASSIGNED, "Thợ tech01 nhận việc", tech01Id, LocalDateTime.now().minusDays(4));
+        recordProgress(reqCompleted.getId(), RequestStatus.ASSIGNED, RequestStatus.INSPECTING, "Kiểm tra xác định cháy cuộn dây lốc máy nén", tech01Id, LocalDateTime.now().minusDays(3));
+        recordProgress(reqCompleted.getId(), RequestStatus.INSPECTING, RequestStatus.IN_PROGRESS, "Hàn lốc mới, hút chân không và nạp gas R32", tech01Id, LocalDateTime.now().minusDays(2));
+        recordProgress(reqCompleted.getId(), RequestStatus.IN_PROGRESS, RequestStatus.AWAITING_ACCEPTANCE, "Máy chạy lạnh sâu 18 độ C, bàn giao khách", tech01Id, LocalDateTime.now().minusDays(1));
+        recordProgress(reqCompleted.getId(), RequestStatus.AWAITING_ACCEPTANCE, RequestStatus.COMPLETED, "Khách hàng nghiệm thu đạt chuẩn, ký biên bản và thanh toán 100%", customerId, LocalDateTime.now().minusHours(6));
+
+        // ---------------------------------------------------------------------------------
+        // GROUP C: LỊCH HẸN & DỜI LỊCH HẸN (RC-48 APPOINTMENT LIFECYCLE)
+        // ---------------------------------------------------------------------------------
+
+        // Lịch 1: CONFIRMED - Khảo sát (Test chức năng Dời lịch hẹn Reschedule)
+        createAppointment(reqAssigned.getId(), customerId, tech01Id, "SURVEY",
+                LocalDate.now().plusDays(1), LocalTime.of(9, 30),
+                AppointmentStatus.CONFIRMED,
+                "72 Lê Thánh Tôn, Quận 1, TP.HCM",
+                "Thợ mang theo đồng hồ đo gas và kìm bấm cos kiểm tra lốc.",
+                null);
+
+        // Lịch 2: RESCHEDULED - Sửa chữa (Đã từng dời lịch, test dời tiếp hoặc bấm Hoàn thành)
+        createAppointment(reqInspect.getId(), customerId, tech01Id, "REPAIR",
+                LocalDate.now().plusDays(2), LocalTime.of(14, 0),
+                AppointmentStatus.RESCHEDULED,
+                "88 Bạch Đằng, P. 24, Quận Bình Thạnh, TP.HCM",
+                "Khách bận buổi sáng, đã thống nhất dời sang 14:00 chiều để đục tường kiểm tra ống gen.",
+                null);
+
+        // Lịch 3: CANCELLED - Khảo sát sơ bộ (Test trạng thái kết thúc Đã hủy)
+        createAppointment(reqInspect.getId(), customerId, tech01Id, "SURVEY",
+                LocalDate.now().minusDays(2), LocalTime.of(15, 0),
+                AppointmentStatus.CANCELLED,
+                "88 Bạch Đằng, P. 24, Quận Bình Thạnh, TP.HCM",
+                null,
+                "Khách bận họp đột xuất nên hủy khảo sát sơ bộ, đổi sang hẹn sửa trực tiếp.");
+
+        // Lịch 4: COMPLETED - Sửa chữa (Test trạng thái kết thúc Đã hoàn thành)
+        createAppointment(reqCompleted.getId(), customerId, tech01Id, "REPAIR",
+                LocalDate.now().minusDays(3), LocalTime.of(10, 0),
+                AppointmentStatus.COMPLETED,
+                "210 Phan Xích Long, Quận Bình Thạnh, TP.HCM",
+                "Đã hoàn thành sửa chữa thay lốc và bàn giao nghiệm thu đúng hẹn.",
+                null);
+
+        // Lịch 5: CONFIRMED - BẢO HÀNH (Test cuộc hẹn bảo hành định kỳ sau hoàn thành)
+        createAppointment(reqCompleted.getId(), customerId, tech01Id, "WARRANTY",
+                LocalDate.now().plusDays(5), LocalTime.of(15, 30),
+                AppointmentStatus.CONFIRMED,
+                "210 Phan Xích Long, Quận Bình Thạnh, TP.HCM",
+                "Tái kiểm tra áp suất ga và bảo dưỡng định kỳ sau 1 tuần thay lốc theo cam kết bảo hành 6 tháng.",
+                null);
+
+        log.info(">>> Đã nạp thành công 11 yêu cầu kiểm thử và 5 lịch hẹn (RC-48) cho Thợ!");
+    }
+
+    private RepairRequestJpaEntity createTestJob(String requestCode, Long customerId, Long technicianId,
+                                                 Long categoryId, Long areaId, RequestStatus status,
+                                                 String title, String description, String address,
+                                                 String budgetRef, LocalDateTime applyDeadline,
+                                                 LocalDateTime requestedTime, int daysAgo) {
+        RepairRequestJpaEntity req = new RepairRequestJpaEntity();
+        req.setRequestCode(requestCode);
+        req.setCustomerId(customerId);
+        req.setTechnicianId(technicianId);
+        req.setCategoryId(categoryId);
+        req.setAreaId(areaId);
+        req.setStatus(status);
+        req.setTitle(title);
+        req.setDescription(description);
+        req.setAddress(address);
+        BigDecimal price = new BigDecimal(budgetRef);
+        req.setBudgetRef(price);
+        req.setAgreedPrice(technicianId != null ? price : BigDecimal.ZERO);
+        req.setDepositAmount(technicianId != null
+                ? price.multiply(new BigDecimal("0.3")).setScale(0, RoundingMode.CEILING)
+                : BigDecimal.ZERO);
+        req.setApplyDeadline(applyDeadline);
+        req.setRequestedTime(requestedTime);
+        req.setCreatedBy(customerId);
+        req.setUpdatedBy(customerId);
+        req.setCreatedAt(LocalDateTime.now().minusDays(daysAgo));
+        req.setUpdatedAt(LocalDateTime.now().minusDays(daysAgo));
+        return repairRequestRepository.save(req);
+    }
+
+    private void recordProgress(Long requestId, RequestStatus from, RequestStatus to, String note, Long userId, LocalDateTime time) {
+        WorkProgressJpaEntity wp = new WorkProgressJpaEntity();
+        wp.setRequestId(requestId);
+        wp.setFromStatus(from != null ? from : to);
+        wp.setToStatus(to);
+        wp.setNote(note);
+        wp.setCreatedBy(userId);
+        wp.setCreatedAt(time != null ? time : LocalDateTime.now());
+        workProgressRepository.save(wp);
+    }
+
+    private QuotationJpaEntity recordAcceptedQuotation(Long requestId, Long technicianId, BigDecimal price, LocalDateTime acceptedAt) {
+        QuotationJpaEntity q = new QuotationJpaEntity();
+        q.setRequestId(requestId);
+        q.setTechnicianId(technicianId);
+        q.setSolution("Thợ nhận việc theo ngân sách và tiêu chuẩn chất lượng FixLink");
+        q.setPriceLaborVnd(price);
+        q.setPriceMaterialsVnd(BigDecimal.ZERO);
+        q.setStatus(QuotationStatus.ACCEPTED);
+        q.setAcceptedAt(acceptedAt != null ? acceptedAt : LocalDateTime.now());
+        q.setCreatedBy(technicianId);
+        return quotationRepository.save(q);
+    }
+
+    private AppointmentJpaEntity createAppointment(Long requestId, Long customerId, Long technicianId,
+                                                   String type, LocalDate date, LocalTime time,
+                                                   AppointmentStatus status, String address, String notes, String cancelReason) {
+        AppointmentJpaEntity appt = AppointmentJpaEntity.builder()
+                .repairRequestId(requestId)
+                .customerId(customerId)
+                .technicianId(technicianId)
+                .appointmentType(type)
+                .scheduledDate(date)
+                .scheduledTime(time)
+                .status(status)
+                .address(address)
+                .notes(notes)
+                .cancelReason(cancelReason)
+                .build();
+        appt.setCreatedBy(technicianId);
+        return appointmentRepository.save(appt);
+    }
+
+    private void saveMedia(Long requestId, Long uploaderId, int seedIndex) {
+        mediaRepository.saveAll(demoMediaFor(requestId, seedIndex, uploaderId));
     }
 
     private RepairRequestJpaEntity demoRequest(String requestCode, Long customerId, Long technicianId,
@@ -383,8 +715,10 @@ public class DataInitializer implements CommandLineRunner {
         request.setAreaId(areaId);
         request.setApplyDeadline(LocalDateTime.now().plusDays(3));
         request.setRequestedTime(LocalDateTime.now().plusDays(2).minusDays(daysAgo));
-        request.setAgreedPrice(new BigDecimal(agreedPrice));
-        request.setDepositAmount(BigDecimal.ZERO);
+        BigDecimal price = new BigDecimal(agreedPrice);
+        request.setBudgetRef(price);
+        request.setAgreedPrice(price);
+        request.setDepositAmount(price.multiply(new BigDecimal("0.3")).setScale(0, RoundingMode.CEILING));
         request.setCreatedBy(customerId);
         request.setUpdatedBy(customerId);
         request.setCreatedAt(LocalDateTime.now().minusDays(daysAgo));
