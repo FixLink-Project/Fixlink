@@ -49,7 +49,7 @@ export default function AuthLayout({
               An tâm sửa chữa thiết bị điện tử tận nhà
             </h2>
             <p className="mt-3.5 text-base leading-relaxed text-blue-100/90">
-              Minh bạch báo giá, ký quỹ Escrow bảo vệ tiền cọc 100%, bảo hành điện tử chính hãng từ 30 đến 90 ngày.
+              Minh bạch báo giá, ký quỹ bảo đảm bảo vệ tiền cọc 100%, bảo hành điện tử chính hãng từ 30 đến 90 ngày.
             </p>
 
             {/* Feature bullets */}

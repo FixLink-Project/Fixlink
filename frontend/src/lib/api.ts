@@ -69,7 +69,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<ApiResp
     const isLoginCall = path.startsWith('/auth/login');
     if (response.status === 401 && !isLoginCall && token) {
       setToken(null);
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && window.location.pathname !== '/') {
         window.location.assign('/login?phien=het-han');
       }
     }
@@ -112,8 +112,13 @@ export function attachRequestMedia(requestId: number, mediaUrls: string[]): Prom
   return api.post(`/repair-requests/${requestId}/media`, { mediaUrls });
 }
 
-export function updateRequestStatus(requestId: number, status: string, note?: string): Promise<ApiResponse<any>> {
-  return api.patch(`/repair-requests/${requestId}/status`, { status, note });
+export function updateRequestStatus(
+  requestId: number,
+  status: string,
+  note?: string,
+  newAgreedPrice?: number
+): Promise<ApiResponse<any>> {
+  return api.patch(`/repair-requests/${requestId}/status`, { status, note, newAgreedPrice });
 }
 
 /**

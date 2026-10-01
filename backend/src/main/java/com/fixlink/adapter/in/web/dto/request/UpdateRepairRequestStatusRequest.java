@@ -23,4 +23,6 @@ public class UpdateRepairRequestStatusRequest {
 
     @Size(max = 500, message = "Ghi chú tối đa 500 ký tự")
     private String note;
+
+    private java.math.BigDecimal newAgreedPrice;
 }

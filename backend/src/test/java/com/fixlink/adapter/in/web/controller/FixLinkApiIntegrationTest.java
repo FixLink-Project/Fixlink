@@ -59,6 +59,9 @@ class FixLinkApiIntegrationTest {
     @Autowired
     private com.fixlink.infrastructure.service.EmailServiceImpl emailService;
 
+    @Autowired
+    private com.fixlink.infrastructure.scheduler.ExpiredRequestScheduler expiredRequestScheduler;
+
     private static String adminToken;
     private static String technicianUserId;
     private static Long rc17CustomerId;
@@ -1581,5 +1584,49 @@ class FixLinkApiIntegrationTest {
         mockMvc.perform(post("/api/v1/repair-requests/1/apply")
                         .header("Authorization", custToken))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @Order(62)
+    @DisplayName("Hiệu lực: Nhận việc khi đơn đã quá hạn applyDeadline → 400 INVALID_OPERATION")
+    void testApplyForJob_ExpiredDeadline() throws Exception {
+        String techToken = bearerTokenOf("tech01", "Password@123");
+
+        var expiredReq = repairRequestRepository.findAll().stream()
+                .filter(r -> "REQ-DEMO-0017".equals(r.getRequestCode()))
+                .findFirst()
+                .orElse(null);
+
+        if (expiredReq != null) {
+            expiredReq.setStatus(com.fixlink.domain.model.RequestStatus.OPEN);
+            repairRequestRepository.save(expiredReq);
+
+            mockMvc.perform(post("/api/v1/repair-requests/" + expiredReq.getId() + "/apply")
+                            .header("Authorization", techToken))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errorCode").value("INVALID_OPERATION"))
+                    .andExpect(jsonPath("$.message").value("Yêu cầu này đã hết hạn nhận việc"));
+        }
+    }
+
+    @Test
+    @Order(63)
+    @DisplayName("Hiệu lực: ExpiredRequestScheduler tự động quét và hủy đơn OPEN quá hạn thành CANCELLED")
+    void testExpiredRequestScheduler_CancelsExpiredRequests() {
+        var expiredReq = repairRequestRepository.findAll().stream()
+                .filter(r -> "REQ-DEMO-0017".equals(r.getRequestCode()))
+                .findFirst()
+                .orElse(null);
+
+        if (expiredReq != null) {
+            expiredReq.setStatus(com.fixlink.domain.model.RequestStatus.OPEN);
+            repairRequestRepository.save(expiredReq);
+
+            expiredRequestScheduler.cancelExpiredOpenRequests();
+
+            var updated = repairRequestRepository.findById(expiredReq.getId()).orElseThrow();
+            assertEquals(com.fixlink.domain.model.RequestStatus.CANCELLED, updated.getStatus());
+            assertEquals("Hết hạn 3 ngày không có thợ nhận", updated.getCancelReason());
+        }
     }
 }

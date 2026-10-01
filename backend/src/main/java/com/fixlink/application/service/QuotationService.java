@@ -101,7 +101,7 @@ public class QuotationService implements QuotationUseCase {
         requestRepo.save(request);
 
         repairRequestService.recordProgress(requestId, oldStatus, RequestStatus.ASSIGNED,
-                "Thợ nhận việc (ai nhận trước được trước)", technicianId);
+                "Thợ đã nhận việc", technicianId);
 
         return AcceptQuotationResponse.builder()
                 .requestId(requestId)

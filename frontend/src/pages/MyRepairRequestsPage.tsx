@@ -217,11 +217,28 @@ export default function MyRepairRequestsPage() {
 
                         {req.quotationCount > 0 ? (
                           <span className="rounded-full bg-blue-50 px-2.5 py-0.5 font-bold text-brand border border-blue-200">
-                            {req.quotationCount} báo giá từ thợ
+                            Đã có thợ nhận việc
                           </span>
                         ) : (
-                          <span className="text-slate-400">• Đang chờ thợ báo giá</span>
+                          <span className="text-slate-400">• Đang chờ thợ nhận</span>
                         )}
+
+                        {req.applyDeadline && req.status === 'OPEN' && (() => {
+                          const remainingMs = new Date(req.applyDeadline).getTime() - Date.now();
+                          const isExpired = remainingMs <= 0;
+                          const isUrgent = !isExpired && remainingMs <= 24 * 3600 * 1000;
+                          return (
+                            <span className={`px-2 py-0.5 rounded-md font-semibold text-xs ${
+                              isExpired
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : isUrgent
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-teal-50 text-teal-700 border border-teal-100'
+                            }`}>
+                              ⏰ {isExpired ? 'Đã hết hạn nhận' : isUrgent ? 'Sắp hết hạn' : `Hạn: ${new Date(req.applyDeadline).toLocaleDateString('vi-VN')}`}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>

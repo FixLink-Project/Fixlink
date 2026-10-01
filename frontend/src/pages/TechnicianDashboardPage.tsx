@@ -544,6 +544,12 @@ export default function TechnicianDashboardPage() {
                     // Bỏ tiền tố nhãn trong ngoặc vuông ở đầu tiêu đề (vd "[Sắp hết hạn] ",
                     // "[Nhận việc ngay] ") cho đỡ rối — deadline đã thể hiện ở hàng meta.
                     const cleanTitle = req.title.replace(/^\s*\[[^\]]*\]\s*/, '');
+                    // Hiệu lực nhận việc: tính trạng thái hết hạn / sắp hết hạn (<24h).
+                    const deadlineMs = req.applyDeadline
+                      ? new Date(req.applyDeadline).getTime() - Date.now()
+                      : null;
+                    const isExpired = deadlineMs !== null && deadlineMs <= 0;
+                    const isUrgent = deadlineMs !== null && deadlineMs > 0 && deadlineMs <= 24 * 3600 * 1000;
                     // Gom meta về một dòng, ngăn cách bằng dấu "·" cho dễ quét mắt.
                     const meta = [
                       req.categoryName ? { text: req.categoryName } : null,
@@ -551,9 +557,20 @@ export default function TechnicianDashboardPage() {
                       req.addressLine ? { text: req.addressLine } : null,
                       req.budgetRef > 0 ? { text: formatCurrency(req.budgetRef), highlight: true } : null,
                       req.applyDeadline
-                        ? { text: `Hạn ${new Date(req.applyDeadline).toLocaleDateString('vi-VN')}` }
+                        ? {
+                            text: isExpired
+                              ? 'Đã hết hạn nhận'
+                              : isUrgent
+                                ? 'Sắp hết hạn'
+                                : `Hạn ${new Date(req.applyDeadline).toLocaleDateString('vi-VN')}`,
+                            tone: isExpired ? 'expired' : isUrgent ? 'urgent' : undefined
+                          }
                         : null
-                    ].filter(Boolean) as { text: string; highlight?: boolean }[];
+                    ].filter(Boolean) as {
+                      text: string;
+                      highlight?: boolean;
+                      tone?: 'expired' | 'urgent';
+                    }[];
 
                     return (
                       <div
@@ -585,22 +602,32 @@ export default function TechnicianDashboardPage() {
                           {meta.map((m, i) => (
                             <span key={i} className="flex items-center gap-2">
                               {i > 0 && <span className="text-slate-300">·</span>}
-                              <span className={m.highlight ? 'font-semibold text-brand' : undefined}>
+                              <span
+                                className={
+                                  m.tone === 'expired'
+                                    ? 'font-semibold text-rose-600'
+                                    : m.tone === 'urgent'
+                                      ? 'font-semibold text-amber-600'
+                                      : m.highlight
+                                        ? 'font-semibold text-brand'
+                                        : undefined
+                                }
+                              >
                                 {m.text}
                               </span>
                             </span>
                           ))}
                         </div>
 
-                        {/* Chỉ 1 nút hành động chính ở cuối card */}
+                        {/* Chỉ 1 nút hành động chính ở cuối card; khoá khi đã hết hạn nhận */}
                         <div className="mt-3 flex justify-end border-t border-slate-100 pt-3">
                           <Button
                             variant="primary"
                             loading={applyingId === req.id}
-                            disabled={applyingId !== null}
+                            disabled={applyingId !== null || isExpired}
                             onClick={() => handleApply(req)}
                           >
-                            {applyingId === req.id ? 'Đang nhận...' : 'Nhận việc'}
+                            {applyingId === req.id ? 'Đang nhận...' : isExpired ? 'Đã hết hạn' : 'Nhận việc'}
                           </Button>
                         </div>
                       </div>

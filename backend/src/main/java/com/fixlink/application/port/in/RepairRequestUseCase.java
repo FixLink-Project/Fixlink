@@ -124,8 +124,13 @@ public interface RepairRequestUseCase {
             RequestStatus newStatus,
             String note,
             Long actorId,
-            Role actorRole
-    ) {}
+            Role actorRole,
+            java.math.BigDecimal newAgreedPrice
+    ) {
+        public UpdateStatusCommand(Long requestId, RequestStatus newStatus, String note, Long actorId, Role actorRole) {
+            this(requestId, newStatus, note, actorId, actorRole, null);
+        }
+    }
 
     record AttachMediaCommand(
             Long requestId,
