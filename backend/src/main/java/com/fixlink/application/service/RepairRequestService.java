@@ -297,18 +297,50 @@ public class RepairRequestService implements RepairRequestUseCase {
                     && currentStatus != RequestStatus.COMPLETED
                     && currentStatus != RequestStatus.CANCELLED;
             boolean publishDraft = targetStatus == RequestStatus.PENDING && currentStatus == RequestStatus.DRAFT;
+            boolean approveCost = targetStatus == RequestStatus.IN_PROGRESS && currentStatus == RequestStatus.AWAITING_COST_APPROVAL;
+            boolean completeAcceptance = targetStatus == RequestStatus.COMPLETED && currentStatus == RequestStatus.AWAITING_ACCEPTANCE;
 
-            if (!cancelOwnRequest && !publishDraft) {
+            if (!cancelOwnRequest && !publishDraft && !approveCost && !completeAcceptance) {
                 throw new InvalidStateTransitionException(currentStatus, targetStatus);
             }
+        } else if (command.actorRole() == Role.TECHNICIAN) {
+            boolean startInspecting = targetStatus == RequestStatus.INSPECTING && currentStatus == RequestStatus.ASSIGNED;
+            boolean startRepair = targetStatus == RequestStatus.IN_PROGRESS && currentStatus == RequestStatus.INSPECTING;
+            boolean requestCostApproval = targetStatus == RequestStatus.AWAITING_COST_APPROVAL && currentStatus == RequestStatus.INSPECTING;
+            boolean requestAcceptance = targetStatus == RequestStatus.AWAITING_ACCEPTANCE && currentStatus == RequestStatus.IN_PROGRESS;
+
+            if (!startInspecting && !startRepair && !requestCostApproval && !requestAcceptance) {
+                throw new InvalidStateTransitionException(currentStatus, targetStatus);
+            }
+        }
+
+        // Cập nhật giá mới nếu có (khi báo giá phát sinh hoặc khách duyệt)
+        if (command.newAgreedPrice() != null && command.newAgreedPrice().compareTo(java.math.BigDecimal.ZERO) > 0) {
+            entity.setAgreedPrice(command.newAgreedPrice());
+            entity.setDepositAmount(command.newAgreedPrice().multiply(java.math.BigDecimal.valueOf(0.3))
+                    .setScale(0, java.math.RoundingMode.CEILING));
         }
 
         entity.setStatus(targetStatus);
         entity.setUpdatedBy(command.actorId());
         RepairRequestJpaEntity saved = requestRepo.save(entity);
 
-        recordProgress(saved.getId(), currentStatus, targetStatus,
-                command.note() != null ? command.note() : "Cập nhật trạng thái", command.actorId());
+        String progressNote = command.note();
+        if (progressNote == null || progressNote.isBlank()) {
+            progressNote = switch (targetStatus) {
+                case INSPECTING -> "Kỹ thuật viên đã có mặt tại hiện trường và bắt đầu khảo sát thiết bị";
+                case IN_PROGRESS -> (currentStatus == RequestStatus.AWAITING_COST_APPROVAL)
+                        ? "Khách hàng đã đồng ý chi phí phát sinh, tiếp tục triển khai sửa chữa"
+                        : "Khảo sát hoàn tất, tiến hành sửa chữa theo ngân sách đã chốt";
+                case AWAITING_COST_APPROVAL -> "Thợ đề xuất chi phí phát sinh sau khi tháo máy khảo sát thực tế";
+                case AWAITING_ACCEPTANCE -> "Thợ đã hoàn thành công việc sửa chữa và chạy thử nghiệm. Mời khách hàng nghiệm thu.";
+                case COMPLETED -> "Khách hàng đã nghiệm thu đạt chất lượng và kích hoạt bảo hành điện tử.";
+                case CANCELLED -> "Yêu cầu sửa chữa đã bị hủy.";
+                default -> "Cập nhật trạng thái sang " + targetStatus;
+            };
+        }
+
+        recordProgress(saved.getId(), currentStatus, targetStatus, progressNote, command.actorId());
 
         log.info(">>> Yêu cầu {} chuyển trạng thái {} -> {} bởi user {} ({}). Ghi chú: {}",
                 saved.getRequestCode(), currentStatus, targetStatus, command.actorId(), command.actorRole(),
@@ -720,7 +752,7 @@ public class RepairRequestService implements RepairRequestUseCase {
 
         boolean allowed = switch (permission) {
             case VIEW -> isOwnerCustomer || isAssignedTechnician;
-            case UPDATE_STATUS -> isOwnerCustomer;
+            case UPDATE_STATUS -> isOwnerCustomer || isAssignedTechnician;
             case ATTACH_MEDIA -> isOwnerCustomer || isAssignedTechnician;
         };
 

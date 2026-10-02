@@ -78,23 +78,20 @@ public class SecurityConfig {
                         // Healthcheck cho container và pipeline triển khai
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
 
-                        // VIEC 2 - Cách 1 (tuân thủ tuyệt đối yêu cầu giảng viên):
-                        // TRỪ đăng nhập, mọi endpoint nghiệp vụ đều phải authenticated.
-                        // Đây là endpoint công khai DUY NHẤT của luồng nghiệp vụ.
+                        // Đăng nhập công khai
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
 
-                        // Tạo tài khoản khách/thợ giờ do ADMIN thực hiện (không self-register).
-                        .requestMatchers("/api/v1/auth/register/**").hasRole("ADMIN")
-
-                        // Dữ liệu master công khai: trang chủ (landing) cho khách chưa đăng nhập
-                        // vẫn cần đọc danh mục ngành nghề / gói dịch vụ / khu vực để hiển thị.
-                        // Chỉ mở các GET này; mọi thao tác ghi master-data vẫn qua /admin/**.
+                        // Cách 2: Dữ liệu danh mục dùng chung (Master Data) mở công khai (GET)
+                        // để khách vãng lai xem được trang chủ và danh mục dịch vụ mà không bị chặn 401.
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/v1/categories/**",
                                 "/api/v1/services/**",
-                                "/api/v1/areas/**")
-                        .permitAll()
+                                "/api/v1/areas/**"
+                        ).permitAll()
+
+                        // Tạo tài khoản khách/thợ giờ do ADMIN thực hiện (không self-register).
+                        .requestMatchers("/api/v1/auth/register/**").hasRole("ADMIN")
 
                         // Quên/đặt lại mật khẩu: người dùng chưa đăng nhập được mới cần, nên mở
                         // công khai. (change-password vẫn yêu cầu đăng nhập; refresh-token vẫn

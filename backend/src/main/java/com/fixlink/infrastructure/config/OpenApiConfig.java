@@ -22,7 +22,7 @@ public class OpenApiConfig {
                         .title("FixLink API Documentation")
                         .version("1.0.0")
                         .description("Hệ thống API nền tảng kết nối khách hàng và kỹ thuật viên sửa chữa (FixLink). " +
-                                "Áp dụng kiến trúc lục giác (Hexagonal Architecture) với cơ chế Đấu giá ngược và Ký quỹ Escrow.")
+                                "Áp dụng kiến trúc lục giác (Hexagonal Architecture) với cơ chế Ký quỹ bảo đảm và Bảo hành điện tử.")
                         .contact(new Contact()
                                 .name("Nhóm Đồ Án FixLink")
                                 .email("support@fixlink.vn"))

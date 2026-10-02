@@ -5,6 +5,7 @@ import AppointmentCard from '../components/AppointmentCard';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import DashboardLayout from '../components/DashboardLayout';
+import RequestStatusStepper from '../components/RequestStatusStepper';
 import StatusChip from '../components/StatusChip';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
@@ -14,7 +15,8 @@ import {
   applyForJob,
   createAppointment,
   fetchAppointmentsForRequest,
-  formatCurrency
+  formatCurrency,
+  updateRequestStatus
 } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { Appointment, Quotation, RepairRequestDetail } from '../lib/types';
@@ -45,6 +47,35 @@ export default function TechnicianRequestDetailPage() {
   const [newApptNotes, setNewApptNotes] = useState('');
   const [creatingAppt, setCreatingAppt] = useState(false);
   const [createApptError, setCreateApptError] = useState<string | null>(null);
+
+  // Thao tác vòng đời (Khảo sát, Sửa chữa, Nghiệm thu)
+  const [updatingLifecycle, setUpdatingLifecycle] = useState(false);
+  const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+
+  // Modal Báo giá phát sinh khi Khảo sát
+  const [showCostApprovalModal, setShowCostApprovalModal] = useState(false);
+  const [extraCostReason, setExtraCostReason] = useState('');
+  const [newTotalCost, setNewTotalCost] = useState<number>(0);
+
+  // Modal Hoàn thành & Mời nghiệm thu
+  const [showAcceptanceModal, setShowAcceptanceModal] = useState(false);
+  const [acceptanceNote, setAcceptanceNote] = useState('');
+
+  async function handleTransition(newStatus: string, note?: string, price?: number) {
+    if (!detail) return;
+    setUpdatingLifecycle(true);
+    setLifecycleError(null);
+    try {
+      await updateRequestStatus(detail.request.id, newStatus, note, price);
+      await loadDetail();
+      setShowCostApprovalModal(false);
+      setShowAcceptanceModal(false);
+    } catch (err: any) {
+      setLifecycleError(err?.message || 'Có lỗi xảy ra khi cập nhật tiến trình');
+    } finally {
+      setUpdatingLifecycle(false);
+    }
+  }
 
   async function handleCreateAppointment(e: React.FormEvent) {
     e.preventDefault();
@@ -155,6 +186,7 @@ export default function TechnicianRequestDetailPage() {
   }
 
   const myQuote: Quotation | undefined = detail.quotations?.[0];
+  const isDeadlineExpired = req.applyDeadline ? new Date(req.applyDeadline).getTime() <= Date.now() : false;
   const isOpenForApply = req.status === 'OPEN';
 
   // Danh sách hình ảnh
@@ -191,6 +223,8 @@ export default function TechnicianRequestDetailPage() {
       }
     >
       <div className="space-y-6">
+        {/* Thanh trạng thái & vòng đời đơn */}
+        <RequestStatusStepper request={req} workProgress={detail.workProgress} />
         {/* Thông tin sự cố và địa bàn */}
         <Card title="Thông tin chi tiết yêu cầu">
           <dl className="divide-y divide-slate-100 text-sm">
@@ -249,28 +283,178 @@ export default function TechnicianRequestDetailPage() {
           </Card>
         )}
 
-        {/* Nhận việc — mô hình "ai nhận trước được trước" (thay cho gửi/sửa báo giá) */}
-        {myQuote ? (
-          <Card
-            title="Bạn đã nhận việc này"
-            description="Giá là mức khách đã ấn định. Hãy liên hệ khách để hẹn lịch khảo sát."
-          >
-            <dl className="divide-y divide-slate-100 text-sm">
-              <Row label="💰 Giá đã chốt" value={formatCurrency(req.agreedPrice || req.budgetRef)} />
-              <Row label="💵 Tiền cọc Escrow (30%)" value={formatCurrency(req.depositAmount)} />
-              {myQuote.acceptedAt && (
-                <Row label="🕒 Nhận việc lúc" value={new Date(myQuote.acceptedAt).toLocaleString('vi-VN')} />
-              )}
-            </dl>
-          </Card>
-        ) : isOpenForApply ? (
-          <Card
-            title="Nhận việc này"
-            description="Thợ đầu tiên bấm nhận sẽ được giao việc ngay, khách không cần xác nhận thêm."
-          >
+        {/* Nhận việc & Thao tác tiến trình thi công */}
+        {(() => {
+          const numericUserId = user?.id ? Number(user.id.replace('usr_', '')) : null;
+          const isAssignedToMe = (req.technicianId && numericUserId && req.technicianId === numericUserId) || Boolean(myQuote);
+
+          if (isAssignedToMe) {
+            return (
+              <Card
+                title="Bạn đã nhận việc này"
+                description="Theo dõi chi phí và cập nhật từng bước khảo sát, thi công, nghiệm thu."
+              >
+                <dl className="divide-y divide-slate-100 text-sm">
+                  <Row label="💰 Giá chốt hiện tại" value={formatCurrency(req.agreedPrice || req.budgetRef)} />
+                  <Row label="💵 Tiền đặt cọc (30%)" value={formatCurrency(req.depositAmount)} />
+                  {myQuote?.acceptedAt && (
+                    <Row label="🕒 Nhận việc lúc" value={new Date(myQuote.acceptedAt).toLocaleString('vi-VN')} />
+                  )}
+                </dl>
+
+                {/* KHỐI THAO TÁC TIẾN TRÌNH CÔNG VIỆC */}
+                <div className="mt-5 border-t border-slate-100 pt-4">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                    <span>⚡</span> Thao tác tiến độ thực hiện
+                  </h4>
+
+                  {lifecycleError && (
+                    <div className="mb-3">
+                      <Alert tone="error">{lifecycleError}</Alert>
+                    </div>
+                  )}
+
+                  {req.status === 'ASSIGNED' && (
+                    <div className="rounded-xl bg-teal-50/90 border border-teal-200/90 p-4 space-y-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-xl">📍</span>
+                        <div>
+                          <p className="text-xs font-bold text-teal-950">
+                            Bước tiếp theo: Khảo sát hiện trường
+                          </p>
+                          <p className="text-xs text-teal-800 mt-0.5 leading-relaxed">
+                            Khi bạn đã có mặt tại nhà khách hàng, hãy bấm bắt đầu khảo sát để hệ thống ghi nhận mốc hiện trường.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="primary"
+                        loading={updatingLifecycle}
+                        onClick={() => handleTransition('INSPECTING', 'Kỹ thuật viên đã có mặt tại hiện trường và bắt đầu khảo sát thiết bị')}
+                        className="w-full sm:w-auto text-xs py-2 px-4 shadow-sm"
+                      >
+                        🔍 Bắt đầu khảo sát hiện trường
+                      </Button>
+                    </div>
+                  )}
+
+                  {req.status === 'INSPECTING' && (
+                    <div className="rounded-xl bg-amber-50/90 border border-amber-200/90 p-4 space-y-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-xl">🔍</span>
+                        <div>
+                          <p className="text-xs font-bold text-amber-950">
+                            Đang trong quá trình khảo sát thiết bị
+                          </p>
+                          <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+                            Hãy tháo máy kiểm tra chi tiết. Nếu đúng bệnh ban đầu, bấm bắt đầu sửa. Nếu phát sinh linh kiện ngoài dự kiến, bấm báo giá phát sinh.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2.5 pt-1">
+                        <Button
+                          variant="primary"
+                          loading={updatingLifecycle}
+                          onClick={() => handleTransition('IN_PROGRESS', 'Khảo sát hoàn tất, tiến hành sửa chữa theo ngân sách đã chốt')}
+                          className="text-xs py-2 px-4 shadow-sm"
+                        >
+                          🛠️ Bắt đầu sửa chữa (Đúng giá ban đầu)
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setExtraCostReason('');
+                            setNewTotalCost((req.agreedPrice || req.budgetRef || 0) + 150000);
+                            setShowCostApprovalModal(true);
+                          }}
+                          className="text-xs py-2 px-4 border-amber-300 text-amber-900 bg-white hover:bg-amber-100"
+                        >
+                          ⚠️ Báo giá phát sinh linh kiện
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {req.status === 'AWAITING_COST_APPROVAL' && (
+                    <div className="rounded-xl bg-amber-50 border border-amber-300 p-4">
+                      <p className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                        <span>⏳</span> Đang chờ khách hàng duyệt báo giá phát sinh ({formatCurrency(req.agreedPrice)})
+                      </p>
+                      <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                        Yêu cầu duyệt giá đã được gửi tới khách hàng. Kỹ thuật viên vui lòng tạm dừng thi công cho đến khi khách hàng xác nhận trên ứng dụng.
+                      </p>
+                    </div>
+                  )}
+
+                  {req.status === 'IN_PROGRESS' && (
+                    <div className="rounded-xl bg-indigo-50/90 border border-indigo-200/90 p-4 space-y-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-xl">🛠️</span>
+                        <div>
+                          <p className="text-xs font-bold text-indigo-950">
+                            Đang tiến hành sửa chữa thiết bị
+                          </p>
+                          <p className="text-xs text-indigo-800 mt-0.5 leading-relaxed">
+                            Sau khi hoàn tất thay thế/sửa chữa và cho thiết bị chạy thử ổn định (test run 15–30 phút), hãy bấm gửi báo cáo nghiệm thu.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="primary"
+                        onClick={() => {
+                          setAcceptanceNote('Đã hoàn thành sửa chữa, chạy thử nghiệm thiết bị hoạt động tốt và bàn giao.');
+                          setShowAcceptanceModal(true);
+                        }}
+                        className="w-full sm:w-auto text-xs py-2 px-4 shadow-sm bg-indigo-600 hover:bg-indigo-700"
+                      >
+                        📋 Báo cáo hoàn thành & Mời nghiệm thu
+                      </Button>
+                    </div>
+                  )}
+
+                  {req.status === 'AWAITING_ACCEPTANCE' && (
+                    <div className="rounded-xl bg-blue-50 border border-blue-200 p-4">
+                      <p className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
+                        <span>📋</span> Đã gửi thông báo nghiệm thu cho khách hàng
+                      </p>
+                      <p className="text-xs text-blue-800 mt-1 leading-relaxed">
+                        Khách hàng đang kiểm tra thiết bị. Khi khách bấm nghiệm thu đạt, tiền công sẽ được giải ngân vào ví thợ và kích hoạt bảo hành điện tử.
+                      </p>
+                    </div>
+                  )}
+
+                  {req.status === 'COMPLETED' && (
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
+                      <p className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                        <span>✅</span> Yêu cầu sửa chữa đã hoàn thành
+                      </p>
+                      <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+                        Đơn hàng đã được khách hàng nghiệm thu đạt chất lượng. Bảo hành điện tử chính thức đã được kích hoạt.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            );
+          }
+
+          if (isOpenForApply) {
+            return (
+              <Card
+                title="Nhận việc này"
+                description="Thợ đầu tiên bấm nhận sẽ được giao việc ngay, khách không cần xác nhận thêm."
+              >
             {applyError && (
               <div className="mb-4">
                 <Alert tone="error">{applyError}</Alert>
+              </div>
+            )}
+            {isDeadlineExpired && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 mb-4 text-center">
+                <p className="font-bold text-rose-900 text-sm">⛔ Yêu cầu đã hết hạn hiệu lực nhận việc</p>
+                <p className="text-xs text-rose-700 mt-1">
+                  Đơn này đã quá thời hạn 3 ngày ({new Date(req.applyDeadline!).toLocaleString('vi-VN')}). Kỹ thuật viên không thể nhận việc được nữa.
+                </p>
               </div>
             )}
             <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
@@ -281,24 +465,33 @@ export default function TechnicianRequestDetailPage() {
                 </span>
               </div>
               {req.applyDeadline && (
-                <p className="mt-2 text-xs text-slate-500">
-                  Hạn nhận việc: {new Date(req.applyDeadline).toLocaleString('vi-VN')}
+                <p className={`mt-2 text-xs font-medium ${isDeadlineExpired ? 'text-rose-600' : 'text-slate-500'}`}>
+                  Hạn nhận việc: {new Date(req.applyDeadline).toLocaleString('vi-VN')} {isDeadlineExpired ? '(Đã hết hạn)' : ''}
                 </p>
               )}
             </div>
             <div className="mt-4 flex justify-end">
-              <Button variant="primary" loading={applying} onClick={handleApply}>
-                {applying ? 'Đang nhận...' : 'Nhận việc'}
+              <Button
+                variant="primary"
+                loading={applying}
+                disabled={isDeadlineExpired}
+                onClick={handleApply}
+              >
+                {applying ? 'Đang nhận...' : isDeadlineExpired ? 'Đã hết hạn hiệu lực' : 'Nhận việc'}
               </Button>
             </div>
           </Card>
-        ) : (
-          <Card title="Không thể nhận việc">
-            <div className="py-4 text-center text-sm text-slate-500">
-              Đơn này hiện không mở cho thợ nhận (Trạng thái: <strong>{req.statusLabel || req.status}</strong>).
-            </div>
-          </Card>
-        )}
+        );
+      }
+
+      return (
+        <Card title="Không thể nhận việc">
+          <div className="py-4 text-center text-sm text-slate-500">
+            Đơn này hiện không mở cho thợ nhận (Trạng thái: <strong>{req.statusLabel || req.status}</strong>).
+          </div>
+        </Card>
+      );
+    })()}
 
         {/* Lịch hẹn làm việc / khảo sát (Jira RC-48: Appointment Status Lifecycle) */}
         {(() => {
@@ -307,7 +500,7 @@ export default function TechnicianRequestDetailPage() {
 
           return (
             <Card
-              title="Lịch hẹn khảo sát & thi công (RC-48)"
+              title="Lịch hẹn khảo sát & thi công"
               description="Quản lý vòng đời trạng thái cuộc hẹn giữa bạn và khách hàng."
               actions={
                 !isAssignedToOther ? (
@@ -368,7 +561,7 @@ export default function TechnicianRequestDetailPage() {
                   </div>
                   {wp.note && (
                     <div className="mt-2 rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-sm text-slate-700">
-                      {wp.note}
+                      {wp.note.replace(/\s*\(ai nhận trước được trước\)/gi, '')}
                     </div>
                   )}
                 </li>
@@ -485,6 +678,119 @@ export default function TechnicianRequestDetailPage() {
                 </Button>
                 <Button type="submit" loading={creatingAppt}>
                   Xác nhận đặt lịch
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modal Báo giá phát sinh khi Khảo sát */}
+      {showCostApprovalModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-in">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-900 text-base flex items-center gap-1.5">
+                <span>⚠️</span> Báo giá phát sinh sau khảo sát
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowCostApprovalModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleTransition(
+                  'AWAITING_COST_APPROVAL',
+                  extraCostReason || 'Thợ đề xuất phát sinh linh kiện sau khảo sát thực tế',
+                  newTotalCost
+                );
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <TextArea
+                  label="Lý do / Linh kiện phát sinh"
+                  required
+                  rows={3}
+                  placeholder="Ví dụ: Tháo máy phát hiện hỏng tụ đề quạt dàn nóng và xì gas ống đồng..."
+                  value={extraCostReason}
+                  onChange={(e) => setExtraCostReason(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <TextField
+                  label="Tổng chi phí mới trọn gói (VND)"
+                  type="number"
+                  required
+                  min={req.agreedPrice || req.budgetRef || 0}
+                  step={10000}
+                  value={String(newTotalCost)}
+                  onChange={(e) => setNewTotalCost(Number(e.target.value))}
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Giá cũ: {formatCurrency(req.agreedPrice || req.budgetRef || 0)} (Chênh lệch: +{formatCurrency(Math.max(0, newTotalCost - (req.agreedPrice || req.budgetRef || 0)))})
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <Button variant="secondary" type="button" onClick={() => setShowCostApprovalModal(false)}>
+                  Hủy
+                </Button>
+                <Button variant="primary" type="submit" loading={updatingLifecycle}>
+                  Gửi khách hàng duyệt
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Báo cáo hoàn thành & Mời nghiệm thu */}
+      {showAcceptanceModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-in">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-900 text-base flex items-center gap-1.5">
+                <span>📋</span> Báo cáo hoàn thành & Mời nghiệm thu
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAcceptanceModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleTransition('AWAITING_ACCEPTANCE', acceptanceNote);
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <TextArea
+                  label="Ghi chú bàn giao & Kết quả chạy thử"
+                  rows={3}
+                  value={acceptanceNote}
+                  onChange={(e) => setAcceptanceNote(e.target.value)}
+                  placeholder="Ví dụ: Đã thay thế linh kiện, chạy thử máy 20 phút đạt độ lạnh sâu và êm ái..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <Button variant="secondary" type="button" onClick={() => setShowAcceptanceModal(false)}>
+                  Hủy
+                </Button>
+                <Button variant="primary" type="submit" loading={updatingLifecycle}>
+                  Gửi thông báo nghiệm thu
                 </Button>
               </div>
             </form>

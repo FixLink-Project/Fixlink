@@ -303,17 +303,41 @@ public class DataInitializer implements CommandLineRunner {
                 demoRequests.add(demoRequest("REQ-DEMO-0013", customerId, null, 4L, RequestStatus.CANCELLED,
                         "Mở khóa cửa phòng trọ khẩn cấp",
                         "Khách đã tự xoay được chìa trước khi thợ tới nên xin hủy yêu cầu này.",
-                        "9 Tạ Quang Bửu, Quận 8, TP.HCM", 10, "0"));
+                        "9 Tạ Quang Bửu, Quận 8, TP.HCM", 10, "0",
+                        LocalDateTime.now().plusDays(2), "Khách đã tự xoay được chìa"));
 
                 demoRequests.add(demoRequest("REQ-DEMO-0014", customerId, null, 1L, RequestStatus.PENDING,
                         "Máy giặt không vắt và báo lỗi UE",
                         "Máy giặt cửa trước báo lỗi UE, lồng giặt không vắt được và còn nhiều nước.",
-                        "66 Nguyễn Ảnh Thủ, Quận 12, TP.HCM", 11, "0"));
+                        "66 Nguyễn Ảnh Thủ, Quận 12, TP.HCM", 11, "0",
+                        LocalDateTime.now().plusDays(3), null));
 
-                demoRequests.add(demoRequest("REQ-DEMO-0015", customerId, thoId, 2L, RequestStatus.OPEN,
+                demoRequests.add(demoRequest("REQ-DEMO-0015", customerId, null, 2L, RequestStatus.OPEN,
                         "Lắp đặt bình nóng lạnh năng lượng mặt trời",
                         "Cần khảo sát mái nhà và lắp bình nóng lạnh 150L đã mua sẵn, kèm đường ống và van.",
-                        "404 Lạc Long Quân, Tây Hồ, Hà Nội", 13, "0"));
+                        "404 Lạc Long Quân, Tây Hồ, Hà Nội", 1, "400000",
+                        LocalDateTime.now().plusDays(2).plusHours(14), null));
+
+                // Đơn 16: OPEN - SẮP HẾT HẠN HIỆU LỰC (còn 4 giờ)
+                demoRequests.add(demoRequest("REQ-DEMO-0016", customerId, null, 1L, RequestStatus.OPEN,
+                        "Sửa tủ đông Sanaky đóng tuyết dày và rỉ nước",
+                        "Tủ đông 2 ngăn Sanaky bị đóng tuyết dày bất thường ở ngăn mát, nước đọng thành vũng.",
+                        "82 Nguyễn Thị Thập, Quận 7, TP.HCM", 2, "300000",
+                        LocalDateTime.now().plusHours(4), null));
+
+                // Đơn 17: OPEN - ĐÃ QUÁ HẠN HIỆU LỰC (hết hạn 2 giờ trước) -> Test chặn nhận việc & cảnh báo
+                demoRequests.add(demoRequest("REQ-DEMO-0017", customerId, null, 1L, RequestStatus.OPEN,
+                        "Bảo dưỡng máy giặt sấy Electrolux kêu to khi vắt",
+                        "Máy giặt rung lắc dữ dội khi vắt ở tốc độ 1200 vòng/phút, cần thợ kiểm tra giảm chấn.",
+                        "158 Bạch Đằng, Bình Thạnh, TP.HCM", 3, "250000",
+                        LocalDateTime.now().minusHours(2), null));
+
+                // Đơn 18: CANCELLED - TỰ ĐỘNG HỦY DO HẾT HẠN 3 NGÀY (Scheduler dọn dẹp)
+                demoRequests.add(demoRequest("REQ-DEMO-0018", customerId, null, 2L, RequestStatus.CANCELLED,
+                        "Sửa ampli nghe nhạc Denon mất kênh tiếng trái",
+                        "Ampli Denon PMA-800NE bật lên chỉ nghe loa phải, vặn volume có tiếng xẹt xẹt.",
+                        "245 Hoàng Văn Thụ, Tân Bình, TP.HCM", 4, "350000",
+                        LocalDateTime.now().minusDays(1), "Hết hạn 3 ngày không có thợ nhận"));
 
                 List<RepairRequestJpaEntity> savedRequests = repairRequestRepository.saveAll(demoRequests);
 
@@ -323,8 +347,71 @@ public class DataInitializer implements CommandLineRunner {
                 }
                 mediaRepository.saveAll(demoMedia);
 
-                log.info(">>> Đã khởi tạo {} yêu cầu sửa chữa demo kèm {} tệp đính kèm (ảnh Firebase Storage demo)",
-                        savedRequests.size(), demoMedia.size());
+                // Khởi tạo Báo giá thợ nhận việc (Quotation accepted) cho các đơn đã giao thợ
+                List<QuotationJpaEntity> demoQuotes = new ArrayList<>();
+                for (RepairRequestJpaEntity r : savedRequests) {
+                    if (r.getTechnicianId() != null && r.getStatus() != RequestStatus.OPEN && r.getStatus() != RequestStatus.DRAFT) {
+                        QuotationJpaEntity q = QuotationJpaEntity.builder()
+                                .requestId(r.getId())
+                                .technicianId(r.getTechnicianId())
+                                .priceLaborVnd(r.getAgreedPrice() != null ? r.getAgreedPrice() : BigDecimal.valueOf(300000))
+                                .priceMaterialsVnd(BigDecimal.ZERO)
+                                .solution("Nhận việc theo ngân sách và mô tả yêu cầu của khách hàng")
+                                .status(QuotationStatus.ACCEPTED)
+                                .acceptedAt(r.getCreatedAt().plusHours(2))
+                                .note("Cam kết có mặt đúng hẹn, linh kiện chính hãng bảo hành 90 ngày.")
+                                .build();
+                        q.setCreatedBy(r.getTechnicianId());
+                        q.setCreatedAt(r.getCreatedAt().plusHours(2));
+                        demoQuotes.add(q);
+                    }
+                }
+                quotationRepository.saveAll(demoQuotes);
+
+                // Khởi tạo lịch sử chuyển trạng thái (WorkProgress) mẫu theo từng nấc thực tế
+                List<WorkProgressJpaEntity> demoProgress = new ArrayList<>();
+                for (RepairRequestJpaEntity r : savedRequests) {
+                    LocalDateTime base = r.getCreatedAt();
+                    switch (r.getStatus()) {
+                        case ASSIGNED -> {
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.DRAFT, RequestStatus.OPEN, "Khách hàng đăng yêu cầu lên hệ thống", base, customerId));
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.OPEN, RequestStatus.ASSIGNED, "Kỹ thuật viên đã bấm nhận việc thành công", base.plusHours(2), r.getTechnicianId()));
+                        }
+                        case INSPECTING -> {
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.OPEN, RequestStatus.ASSIGNED, "Thợ nhận việc", base.minusDays(1), r.getTechnicianId()));
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.ASSIGNED, RequestStatus.INSPECTING, "Thợ đã có mặt tại hiện trường, tiến hành đo đạc và lập biên bản khảo sát", base.plusHours(3), r.getTechnicianId()));
+                        }
+                        case IN_PROGRESS -> {
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.OPEN, RequestStatus.ASSIGNED, "Thợ nhận việc", base.minusDays(2), r.getTechnicianId()));
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.ASSIGNED, RequestStatus.INSPECTING, "Khảo sát hiện trường và chốt phương án thi công", base.minusDays(1), r.getTechnicianId()));
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.INSPECTING, RequestStatus.IN_PROGRESS, "Bắt đầu triển khai sửa chữa và thay thế linh kiện", base.plusHours(1), r.getTechnicianId()));
+                        }
+                        case AWAITING_ACCEPTANCE -> {
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.OPEN, RequestStatus.ASSIGNED, "Thợ nhận việc", base.minusDays(3), r.getTechnicianId()));
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.ASSIGNED, RequestStatus.INSPECTING, "Khảo sát và kiểm tra thiết bị", base.minusDays(2), r.getTechnicianId()));
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.INSPECTING, RequestStatus.IN_PROGRESS, "Tiến hành sửa chữa và thay gioăng chống rò", base.minusDays(1), r.getTechnicianId()));
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.IN_PROGRESS, RequestStatus.AWAITING_ACCEPTANCE, "Thợ đã hoàn thành công việc và chạy thử 30 phút. Mời khách hàng nghiệm thu.", base.plusHours(2), r.getTechnicianId()));
+                        }
+                        case COMPLETED -> {
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.OPEN, RequestStatus.ASSIGNED, "Thợ nhận việc", base.minusDays(5), r.getTechnicianId()));
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.ASSIGNED, RequestStatus.INSPECTING, "Khảo sát lỗi", base.minusDays(4), r.getTechnicianId()));
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.INSPECTING, RequestStatus.IN_PROGRESS, "Sửa chữa và thay thế linh kiện", base.minusDays(3), r.getTechnicianId()));
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.IN_PROGRESS, RequestStatus.AWAITING_ACCEPTANCE, "Bàn giao thiết bị và hướng dẫn sử dụng", base.minusDays(2), r.getTechnicianId()));
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.AWAITING_ACCEPTANCE, RequestStatus.COMPLETED, "Khách hàng nghiệm thu đạt yêu cầu, giải ngân thanh toán và kích hoạt bảo hành điện tử 90 ngày", base.minusDays(1), customerId));
+                        }
+                        case CANCELLED -> {
+                            String note = r.getCancelReason() != null ? r.getCancelReason() : "Yêu cầu đã bị hủy";
+                            demoProgress.add(createProgress(r.getId(), RequestStatus.OPEN, RequestStatus.CANCELLED, note, base.plusHours(1), customerId));
+                        }
+                        default -> {
+                            // DRAFT hoặc OPEN mới tạo
+                        }
+                    }
+                }
+                workProgressRepository.saveAll(demoProgress);
+
+                log.info(">>> Đã khởi tạo {} yêu cầu sửa chữa demo, {} ảnh, {} báo giá và {} mốc tiến trình WorkProgress",
+                        savedRequests.size(), demoMedia.size(), demoQuotes.size(), demoProgress.size());
 
                 // 8. Seed Lịch hẹn mẫu (Jira RC-48: Appointment Status Lifecycle)
                 if (appointmentRepository.count() == 0 && !savedRequests.isEmpty()) {
@@ -351,7 +438,7 @@ public class DataInitializer implements CommandLineRunner {
                     if (thoId != null && savedRequests.size() > 1) {
                         AppointmentJpaEntity appt2 = AppointmentJpaEntity.builder()
                                 .repairRequestId(savedRequests.get(1).getId())
-                        .customerId(customerId)
+                                .customerId(customerId)
                                 .technicianId(thoId)
                                 .appointmentType("REPAIR")
                                 .scheduledDate(LocalDate.now().plusDays(3))
@@ -695,9 +782,29 @@ public class DataInitializer implements CommandLineRunner {
         mediaRepository.saveAll(demoMediaFor(requestId, seedIndex, uploaderId));
     }
 
+    private WorkProgressJpaEntity createProgress(Long requestId, RequestStatus from, RequestStatus to,
+                                                 String note, LocalDateTime time, Long createdBy) {
+        WorkProgressJpaEntity wp = new WorkProgressJpaEntity();
+        wp.setRequestId(requestId);
+        wp.setFromStatus(from);
+        wp.setToStatus(to);
+        wp.setNote(note);
+        wp.setCreatedAt(time != null ? time : LocalDateTime.now());
+        wp.setCreatedBy(createdBy);
+        return wp;
+    }
+
     private RepairRequestJpaEntity demoRequest(String requestCode, Long customerId, Long technicianId,
                                                Long categoryId, RequestStatus status, String title,
                                                String description, String address, int daysAgo, String agreedPrice) {
+        return demoRequest(requestCode, customerId, technicianId, categoryId, status, title, description, address, daysAgo, agreedPrice,
+                LocalDateTime.now().plusDays(3), null);
+    }
+
+    private RepairRequestJpaEntity demoRequest(String requestCode, Long customerId, Long technicianId,
+                                               Long categoryId, RequestStatus status, String title,
+                                               String description, String address, int daysAgo, String agreedPrice,
+                                               LocalDateTime applyDeadline, String cancelReason) {
         RepairRequestJpaEntity request = new RepairRequestJpaEntity();
         request.setRequestCode(requestCode);
         request.setCustomerId(customerId);
@@ -713,12 +820,13 @@ public class DataInitializer implements CommandLineRunner {
         else if (address != null && address.contains("Cầu Giấy")) areaId = 4L;
         else if (address != null && address.contains("Thanh Xuân")) areaId = 5L;
         request.setAreaId(areaId);
-        request.setApplyDeadline(LocalDateTime.now().plusDays(3));
+        request.setApplyDeadline(applyDeadline);
+        request.setCancelReason(cancelReason);
         request.setRequestedTime(LocalDateTime.now().plusDays(2).minusDays(daysAgo));
-        BigDecimal price = new BigDecimal(agreedPrice);
-        request.setBudgetRef(price);
+        BigDecimal price = new BigDecimal(agreedPrice != null ? agreedPrice : "0");
         request.setAgreedPrice(price);
-        request.setDepositAmount(price.multiply(new BigDecimal("0.3")).setScale(0, RoundingMode.CEILING));
+        request.setBudgetRef(price);
+        request.setDepositAmount(BigDecimal.ZERO);
         request.setCreatedBy(customerId);
         request.setUpdatedBy(customerId);
         request.setCreatedAt(LocalDateTime.now().minusDays(daysAgo));

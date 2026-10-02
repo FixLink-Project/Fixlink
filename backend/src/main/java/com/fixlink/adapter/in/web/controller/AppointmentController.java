@@ -25,7 +25,7 @@ import java.util.List;
  */
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "Appointments", description = "Quản lý vòng đời cuộc hẹn (RC-48)")
+@Tag(name = "Appointments", description = "Quản lý vòng đời cuộc hẹn")
 @SecurityRequirement(name = "bearerAuth")
 public class AppointmentController {
 

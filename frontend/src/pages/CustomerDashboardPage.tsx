@@ -221,7 +221,7 @@ export default function CustomerDashboardPage() {
           </span>
           <div>
             <p className="text-xs font-semibold text-slate-500">Bảo vệ khách hàng</p>
-            <p className="text-sm font-bold text-emerald-700 mt-0.5">Bảo hiểm Escrow 100%</p>
+            <p className="text-sm font-bold text-emerald-700 mt-0.5">Bảo đảm an toàn 100%</p>
           </div>
         </div>
       </div>

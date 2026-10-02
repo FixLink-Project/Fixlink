@@ -6,6 +6,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import DashboardLayout from '../components/DashboardLayout';
 import MultiImageUploadField from '../components/MultiImageUploadField';
+import RequestStatusStepper from '../components/RequestStatusStepper';
 import StatusChip from '../components/StatusChip';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
@@ -48,6 +49,30 @@ export default function RepairRequestDetailPage() {
 
   // Kích hoạt bản nháp
   const [publishing, setPublishing] = useState(false);
+
+  // Thao tác vòng đời (Khách duyệt giá phát sinh & Nghiệm thu)
+  const [updatingLifecycle, setUpdatingLifecycle] = useState(false);
+  const [lifecycleMessage, setLifecycleMessage] = useState<string | null>(null);
+
+  async function handleCustomerAction(targetStatus: string, note?: string) {
+    if (!detail) return;
+    setUpdatingLifecycle(true);
+    setActionError(null);
+    setLifecycleMessage(null);
+    try {
+      await updateRequestStatus(detail.request.id, targetStatus, note);
+      await loadDetail();
+      if (targetStatus === 'COMPLETED') {
+        setLifecycleMessage('Chúc mừng! Bạn đã hoàn tất nghiệm thu và kích hoạt bảo hành điện tử 90 ngày thành công.');
+      } else if (targetStatus === 'IN_PROGRESS') {
+        setLifecycleMessage('Đã chấp thuận chi phí phát sinh. Kỹ thuật viên sẽ tiếp tục sửa chữa.');
+      }
+    } catch (err: any) {
+      setActionError(err?.message || 'Có lỗi xảy ra khi thực hiện thao tác');
+    } finally {
+      setUpdatingLifecycle(false);
+    }
+  }
 
   useEffect(() => {
     loadDetail();
@@ -176,24 +201,139 @@ export default function RepairRequestDetailPage() {
         </div>
       )}
 
-      {/* Draft Notification Banner */}
-      {isDraft && (
-        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/80 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h4 className="font-bold text-amber-900 text-sm flex items-center gap-1.5">
-              <span>📝</span> Yêu cầu này đang ở trạng thái Bản nháp
-            </h4>
-            <p className="text-xs text-amber-700 mt-0.5">
-              Các thợ kỹ thuật chưa nhìn thấy đơn này. Nhấn nút bên cạnh để phát sóng ngay tới mạng lưới thợ.
+      <div className="space-y-6">
+        {/* Thông báo thao tác thành công */}
+        {lifecycleMessage && (
+          <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">🎉</span>
+              <p className="text-xs sm:text-sm font-bold text-emerald-900">{lifecycleMessage}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLifecycleMessage(null)}
+              className="text-xs text-emerald-700 hover:text-emerald-900 font-bold"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Thanh trạng thái tiến trình & theo dõi hiệu lực */}
+        <RequestStatusStepper
+          request={req}
+          workProgress={detail.workProgress}
+          onPublishDraft={handlePublishDraft}
+          publishing={publishing}
+        />
+
+        {/* KHỐI 1: KHÁCH DUYỆT BÁO GIÁ PHÁT SINH KHI KHẢO SÁT */}
+        {req.status === 'AWAITING_COST_APPROVAL' && (
+          <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-5 shadow-sm space-y-3.5 animate-scale-in">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h3 className="font-display font-bold text-amber-950 text-base">
+                  Kỹ thuật viên đề xuất điều chỉnh chi phí sau khảo sát
+                </h3>
+                <p className="text-xs text-amber-800 mt-0.5">
+                  Sau khi tháo máy kiểm tra thực tế, thợ phát hiện linh kiện hỏng cần thay thế ngoài dự kiến.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-white border border-amber-200 p-3.5 text-xs text-slate-700 leading-relaxed font-medium">
+              <span className="font-bold text-amber-900">Chi tiết từ thợ:</span>{' '}
+              {detail.workProgress[detail.workProgress.length - 1]?.note || 'Cần bổ sung thay thế linh kiện chuyên dụng'}
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-amber-200/80 pt-3">
+              <div>
+                <span className="text-xs text-amber-800">Tổng chi phí mới trọn gói:</span>
+                <span className="ml-2 font-display text-lg font-bold text-brand">
+                  {formatCurrency(req.agreedPrice)}
+                </span>
+                <span className="ml-2 text-[11px] text-slate-500">
+                  (Đặt cọc 30%: {formatCurrency(req.depositAmount)})
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  loading={updatingLifecycle}
+                  onClick={() => handleCustomerAction('IN_PROGRESS', 'Khách hàng đồng ý chi phí phát sinh, cho phép tiếp tục sửa chữa')}
+                  className="text-xs py-2 px-4 shadow-sm"
+                >
+                  ✅ Đồng ý chi phí mới
+                </Button>
+                <Button
+                  variant="secondary"
+                  loading={updatingLifecycle}
+                  onClick={() => handleCustomerAction('CANCELLED', 'Khách hàng không đồng ý chi phí phát sinh và hủy yêu cầu')}
+                  className="text-xs py-2 px-4 text-rose-700 border-rose-300 bg-white hover:bg-rose-50"
+                >
+                  ❌ Không đồng ý (Hủy đơn)
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* KHỐI 2: KHÁCH NGHIỆM THU THIẾT BỊ KHI SỬA XONG */}
+        {req.status === 'AWAITING_ACCEPTANCE' && (
+          <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/90 p-5 shadow-sm space-y-3.5 animate-scale-in">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">📋</span>
+              <div>
+                <h3 className="font-display font-bold text-emerald-950 text-base">
+                  Kỹ thuật viên đã hoàn thành sửa chữa & Mời bạn nghiệm thu
+                </h3>
+                <p className="text-xs text-emerald-800 mt-0.5">
+                  Thiết bị đã được lắp ráp hoàn chỉnh và chạy thử nghiệm xong.
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-emerald-900 leading-relaxed">
+              Quý khách vui lòng trực tiếp kiểm tra thiết bị xem đã hoạt động ổn định và hài lòng chưa. Sau khi bạn xác nhận nghiệm thu đạt, tiền công sẽ được giải ngân cho thợ và <strong>Bảo hành điện tử 90 ngày</strong> sẽ được kích hoạt ngay lập tức.
+            </p>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-emerald-200/80 pt-3">
+              <span className="text-xs font-semibold text-emerald-800">
+                ⭐ Tổng chi phí quyết toán: <strong>{formatCurrency(req.agreedPrice)}</strong>
+              </span>
+              <Button
+                variant="primary"
+                loading={updatingLifecycle}
+                onClick={() => handleCustomerAction('COMPLETED', 'Khách hàng đã nghiệm thu thiết bị đạt chuẩn và hoàn tất đơn')}
+                className="text-xs py-2.5 px-5 shadow-md bg-emerald-600 hover:bg-emerald-700"
+              >
+                ✅ Nghiệm thu đạt & Hoàn tất đơn
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* KHỐI 3: PHIẾU BẢO HÀNH ĐIỆN TỬ KHI ĐÃ HOÀN THÀNH */}
+        {req.status === 'COMPLETED' && (
+          <div className="rounded-2xl border border-emerald-300 bg-gradient-to-r from-emerald-50 to-teal-50 p-5 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🛡️</span>
+                <h3 className="font-display font-bold text-emerald-950 text-sm">
+                  Phiếu bảo hành điện tử chính hãng FixLink (90 Ngày)
+                </h3>
+              </div>
+              <span className="rounded-full bg-emerald-200/80 text-emerald-800 px-3 py-0.5 text-xs font-bold">
+                Đang hiệu lực
+              </span>
+            </div>
+            <p className="text-xs text-emerald-800">
+              Mã bảo hành: <strong className="font-mono text-slate-800">{req.requestCode}-WTY</strong> | Thiết bị được hỗ trợ kỹ thuật và kiểm tra định kỳ miễn phí nếu phát sinh sự cố tương tự.
             </p>
           </div>
-          <Button onClick={handlePublishDraft} loading={publishing} className="shrink-0">
-            📢 Phát sóng yêu cầu ngay
-          </Button>
-        </div>
-      )}
+        )}
 
-      <div className="space-y-6">
         {/* Thông tin đơn */}
         <Card title="Thông tin yêu cầu sửa chữa">
           <dl className="divide-y divide-slate-100 text-sm">
@@ -212,7 +352,7 @@ export default function RepairRequestDetailPage() {
               />
             )}
             {req.agreedPrice > 0 && <Row label="Giá chốt" value={formatCurrency(req.agreedPrice)} highlight />}
-            {req.depositAmount > 0 && <Row label="Tiền cọc Escrow (30%)" value={formatCurrency(req.depositAmount)} highlight />}
+            {req.depositAmount > 0 && <Row label="Tiền đặt cọc (30%)" value={formatCurrency(req.depositAmount)} highlight />}
             {req.cancelReason && <Row label="Lý do hủy" value={req.cancelReason} />}
           </dl>
 
@@ -282,7 +422,7 @@ export default function RepairRequestDetailPage() {
                 Yêu cầu đã được gửi tới các thợ phù hợp với giá{' '}
                 <strong>{formatCurrency(req.budgetRef)}</strong>. Thợ đầu tiên bấm nhận sẽ được giao việc
                 ngay, bạn không cần xác nhận thêm.
-                {req.applyDeadline && <> Còn {describeRemaining(req.applyDeadline)} trước khi yêu cầu tự hủy.</>}
+                {req.applyDeadline && <> Thời hạn hiệu lực: {describeRemaining(req.applyDeadline)} trước khi yêu cầu tự hủy.</>}
               </p>
             </div>
           </Card>
@@ -291,7 +431,7 @@ export default function RepairRequestDetailPage() {
         {/* Lịch hẹn khảo sát / thi công (Jira RC-48: Appointment Status Lifecycle) */}
         {(req.technicianId || appointments.length > 0) && (
           <Card
-            title="Lịch hẹn khảo sát & thi công (RC-48)"
+            title="Lịch hẹn khảo sát & thi công"
             description="Quản lý vòng đời trạng thái cuộc hẹn giữa bạn và kỹ thuật viên."
             actions={
               req.technicianId ? (
@@ -344,7 +484,7 @@ export default function RepairRequestDetailPage() {
                   </div>
                   {wp.note && (
                     <div className="mt-2 rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-sm text-slate-700">
-                      {wp.note}
+                      {wp.note.replace(/\s*\(ai nhận trước được trước\)/gi, '')}
                     </div>
                   )}
                 </li>

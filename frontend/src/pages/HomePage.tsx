@@ -237,7 +237,7 @@ export default function HomePage() {
             {/* Subheading */}
             <p className="mt-4 text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
               Kết nối kỹ thuật viên điện tử, điện lạnh gần bạn nhất. Cam kết thợ chính chủ đã đối chiếu CCCD, 
-              tiền cọc giữ qua tài khoản trung gian Escrow, bảo hành điện tử chính hãng 30–90 ngày.
+              tiền cọc giữ qua tài khoản trung gian bảo đảm, bảo hành điện tử chính hãng 30–90 ngày.
             </p>
 
             {/* Search Box */}
@@ -297,7 +297,7 @@ export default function HomePage() {
             <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
               {[
                 { icon: '🛡️', title: 'Thợ eKYC chính chủ', desc: '100% đối chiếu CCCD & tay nghề' },
-                { icon: '💳', title: 'Ký quỹ Escrow', desc: 'Hài lòng mới giải ngân tiền công' },
+                { icon: '💳', title: 'Ký quỹ bảo đảm', desc: 'Hài lòng mới giải ngân tiền công' },
                 { icon: '📄', title: 'Bảo hành điện tử', desc: 'Cam kết 30 – 90 ngày trên app' },
                 { icon: '⚡', title: 'Có mặt sau 30 phút', desc: 'Thợ xung quanh khu vực bạn ở' }
               ].map((item, idx) => (
@@ -442,7 +442,7 @@ export default function HomePage() {
             4 bước gọi thợ chuẩn an toàn tại FixLink
           </h2>
           <p className="text-sm text-slate-600 mt-2">
-            Mọi thao tác đều được bảo vệ bởi máy trạng thái minh bạch và cơ chế ký quỹ Escrow.
+            Mọi thao tác đều được bảo vệ bởi máy trạng thái minh bạch và cơ chế ký quỹ an toàn.
           </p>
         </div>
 
@@ -460,7 +460,7 @@ export default function HomePage() {
             },
             {
               step: '03',
-              title: 'Đặt cọc Escrow & Khảo sát',
+              title: 'Đặt cọc & Khảo sát',
               body: 'Khách cọc 30% vào hệ thống giữ tiền. Thợ đến tận nhà khảo sát và xác nhận chi phí minh bạch.'
             },
             {
@@ -575,7 +575,7 @@ export default function HomePage() {
             <div className="mt-8 space-y-4">
               {[
                 {
-                  title: 'Giữ tiền ký quỹ Escrow',
+                  title: 'Giữ tiền ký quỹ bảo đảm',
                   desc: 'Khoản tiền cọc 30% và thanh toán đều được lưu giữ tại cổng thanh toán trung gian, chỉ giải ngân cho thợ sau khi bạn bấm nghiệm thu hài lòng.'
                 },
                 {
@@ -659,7 +659,7 @@ export default function HomePage() {
             <div>
               <h4 className="font-display text-sm font-bold text-slate-900 mb-3">Chính sách & An toàn</h4>
               <ul className="space-y-2 text-xs">
-                <li><span className="hover:text-brand cursor-pointer">Chính sách ký quỹ Escrow</span></li>
+                <li><span className="hover:text-brand cursor-pointer">Chính sách ký quỹ bảo đảm</span></li>
                 <li><span className="hover:text-brand cursor-pointer">Quy định bảo hành điện tử</span></li>
                 <li><span className="hover:text-brand cursor-pointer">Bảo mật thông tin khách hàng</span></li>
                 <li><span className="hover:text-brand cursor-pointer">Quy trình xử lý khiếu nại</span></li>

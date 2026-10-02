@@ -149,7 +149,8 @@ public class RepairRequestController {
                 parseStatus(request.getStatus()),
                 request.getNote(),
                 actorId,
-                principal.getRole()
+                principal.getRole(),
+                request.getNewAgreedPrice()
         ));
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -259,7 +260,7 @@ public class RepairRequestController {
     @PostMapping("/{requestId}/apply")
     @PreAuthorize("hasRole('TECHNICIAN')")
     @Operation(summary = "Thợ nhận việc (TECHNICIAN)",
-            description = "Mô hình \"ai nhận trước được trước\": thợ đầu tiên bấm nhận sẽ được giao "
+            description = "Thợ đầu tiên bấm nhận sẽ được giao "
                     + "việc ngay, giá lấy từ ngân sách khách đã ấn định, khách không cần xác nhận. "
                     + "Nếu yêu cầu vừa bị thợ khác nhận, trả về 409 với errorCode JOB_ALREADY_TAKEN.")
     public ResponseEntity<ApiResponse<AcceptQuotationResponse>> apply(
