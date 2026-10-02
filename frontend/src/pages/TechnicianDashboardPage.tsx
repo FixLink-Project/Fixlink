@@ -290,7 +290,7 @@ export default function TechnicianDashboardPage() {
             {[
               { icon: '✅', label: 'Việc đã hoàn tất', value: profile.completedJobs, badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
               { icon: '⭐', label: 'Điểm đánh giá', value: profile.completedJobs > 0 ? Number(profile.avgRating).toFixed(1) : 'Chưa có', badgeBg: 'bg-amber-50 text-amber-700 border-amber-200' },
-              { icon: '💰', label: 'Số dư ví FixLink', value: formatCurrency(profile.walletBalance), badgeBg: 'bg-teal-50 text-brand border-teal-200' }
+              { icon: '💰', label: 'Số dư ví FixLink', value: formatCurrency(profile.walletBalance), badgeBg: 'bg-blue-50 text-brand border-blue-200' }
             ].map((stat) => (
               <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
                 <dt className="flex items-center justify-between text-xs font-semibold text-slate-500">
@@ -356,7 +356,7 @@ export default function TechnicianDashboardPage() {
             ) : (
               <ul className="divide-y divide-slate-100">
                 {requests.map((request) => (
-                  <li key={request.id} className="py-4 first:pt-0 last:pb-0">
+                  <li key={request.id} className="border-l-4 border-brand/70 py-4 pl-4 first:pt-0 last:pb-0">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <h3 className="font-display font-semibold text-slate-900">{request.serviceType}</h3>
                       <StatusChip status={request.status} label="Yêu cầu mới" />
@@ -466,7 +466,7 @@ export default function TechnicianDashboardPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold text-slate-500">Đang lọc theo:</span>
                     {selectedAreaId ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-0.5 font-medium text-brand border border-teal-200">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 font-medium text-brand border border-blue-200">
                         📍 {allAreas.find((a) => String(a.id) === selectedAreaId)?.name || profile.areas.find((a) => String(a.id) === selectedAreaId)?.name || `Khu vực #${selectedAreaId}`}
                         <button
                           type="button"
@@ -540,44 +540,60 @@ export default function TechnicianDashboardPage() {
 
               {!matchingLoading && matching.length > 0 && (
                 <div className="space-y-3">
-                  {matching.map((req) => (
-                    <div
-                      key={req.id}
-                      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition-all duration-200 hover:border-brand/40 hover:shadow-card"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <Link to={`/tho/yeu-cau/${req.id}`} className="hover:text-brand transition-colors">
-                              <h3 className="font-bold text-slate-900 text-sm sm:text-base hover:text-brand transition-colors">
-                                {req.title}
-                              </h3>
-                            </Link>
+                  {matching.map((req) => {
+                    // Bỏ tiền tố nhãn trong ngoặc vuông ở đầu tiêu đề (vd "[Sắp hết hạn] ",
+                    // "[Nhận việc ngay] ") cho đỡ rối — deadline đã thể hiện ở hàng meta.
+                    const cleanTitle = req.title.replace(/^\s*\[[^\]]*\]\s*/, '');
+                    // Gom meta về một dòng, ngăn cách bằng dấu "·" cho dễ quét mắt.
+                    const meta = [
+                      req.categoryName ? { text: req.categoryName } : null,
+                      req.areaName ? { text: req.areaName } : null,
+                      req.addressLine ? { text: req.addressLine } : null,
+                      req.budgetRef > 0 ? { text: formatCurrency(req.budgetRef), highlight: true } : null,
+                      req.applyDeadline
+                        ? { text: `Hạn ${new Date(req.applyDeadline).toLocaleDateString('vi-VN')}` }
+                        : null
+                    ].filter(Boolean) as { text: string; highlight?: boolean }[];
+
+                    return (
+                      <div
+                        key={req.id}
+                        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition-colors duration-200 hover:border-brand/40"
+                      >
+                        {/* Hàng 1: tiêu đề + 1 badge trạng thái */}
+                        <div className="flex items-start justify-between gap-3">
+                          <Link
+                            to={`/tho/yeu-cau/${req.id}`}
+                            className="min-w-0 flex-1 transition-colors hover:text-brand"
+                          >
+                            <h3 className="truncate font-bold text-slate-900 text-sm sm:text-base">
+                              {cleanTitle}
+                            </h3>
+                          </Link>
+                          <div className="shrink-0">
                             <StatusChip status={req.status} />
                           </div>
-                          <p className="mt-1 text-sm text-slate-600 line-clamp-2">{req.description}</p>
-                          <div className="mt-2.5 flex flex-wrap gap-2 text-xs text-slate-500">
-                            {req.categoryName && (
-                              <span className="rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
-                                📁 {req.categoryName}
-                              </span>
-                            )}
-                            {req.areaName && <span>📍 {req.areaName}</span>}
-                            <span>🏠 {req.addressLine}</span>
-                            {req.budgetRef > 0 && (
-                              <span className="font-semibold text-brand">💰 {formatCurrency(req.budgetRef)}</span>
-                            )}
-                            {req.applyDeadline && (
-                              <span>
-                                ⏰ {new Date(req.applyDeadline).toLocaleDateString('vi-VN')}
-                              </span>
-                            )}
-                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Link to={`/tho/yeu-cau/${req.id}`}>
-                            <Button variant="quiet">Xem chi tiết</Button>
-                          </Link>
+
+                        {/* Hàng 2: mô tả ngắn (tối đa 2 dòng) */}
+                        {req.description && (
+                          <p className="mt-1.5 text-sm text-slate-600 line-clamp-2">{req.description}</p>
+                        )}
+
+                        {/* Hàng 3: meta ngăn cách bằng dấu chấm giữa */}
+                        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+                          {meta.map((m, i) => (
+                            <span key={i} className="flex items-center gap-2">
+                              {i > 0 && <span className="text-slate-300">·</span>}
+                              <span className={m.highlight ? 'font-semibold text-brand' : undefined}>
+                                {m.text}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Chỉ 1 nút hành động chính ở cuối card */}
+                        <div className="mt-3 flex justify-end border-t border-slate-100 pt-3">
                           <Button
                             variant="primary"
                             loading={applyingId === req.id}
@@ -588,8 +604,8 @@ export default function TechnicianDashboardPage() {
                           </Button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 

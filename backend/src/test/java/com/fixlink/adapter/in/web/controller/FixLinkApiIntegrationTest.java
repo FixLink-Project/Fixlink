@@ -690,7 +690,6 @@ class FixLinkApiIntegrationTest {
         com.fixlink.adapter.in.web.dto.request.ForgotPasswordRequest nonExistReq =
                 new com.fixlink.adapter.in.web.dto.request.ForgotPasswordRequest("nonexistent@domain.com");
         mockMvc.perform(post("/api/v1/auth/forgot-password")
-                        .header("Authorization", adminBearer())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(nonExistReq)))
                 .andExpect(status().isOk())
@@ -700,7 +699,6 @@ class FixLinkApiIntegrationTest {
         com.fixlink.adapter.in.web.dto.request.ForgotPasswordRequest validForgot =
                 new com.fixlink.adapter.in.web.dto.request.ForgotPasswordRequest("lethikhach@gmail.com");
         mockMvc.perform(post("/api/v1/auth/forgot-password")
-                        .header("Authorization", adminBearer())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validForgot)))
                 .andExpect(status().isOk())
@@ -723,7 +721,6 @@ class FixLinkApiIntegrationTest {
         com.fixlink.adapter.in.web.dto.request.ResetPasswordRequest mismatchReq =
                 new com.fixlink.adapter.in.web.dto.request.ResetPasswordRequest(validToken, "NewPass@123", "Mismatch@456");
         mockMvc.perform(post("/api/v1/auth/reset-password")
-                        .header("Authorization", adminBearer())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(mismatchReq)))
                 .andExpect(status().isBadRequest())
@@ -733,7 +730,6 @@ class FixLinkApiIntegrationTest {
         com.fixlink.adapter.in.web.dto.request.ResetPasswordRequest fakeTokenReq =
                 new com.fixlink.adapter.in.web.dto.request.ResetPasswordRequest("fake-token-uuid", "NewPass@123", "NewPass@123");
         mockMvc.perform(post("/api/v1/auth/reset-password")
-                        .header("Authorization", adminBearer())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(fakeTokenReq)))
                 .andExpect(status().isBadRequest());
@@ -742,7 +738,6 @@ class FixLinkApiIntegrationTest {
         com.fixlink.adapter.in.web.dto.request.ResetPasswordRequest successReq =
                 new com.fixlink.adapter.in.web.dto.request.ResetPasswordRequest(validToken, "ResetPass@999", "ResetPass@999");
         mockMvc.perform(post("/api/v1/auth/reset-password")
-                        .header("Authorization", adminBearer())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(successReq)))
                 .andExpect(status().isOk())
@@ -750,7 +745,6 @@ class FixLinkApiIntegrationTest {
 
         // 6. Thử tái sử dụng token đã dùng -> 400
         mockMvc.perform(post("/api/v1/auth/reset-password")
-                        .header("Authorization", adminBearer())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(successReq)))
                 .andExpect(status().isBadRequest());
@@ -970,14 +964,14 @@ class FixLinkApiIntegrationTest {
 
     @Test
     @Order(31)
-    @DisplayName("VIỆC 2: mọi endpoint (trừ login) đều cần đăng nhập — master-data 401 khi thiếu token, 200 khi có")
-    void testMasterDataRequiresAuthentication() throws Exception {
-        // Không token -> 401 Unauthorized (đúng yêu cầu "trừ Login, còn lại authen hết")
-        mockMvc.perform(get("/api/v1/categories")).andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/v1/services")).andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/v1/areas")).andExpect(status().isUnauthorized());
+    @DisplayName("Master-data (categories/services/areas) là GET công khai — trang chủ cho khách chưa đăng nhập vẫn đọc được")
+    void testMasterDataIsPublic() throws Exception {
+        // GET master-data mở public để landing page hiển thị cho khách vãng lai.
+        mockMvc.perform(get("/api/v1/categories")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/services")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/areas")).andExpect(status().isOk());
 
-        // Có token hợp lệ -> 200 OK
+        // Có token hợp lệ cũng phải OK.
         String token = adminBearer();
         mockMvc.perform(get("/api/v1/categories").header("Authorization", token)).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/services").header("Authorization", token)).andExpect(status().isOk());
@@ -1122,7 +1116,6 @@ class FixLinkApiIntegrationTest {
         String lastMessage = null;
         for (int i = 0; i < 5; i++) {
             MvcResult result = mockMvc.perform(post("/api/v1/auth/forgot-password")
-                        .header("Authorization", adminBearer())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(existing)))
                     .andExpect(status().isOk())
@@ -1133,7 +1126,6 @@ class FixLinkApiIntegrationTest {
 
         // Email không tồn tại phải cho ra đúng một phản hồi
         MvcResult missingResult = mockMvc.perform(post("/api/v1/auth/forgot-password")
-                        .header("Authorization", adminBearer())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(missing)))
                 .andExpect(status().isOk())
