@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ImageUploadError, MAX_IMAGE_BYTES, isStorageConfigured, validateImage } from '../src/lib/storage';
+import { uploadImageToFirebase } from '../src/lib/firebaseStorage';
 
 function fakeFile(type: string, size: number): File {
   const file = new File(['x'], 'anh.jpg', { type });
@@ -31,5 +32,10 @@ describe('Kiểm tra ảnh trước khi tải lên', () => {
   it('báo chưa cấu hình khi thiếu biến môi trường Firebase', () => {
     // Bộ kiểm thử chạy không có tệp .env nên kho ảnh phải ở trạng thái tắt.
     expect(isStorageConfigured()).toBe(false);
+  });
+
+  it('từ chối upload Firebase khi chưa cấu hình thay vì trả ảnh preview', async () => {
+    const file = fakeFile('image/jpeg', 1024);
+    await expect(uploadImageToFirebase(file)).rejects.toThrow(/Firebase Storage chưa được cấu hình/);
   });
 });
