@@ -114,49 +114,40 @@ export async function uploadImageToFirebase(
   const validationError = validateImageFile(file);
   if (validationError) throw new Error(validationError);
 
-  try {
-    const firebase = await loadFirebaseStorage();
-
-    if (!firebase) {
-      const dataUrl = await compressImageToDataUrl(file);
-      if (typeof onProgress === 'function') onProgress(100);
-      return { url: dataUrl, provider: 'local-preview', path: null, sizeLabel: formatFileSize(file.size) };
-    }
-
-    const { storageModule, storage } = firebase;
-    const path = buildStoragePath(file, folder);
-    const uploadTask = storageModule.uploadBytesResumable(storageModule.ref(storage, path), file, {
-      contentType: file.type,
-      cacheControl: 'public,max-age=31536000'
-    });
-
-    const url = await new Promise<string>((resolve, reject) => {
-      uploadTask.on(
-        'state_changed',
-        (snapshot: any) => {
-          if (typeof onProgress === 'function') {
-            onProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100));
-          }
-        },
-        (error: any) => reject(new Error(`Upload thất bại: ${error.code || error.message}`)),
-        async () => {
-          try {
-            resolve(await storageModule.getDownloadURL(uploadTask.snapshot.ref));
-          } catch (err) {
-            reject(new Error('Không lấy được URL tải ảnh sau khi upload'));
-          }
-        }
-      );
-    });
-
-    return { url, provider: 'firebase-storage', path, sizeLabel: formatFileSize(file.size) };
-  } catch (err) {
-    // Fallback to local Data URL on network / config issues
-    console.warn('Firebase upload fallback to local Data URL:', err);
-    const dataUrl = await compressImageToDataUrl(file);
-    if (typeof onProgress === 'function') onProgress(100);
-    return { url: dataUrl, provider: 'local-preview', path: null, sizeLabel: formatFileSize(file.size) };
+  if (!isFirebaseConfigured()) {
+    throw new Error('Firebase Storage chưa được cấu hình. Hãy điền các biến VITE_FIREBASE_* trong frontend/.env.');
   }
+
+  const firebase = await loadFirebaseStorage();
+  if (!firebase) throw new Error('Không thể khởi tạo Firebase Storage.');
+
+  const { storageModule, storage } = firebase;
+  const path = buildStoragePath(file, folder);
+  const uploadTask = storageModule.uploadBytesResumable(storageModule.ref(storage, path), file, {
+    contentType: file.type,
+    cacheControl: 'public,max-age=31536000'
+  });
+
+  const url = await new Promise<string>((resolve, reject) => {
+    uploadTask.on(
+      'state_changed',
+      (snapshot: any) => {
+        if (typeof onProgress === 'function') {
+          onProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100));
+        }
+      },
+      (error: any) => reject(new Error(`Upload thất bại: ${error.code || error.message}`)),
+      async () => {
+        try {
+          resolve(await storageModule.getDownloadURL(uploadTask.snapshot.ref));
+        } catch (err) {
+          reject(new Error('Không lấy được URL tải ảnh sau khi upload'));
+        }
+      }
+    );
+  });
+
+  return { url, provider: 'firebase-storage', path, sizeLabel: formatFileSize(file.size) };
 }
 
 export async function uploadImagesToFirebase(
