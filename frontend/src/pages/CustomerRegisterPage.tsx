@@ -5,12 +5,8 @@ import AuthLayout from '../components/AuthLayout';
 import Button from '../components/Button';
 import TextField from '../components/TextField';
 import { ApiError, api, toFieldErrors } from '../lib/api';
-
-interface RegisterResult {
-  userId: string;
-  username: string;
-  fullName: string;
-}
+import { HOME_BY_ROLE, useAuth } from '../lib/auth';
+import type { AuthResult } from '../lib/types';
 
 const EMPTY = {
   username: '',
@@ -18,18 +14,18 @@ const EMPTY = {
   confirmPassword: '',
   fullName: '',
   phone: '',
-  email: ''
+  email: '',
+  address: ''
 };
 
-/** Kiểm tra tại chỗ để người dùng biết lỗi trước khi gửi; máy chủ vẫn kiểm lại. */
 function validate(form: typeof EMPTY): Record<string, string> {
   const errors: Record<string, string> = {};
 
   if (form.username.trim().length < 3 || form.username.trim().length > 50) {
     errors.username = 'Tên đăng nhập cần từ 3 đến 50 ký tự.';
   }
-  if (!/^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}$/.test(form.password)) {
-    errors.password = 'Mật khẩu cần ít nhất 8 ký tự, có 1 chữ hoa và 1 ký tự đặc biệt.';
+  if (form.password.length < 6) {
+    errors.password = 'Mật khẩu cần ít nhất 6 ký tự.';
   }
   if (form.confirmPassword !== form.password) {
     errors.confirmPassword = 'Hai lần nhập mật khẩu chưa giống nhau.';
@@ -49,6 +45,7 @@ function validate(form: typeof EMPTY): Record<string, string> {
 
 export default function CustomerRegisterPage() {
   const navigate = useNavigate();
+  const { setSession } = useAuth();
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -76,17 +73,18 @@ export default function CustomerRegisterPage() {
 
     setSubmitting(true);
     try {
-      await api.post<RegisterResult>('/auth/register/customer', {
+      const res = await api.post<AuthResult>('/auth/register', {
         username: form.username.trim(),
         password: form.password,
         fullName: form.fullName.trim(),
         phone: form.phone.trim(),
-        email: form.email.trim()
+        email: form.email.trim(),
+        address: form.address.trim() || null
       });
-      navigate('/login', {
-        replace: true,
-        state: { username: form.username.trim(), justRegistered: true }
-      });
+
+      setSession(res.data);
+
+      navigate(HOME_BY_ROLE.CUSTOMER, { replace: true });
     } catch (err) {
       const fieldErrors = toFieldErrors(err);
       if (Object.keys(fieldErrors).length > 0) {
@@ -105,17 +103,13 @@ export default function CustomerRegisterPage() {
     <AuthLayout
       title="Đăng ký khách hàng"
       description="Tạo tài khoản để đăng yêu cầu sửa chữa và theo dõi tiến độ."
+      wide
       footer={
         <p className="text-sm text-ink-soft">
           Đã có tài khoản?{' '}
           <Link to="/login" className="text-brand-glow hover:text-brand hover:underline">
             Đăng nhập
           </Link>
-          . Bạn là thợ muốn nhận việc?{' '}
-          <Link to="/dang-ky-tho" className="text-brand-glow hover:text-brand hover:underline">
-            Đăng ký làm thợ
-          </Link>
-          .
         </p>
       }
     >
@@ -170,6 +164,16 @@ export default function CustomerRegisterPage() {
         </div>
 
         <TextField
+          label="Địa chỉ"
+          name="address"
+          autoComplete="street-address"
+          value={form.address}
+          error={errors.address}
+          placeholder="Số nhà, đường, quận/huyện, thành phố"
+          onChange={(e) => update('address', e.target.value)}
+        />
+
+        <TextField
           label="Mật khẩu"
           name="password"
           type="password"
@@ -177,7 +181,7 @@ export default function CustomerRegisterPage() {
           required
           value={form.password}
           error={errors.password}
-          hint="Ít nhất 8 ký tự, có 1 chữ hoa và 1 ký tự đặc biệt."
+          hint="Ít nhất 6 ký tự."
           onChange={(e) => update('password', e.target.value)}
         />
 
