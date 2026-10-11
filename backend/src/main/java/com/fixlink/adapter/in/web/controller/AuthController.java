@@ -71,6 +71,23 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", result));
     }
 
+    @PostMapping("/register")
+    @Operation(summary = "Đăng ký tài khoản Khách hàng (công khai)", description = "Khách hàng tự đăng ký tài khoản. Trả về JWT Token để đăng nhập ngay.")
+    public ResponseEntity<ApiResponse<AuthResult>> selfRegisterCustomer(@Valid @RequestBody SelfRegisterCustomerRequest request) {
+        AuthUseCase.SelfRegisterCustomerCommand command = new AuthUseCase.SelfRegisterCustomerCommand(
+                request.getUsername(),
+                request.getPassword(),
+                request.getFullName(),
+                request.getPhone(),
+                request.getEmail(),
+                request.getAddress()
+        );
+
+        AuthResult result = authUseCase.selfRegisterCustomer(command);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created("Đăng ký tài khoản thành công", result));
+    }
+
     @PostMapping("/register/customer")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Đăng ký tài khoản Khách hàng (ADMIN)", description = "ADMIN tạo tài khoản mới cho Khách hàng và khởi tạo Customer Profile.")

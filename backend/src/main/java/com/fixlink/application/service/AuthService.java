@@ -191,6 +191,59 @@ public class AuthService implements AuthUseCase {
 
     @Override
     @Transactional
+    public AuthResult selfRegisterCustomer(SelfRegisterCustomerCommand command) {
+        if (userRepository.existsByUsername(command.username())) {
+            throw new UserAlreadyExistsException("Tên đăng nhập đã tồn tại trong hệ thống");
+        }
+
+        if (customerProfileRepository.existsByPhoneOrEmail(command.phone(), command.email())) {
+            throw new UserAlreadyExistsException("Số điện thoại hoặc Email đã được sử dụng");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        User user = new User(
+                null,
+                command.username(),
+                passwordEncoder.encode(command.password()),
+                Role.CUSTOMER,
+                UserStatus.ACTIVE,
+                now,
+                now
+        );
+        User savedUser = userRepository.save(user);
+
+        CustomerProfile profile = new CustomerProfile(
+                savedUser.getId(),
+                command.fullName(),
+                command.phone(),
+                command.email(),
+                null,
+                "STANDARD",
+                now,
+                now
+        );
+        customerProfileRepository.save(profile);
+
+        String accessToken = tokenProvider.generateAccessToken(savedUser.getId(), savedUser.getUsername(), Role.CUSTOMER);
+        String refreshToken = tokenProvider.generateRefreshToken(savedUser.getId(), savedUser.getUsername());
+        long expiresIn = tokenProvider.getAccessTokenExpirationSeconds();
+
+        UserInfo userInfo = new UserInfo(
+                "usr_" + savedUser.getId(),
+                savedUser.getUsername(),
+                Role.CUSTOMER,
+                UserStatus.ACTIVE,
+                command.fullName(),
+                null,
+                true,
+                VerificationStatus.APPROVED
+        );
+
+        return new AuthResult(accessToken, refreshToken, "Bearer", expiresIn, userInfo);
+    }
+
+    @Override
+    @Transactional
     public TechnicianRegisterResult registerTechnician(RegisterTechnicianCommand command) {
         if (userRepository.existsByUsername(command.username())) {
             throw new UserAlreadyExistsException("Tên đăng nhập đã tồn tại trong hệ thống");

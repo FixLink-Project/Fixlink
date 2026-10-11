@@ -75,8 +75,10 @@ export default function LoginPage() {
       description="Dùng chung một tài khoản cho khách hàng, thợ và quản trị viên."
       footer={
         <p className="text-sm text-ink-soft">
-          Chưa có tài khoản? Vui lòng liên hệ quản trị viên để được cấp tài khoản
-          khách hàng hoặc thợ.
+          Chưa có tài khoản?{' '}
+          <Link to="/dang-ky" className="text-brand-glow hover:text-brand hover:underline">
+            Đăng ký ngay
+          </Link>
         </p>
       }
     >

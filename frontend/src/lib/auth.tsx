@@ -27,6 +27,7 @@ interface AuthContextValue {
   signIn: (username: string, password: string) => Promise<AuthUser>;
   signOut: () => void;
   updateUser: (patch: Partial<AuthUser>) => void;
+  setSession: (result: AuthResult) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -71,6 +72,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persist(null);
   }, [persist]);
 
+  const setSession = useCallback(
+    (result: AuthResult) => {
+      setToken(result.accessToken);
+      try {
+        localStorage.setItem(REFRESH_KEY, result.refreshToken);
+      } catch {
+        // private browsing
+      }
+      persist(result.user);
+    },
+    [persist]
+  );
+
   const updateUser = useCallback(
     (patch: Partial<AuthUser>) => {
       setUser((current) => {
@@ -88,8 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ user, signIn, signOut, updateUser }),
-    [user, signIn, signOut, updateUser]
+    () => ({ user, signIn, signOut, updateUser, setSession }),
+    [user, signIn, signOut, updateUser, setSession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -94,7 +94,10 @@ public class SecurityConfig {
                                 "/api/v1/areas/**"
                         ).permitAll()
 
-                        // Tạo tài khoản khách/thợ giờ do ADMIN thực hiện (không self-register).
+                        // Khách hàng tự đăng ký tài khoản (public).
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
+
+                        // Tạo tài khoản qua admin dashboard (chỉ ADMIN).
                         .requestMatchers("/api/v1/auth/register/**").hasRole("ADMIN")
 
                         // Quên/đặt lại mật khẩu: người dùng chưa đăng nhập được mới cần, nên mở

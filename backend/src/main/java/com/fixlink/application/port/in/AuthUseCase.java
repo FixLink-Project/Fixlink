@@ -12,11 +12,15 @@ public interface AuthUseCase {
 
     CustomerRegisterResult registerCustomer(RegisterCustomerCommand command);
 
+    AuthResult selfRegisterCustomer(SelfRegisterCustomerCommand command);
+
     TechnicianRegisterResult registerTechnician(RegisterTechnicianCommand command);
 
     record LoginCommand(String username, String password, String deviceToken) {}
 
     record RegisterCustomerCommand(String username, String password, String fullName, String phone, String email) {}
+
+    record SelfRegisterCustomerCommand(String username, String password, String fullName, String phone, String email, String address) {}
 
     record RegisterTechnicianCommand(
             String username,
