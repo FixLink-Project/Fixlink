@@ -8,4 +8,6 @@ public interface TechnicianProfileRepositoryPort {
     Optional<TechnicianProfile> findByUserId(Long userId);
     TechnicianProfile save(TechnicianProfile profile);
     boolean existsByPhoneOrEmailOrCitizenId(String phone, String email, String citizenId);
+    boolean existsByPhone(String phone);
+    boolean existsByEmail(String email);
 }

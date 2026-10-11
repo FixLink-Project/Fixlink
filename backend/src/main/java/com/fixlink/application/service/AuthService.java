@@ -22,8 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+import com.fixlink.application.port.in.RegisterTechnicianUseCase;
+
 @Service
-public class AuthService implements AuthUseCase {
+public class AuthService implements AuthUseCase, RegisterTechnicianUseCase, com.fixlink.domain.usecase.RegisterTechnicianUseCase {
 
     private final UserRepositoryPort userRepository;
     private final CustomerProfileRepositoryPort customerProfileRepository;
@@ -73,12 +75,26 @@ public class AuthService implements AuthUseCase {
             throw new InvalidCredentialsException("Tên đăng nhập hoặc mật khẩu không chính xác");
         }
 
-        // Kiểm tra tài khoản bị khóa hoặc ngừng hoạt động
+        // Kiểm tra tài khoản bị khóa hoặc ngừng hoạt động hoặc chờ duyệt
         if (user.isBlocked()) {
             throw new AccountBlockedException("Tài khoản của bạn đã bị khóa do vi phạm chính sách");
         }
         if (user.isInactive()) {
             throw new AccountInactiveException("Tài khoản của bạn đang ở trạng thái ngừng hoạt động (Inactive). Vui lòng liên hệ quản trị viên.");
+        }
+        if (user.getStatus() == UserStatus.PENDING_APPROVAL) {
+            throw new com.fixlink.domain.exception.DomainException(
+                    "ACCOUNT_PENDING_APPROVAL",
+                    "Tài khoản của bạn đang chờ quản trị viên xét duyệt. Vui lòng quay lại sau.",
+                    403
+            );
+        }
+        if (user.getStatus() == UserStatus.REJECTED) {
+            throw new com.fixlink.domain.exception.DomainException(
+                    "ACCOUNT_REJECTED",
+                    "Tài khoản của bạn đã bị từ chối phê duyệt. Vui lòng liên hệ quản trị viên.",
+                    403
+            );
         }
 
         if (!passwordEncoder.matches(command.password(), user.getPasswordHash())) {
@@ -244,22 +260,32 @@ public class AuthService implements AuthUseCase {
 
     @Override
     @Transactional
-    public TechnicianRegisterResult registerTechnician(RegisterTechnicianCommand command) {
-        if (userRepository.existsByUsername(command.username())) {
-            throw new UserAlreadyExistsException("Tên đăng nhập đã tồn tại trong hệ thống");
+    public AuthUseCase.TechnicianRegisterResult registerTechnician(AuthUseCase.RegisterTechnicianCommand command) {
+        String username = (command.username() != null && !command.username().isBlank())
+                ? command.username().trim()
+                : (command.phone() != null ? command.phone().trim() : "");
+
+        if (userRepository.existsByUsername(username)) {
+            throw new UserAlreadyExistsException("Tên đăng nhập hoặc số điện thoại đã tồn tại trong hệ thống");
         }
 
-        if (technicianProfileRepository.existsByPhoneOrEmailOrCitizenId(command.phone(), command.email(), command.citizenId())) {
-            throw new UserAlreadyExistsException("Số điện thoại, Email hoặc CCCD đã được sử dụng");
+        if (command.citizenId() != null && !command.citizenId().isBlank()) {
+            if (technicianProfileRepository.existsByPhoneOrEmailOrCitizenId(command.phone(), command.email(), command.citizenId())) {
+                throw new UserAlreadyExistsException("Số điện thoại, Email hoặc CCCD đã được sử dụng");
+            }
+        } else {
+            if (technicianProfileRepository.existsByPhone(command.phone()) || technicianProfileRepository.existsByEmail(command.email())) {
+                throw new UserAlreadyExistsException("Số điện thoại hoặc Email đã được sử dụng");
+            }
         }
 
         LocalDateTime now = LocalDateTime.now();
         User user = new User(
                 null,
-                command.username(),
+                username,
                 passwordEncoder.encode(command.password()),
                 Role.TECHNICIAN,
-                UserStatus.PENDING, // Chờ duyệt KYC
+                UserStatus.PENDING_APPROVAL, // Chờ duyệt bởi Admin
                 now,
                 now
         );
@@ -270,10 +296,12 @@ public class AuthService implements AuthUseCase {
         profile.setFullName(command.fullName());
         profile.setPhone(command.phone());
         profile.setEmail(command.email());
+        profile.setAddress(command.address());
+        profile.setSpecialization(command.specialization());
         profile.setCitizenId(command.citizenId());
         profile.setIdCardFrontUrl(command.idCardFrontUrl());
         profile.setIdCardBackUrl(command.idCardBackUrl());
-        profile.setBio(command.bio());
+        profile.setBio(command.bio() != null ? command.bio() : command.specialization());
         profile.setYearsExperience(command.yearsExperience() != null ? command.yearsExperience() : 0);
         profile.setVerificationStatus(VerificationStatus.PENDING);
         profile.setCreatedAt(now);
@@ -281,12 +309,39 @@ public class AuthService implements AuthUseCase {
 
         technicianProfileRepository.save(profile);
 
-        return new TechnicianRegisterResult(
+        return new AuthUseCase.TechnicianRegisterResult(
                 "usr_" + savedUser.getId(),
                 savedUser.getUsername(),
                 savedUser.getRole(),
                 profile.getVerificationStatus(),
                 savedUser.getCreatedAt()
+        );
+    }
+
+    @Override
+    @Transactional
+    public RegisterTechnicianUseCase.TechnicianRegisterResult registerTechnician(RegisterTechnicianUseCase.RegisterTechnicianCommand command) {
+        AuthUseCase.TechnicianRegisterResult res = registerTechnician(new AuthUseCase.RegisterTechnicianCommand(
+                command.username(),
+                command.password(),
+                command.fullName(),
+                command.phone(),
+                command.email(),
+                command.address(),
+                command.specialization(),
+                command.citizenId(),
+                command.idCardFrontUrl(),
+                command.idCardBackUrl(),
+                command.bio(),
+                command.yearsExperience()
+        ));
+        return new RegisterTechnicianUseCase.TechnicianRegisterResult(
+                res.userId(),
+                res.username(),
+                res.role(),
+                UserStatus.PENDING_APPROVAL,
+                res.verificationStatus(),
+                res.createdAt()
         );
     }
 }

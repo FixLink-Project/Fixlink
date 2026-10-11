@@ -11,8 +11,6 @@ import lombok.Setter;
 @Setter
 public class RegisterTechnicianRequest {
 
-    @NotBlank(message = "Tên đăng nhập không được để trống")
-    @Size(min = 3, max = 50, message = "Tên đăng nhập từ 3 đến 50 ký tự")
     private String username;
 
     @NotBlank(message = "Mật khẩu không được để trống")
@@ -34,8 +32,10 @@ public class RegisterTechnicianRequest {
     @Email(message = "Email không hợp lệ")
     private String email;
 
-    @NotBlank(message = "Số CCCD không được để trống")
-    @Size(min = 9, max = 12, message = "Số CCCD phải có từ 9 đến 12 chữ số")
+    private String address;
+
+    private String specialization;
+
     private String citizenId;
 
     private String idCardFrontUrl;

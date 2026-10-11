@@ -23,6 +23,7 @@ const LABELS: Record<string, { label: string; tone: Tone }> = {
   ACTIVE: { label: 'Đang hoạt động', tone: 'success' },
   INACTIVE: { label: 'Ngừng hoạt động', tone: 'neutral' },
   BLOCKED: { label: 'Bị khoá', tone: 'danger' },
+  PENDING_APPROVAL: { label: 'Chờ duyệt', tone: 'pending' },
   // Trạng thái yêu cầu sửa chữa
   DRAFT: { label: 'Bản nháp', tone: 'neutral' },
   OPEN: { label: 'Đang chờ thợ nhận', tone: 'pending' },

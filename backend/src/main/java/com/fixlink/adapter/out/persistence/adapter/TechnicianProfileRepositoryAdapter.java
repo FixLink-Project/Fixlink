@@ -43,6 +43,8 @@ public class TechnicianProfileRepositoryAdapter implements TechnicianProfileRepo
             entity.setIdCardFrontUrl(profile.getIdCardFrontUrl());
             entity.setIdCardBackUrl(profile.getIdCardBackUrl());
             entity.setBio(profile.getBio());
+            entity.setAddress(profile.getAddress());
+            entity.setSpecialization(profile.getSpecialization());
             entity.setYearsExperience(profile.getYearsExperience());
             entity.setVerificationStatus(profile.getVerificationStatus());
             entity.setVerifiedBy(profile.getVerifiedBy() != null ? String.valueOf(profile.getVerifiedBy()) : null);
@@ -65,5 +67,15 @@ public class TechnicianProfileRepositoryAdapter implements TechnicianProfileRepo
     @Override
     public boolean existsByPhoneOrEmailOrCitizenId(String phone, String email, String citizenId) {
         return technicianProfileRepository.existsByPhoneOrEmailOrCitizenId(phone, email, citizenId);
+    }
+
+    @Override
+    public boolean existsByPhone(String phone) {
+        return technicianProfileRepository.existsByPhone(phone);
+    }
+
+    @Override
+    public boolean existsByEmail(String email) {
+        return technicianProfileRepository.existsByEmail(email);
     }
 }

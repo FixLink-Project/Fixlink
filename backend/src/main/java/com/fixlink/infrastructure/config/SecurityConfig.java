@@ -97,6 +97,9 @@ public class SecurityConfig {
                         // Khách hàng tự đăng ký tài khoản (public).
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
 
+                        // Thợ tự đăng ký tài khoản (public).
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register/technician").permitAll()
+
                         // Tạo tài khoản qua admin dashboard (chỉ ADMIN).
                         .requestMatchers("/api/v1/auth/register/**").hasRole("ADMIN")
 

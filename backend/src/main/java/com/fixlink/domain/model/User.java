@@ -42,6 +42,14 @@ public class User {
         return this.status == UserStatus.INACTIVE;
     }
 
+    public boolean isPendingApproval() {
+        return this.status == UserStatus.PENDING_APPROVAL;
+    }
+
+    public boolean isRejected() {
+        return this.status == UserStatus.REJECTED;
+    }
+
     // Getters and Setters
     public Long getId() {
         return id;

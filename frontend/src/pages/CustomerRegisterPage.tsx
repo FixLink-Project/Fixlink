@@ -105,12 +105,20 @@ export default function CustomerRegisterPage() {
       description="Tạo tài khoản để đăng yêu cầu sửa chữa và theo dõi tiến độ."
       wide
       footer={
-        <p className="text-sm text-ink-soft">
-          Đã có tài khoản?{' '}
-          <Link to="/login" className="text-brand-glow hover:text-brand hover:underline">
-            Đăng nhập
-          </Link>
-        </p>
+        <div className="space-y-2 text-center text-sm text-ink-soft">
+          <p>
+            Đã có tài khoản?{' '}
+            <Link to="/login" className="text-brand-glow hover:text-brand hover:underline">
+              Đăng nhập
+            </Link>
+          </p>
+          <p>
+            Bạn là thợ sửa chữa?{' '}
+            <Link to="/dang-ky-tho" className="font-medium text-brand-glow hover:text-brand hover:underline">
+              Đăng ký tại đây
+            </Link>
+          </p>
+        </div>
       }
     >
       <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
