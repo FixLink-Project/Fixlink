@@ -28,12 +28,29 @@ public interface AuthUseCase {
             String fullName,
             String phone,
             String email,
+            String address,
+            String specialization,
             String citizenId,
             String idCardFrontUrl,
             String idCardBackUrl,
             String bio,
             Integer yearsExperience
-    ) {}
+    ) {
+        public RegisterTechnicianCommand(
+                String username,
+                String password,
+                String fullName,
+                String phone,
+                String email,
+                String citizenId,
+                String idCardFrontUrl,
+                String idCardBackUrl,
+                String bio,
+                Integer yearsExperience
+        ) {
+            this(username, password, fullName, phone, email, null, null, citizenId, idCardFrontUrl, idCardBackUrl, bio, yearsExperience);
+        }
+    }
 
     record AuthResult(
             String accessToken,

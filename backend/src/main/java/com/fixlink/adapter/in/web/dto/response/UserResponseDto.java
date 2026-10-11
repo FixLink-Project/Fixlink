@@ -59,6 +59,8 @@ public class UserResponseDto {
             tDto.setIdCardFrontUrl(user.getTechnicianProfile().getIdCardFrontUrl());
             tDto.setIdCardBackUrl(user.getTechnicianProfile().getIdCardBackUrl());
             tDto.setBio(user.getTechnicianProfile().getBio());
+            tDto.setAddress(user.getTechnicianProfile().getAddress());
+            tDto.setSpecialization(user.getTechnicianProfile().getSpecialization());
             dto.setTechnicianProfile(tDto);
         }
 
@@ -85,6 +87,8 @@ public class UserResponseDto {
         private String email;
         private String citizenId;
         private String avatarUrl;
+        private String address;
+        private String specialization;
         private VerificationStatus verificationStatus;
         private Integer yearsExperience;
         private BigDecimal avgRating;

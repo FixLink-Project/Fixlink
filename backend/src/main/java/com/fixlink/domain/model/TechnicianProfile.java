@@ -16,6 +16,8 @@ public class TechnicianProfile {
     private String idCardFrontUrl;
     private String idCardBackUrl;
     private String bio;
+    private String address;
+    private String specialization;
     private Integer yearsExperience;
     private VerificationStatus verificationStatus;
     private Long verifiedBy;
@@ -201,6 +203,22 @@ public class TechnicianProfile {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getSpecialization() {
+        return specialization;
+    }
+
+    public void setSpecialization(String specialization) {
+        this.specialization = specialization;
     }
 
     public LocalDateTime getUpdatedAt() {

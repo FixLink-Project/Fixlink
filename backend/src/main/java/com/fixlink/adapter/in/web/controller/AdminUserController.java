@@ -111,6 +111,22 @@ public class AdminUserController {
         return ResponseEntity.ok(ApiResponse.success("Cập nhật trạng thái người dùng thành công", null));
     }
 
+    @PutMapping("/users/{userId}/approve")
+    @Operation(summary = "Phê duyệt tài khoản Thợ", description = "Admin duyệt tài khoản Thợ đang chờ duyệt: PENDING_APPROVAL -> ACTIVE.")
+    public ResponseEntity<ApiResponse<UserResponseDto>> approveUser(@PathVariable String userId) {
+        Long parsedUserId = parseUserId(userId);
+        User user = userManagementUseCase.approveUser(parsedUserId);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt tài khoản thành công", UserResponseDto.fromDomain(user)));
+    }
+
+    @PutMapping("/users/{userId}/reject")
+    @Operation(summary = "Từ chối tài khoản Thợ", description = "Admin từ chối tài khoản Thợ: PENDING_APPROVAL -> REJECTED.")
+    public ResponseEntity<ApiResponse<UserResponseDto>> rejectUser(@PathVariable String userId) {
+        Long parsedUserId = parseUserId(userId);
+        User user = userManagementUseCase.rejectUser(parsedUserId);
+        return ResponseEntity.ok(ApiResponse.success("Từ chối tài khoản thành công", UserResponseDto.fromDomain(user)));
+    }
+
     private Long parseUserId(String userIdStr) {
         if (userIdStr.startsWith("usr_")) {
             return Long.parseLong(userIdStr.substring(4));

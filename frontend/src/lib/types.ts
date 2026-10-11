@@ -44,7 +44,7 @@ export interface ServiceArea {
 }
 
 export type Role = 'CUSTOMER' | 'TECHNICIAN' | 'STAFF' | 'ADMIN';
-export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'BLOCKED' | 'PENDING';
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'BLOCKED' | 'PENDING' | 'PENDING_APPROVAL' | 'REJECTED';
 export type VerificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface AuthUser {

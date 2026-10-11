@@ -87,6 +87,8 @@ public class UserMapper {
         domain.setIdCardFrontUrl(entity.getIdCardFrontUrl());
         domain.setIdCardBackUrl(entity.getIdCardBackUrl());
         domain.setBio(entity.getBio());
+        domain.setAddress(entity.getAddress());
+        domain.setSpecialization(entity.getSpecialization());
         domain.setYearsExperience(entity.getYearsExperience());
         domain.setVerificationStatus(entity.getVerificationStatus());
         if (entity.getVerifiedBy() != null && entity.getVerifiedBy().matches("\\d+")) {
@@ -117,6 +119,8 @@ public class UserMapper {
         entity.setIdCardFrontUrl(domain.getIdCardFrontUrl());
         entity.setIdCardBackUrl(domain.getIdCardBackUrl());
         entity.setBio(domain.getBio());
+        entity.setAddress(domain.getAddress());
+        entity.setSpecialization(domain.getSpecialization());
         entity.setYearsExperience(domain.getYearsExperience());
         entity.setVerificationStatus(domain.getVerificationStatus());
         entity.setVerifiedBy(domain.getVerifiedBy() != null ? String.valueOf(domain.getVerifiedBy()) : null);

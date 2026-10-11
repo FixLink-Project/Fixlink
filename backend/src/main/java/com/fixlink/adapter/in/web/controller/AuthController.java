@@ -7,8 +7,6 @@ import com.fixlink.application.port.in.AuthUseCase.AuthResult;
 import com.fixlink.application.port.in.AuthUseCase.CustomerRegisterResult;
 import com.fixlink.application.port.in.AuthUseCase.LoginCommand;
 import com.fixlink.application.port.in.AuthUseCase.RegisterCustomerCommand;
-import com.fixlink.application.port.in.AuthUseCase.RegisterTechnicianCommand;
-import com.fixlink.application.port.in.AuthUseCase.TechnicianRegisterResult;
 import com.fixlink.domain.model.User;
 import com.fixlink.infrastructure.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthUseCase authUseCase;
+    private final RegisterTechnicianUseCase registerTechnicianUseCase;
     private final UserManagementUseCase userManagementUseCase;
     private final ChangePasswordUseCase changePasswordUseCase;
     private final PasswordResetUseCase passwordResetUseCase;
@@ -33,12 +32,14 @@ public class AuthController {
 
     public AuthController(
             AuthUseCase authUseCase,
+            RegisterTechnicianUseCase registerTechnicianUseCase,
             UserManagementUseCase userManagementUseCase,
             ChangePasswordUseCase changePasswordUseCase,
             PasswordResetUseCase passwordResetUseCase,
             SessionUseCase sessionUseCase
     ) {
         this.authUseCase = authUseCase;
+        this.registerTechnicianUseCase = registerTechnicianUseCase;
         this.userManagementUseCase = userManagementUseCase;
         this.changePasswordUseCase = changePasswordUseCase;
         this.passwordResetUseCase = passwordResetUseCase;
@@ -106,15 +107,16 @@ public class AuthController {
     }
 
     @PostMapping("/register/technician")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Đăng ký tài khoản Thợ / Kỹ thuật viên (ADMIN)", description = "ADMIN tạo tài khoản Thợ kèm thông tin hồ sơ & CCCD để duyệt.")
-    public ResponseEntity<ApiResponse<TechnicianRegisterResult>> registerTechnician(@Valid @RequestBody RegisterTechnicianRequest request) {
-        RegisterTechnicianCommand command = new RegisterTechnicianCommand(
+    @Operation(summary = "Đăng ký tài khoản Thợ / Kỹ thuật viên (Công khai)", description = "Thợ tự đăng ký tài khoản công khai. Tài khoản ở trạng thái PENDING_APPROVAL chờ Admin xét duyệt.")
+    public ResponseEntity<ApiResponse<RegisterTechnicianUseCase.TechnicianRegisterResult>> registerTechnician(@Valid @RequestBody RegisterTechnicianRequest request) {
+        RegisterTechnicianUseCase.RegisterTechnicianCommand command = new RegisterTechnicianUseCase.RegisterTechnicianCommand(
                 request.getUsername(),
                 request.getPassword(),
                 request.getFullName(),
                 request.getPhone(),
                 request.getEmail(),
+                request.getAddress(),
+                request.getSpecialization(),
                 request.getCitizenId(),
                 request.getIdCardFrontUrl(),
                 request.getIdCardBackUrl(),
@@ -122,9 +124,9 @@ public class AuthController {
                 request.getYearsExperience()
         );
 
-        TechnicianRegisterResult result = authUseCase.registerTechnician(command);
+        RegisterTechnicianUseCase.TechnicianRegisterResult result = registerTechnicianUseCase.registerTechnician(command);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.created("Đăng ký thành công. Hồ sơ đang chờ Admin xác minh", result));
+                .body(ApiResponse.created("Đăng ký thành công, vui lòng chờ admin duyệt", result));
     }
 
     // =========================================================================

@@ -37,7 +37,7 @@ public class TechnicianProfileJpaEntity extends BaseJpaEntity implements Persist
     @Column(name = "email", length = 100, nullable = false, unique = true)
     private String email;
 
-    @Column(name = "citizen_id", length = 20, nullable = false, unique = true)
+    @Column(name = "citizen_id", length = 20, unique = true)
     private String citizenId;
 
     @Column(name = "id_card_front_url", length = 500)
@@ -48,6 +48,12 @@ public class TechnicianProfileJpaEntity extends BaseJpaEntity implements Persist
 
     @Column(name = "avatar_url", length = 255)
     private String avatarUrl;
+
+    @Column(name = "address", length = 255)
+    private String address;
+
+    @Column(name = "specialization", length = 100)
+    private String specialization;
 
     @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;

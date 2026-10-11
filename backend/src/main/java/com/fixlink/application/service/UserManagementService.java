@@ -47,6 +47,40 @@ public class UserManagementService implements UserManagementUseCase, TechnicianV
 
     @Override
     @Transactional
+    public User approveUser(Long userId) {
+        User user = getUserById(userId);
+        user.setStatus(UserStatus.ACTIVE);
+        User savedUser = userRepository.save(user);
+
+        technicianProfileRepository.findByUserId(userId).ifPresent(profile -> {
+            profile.setVerificationStatus(VerificationStatus.APPROVED);
+            profile.setVerifiedAt(java.time.LocalDateTime.now());
+            technicianProfileRepository.save(profile);
+            savedUser.setTechnicianProfile(profile);
+        });
+
+        return savedUser;
+    }
+
+    @Override
+    @Transactional
+    public User rejectUser(Long userId) {
+        User user = getUserById(userId);
+        user.setStatus(UserStatus.REJECTED);
+        User savedUser = userRepository.save(user);
+
+        technicianProfileRepository.findByUserId(userId).ifPresent(profile -> {
+            profile.setVerificationStatus(VerificationStatus.REJECTED);
+            profile.setVerifiedAt(java.time.LocalDateTime.now());
+            technicianProfileRepository.save(profile);
+            savedUser.setTechnicianProfile(profile);
+        });
+
+        return savedUser;
+    }
+
+    @Override
+    @Transactional
     public VerificationResult verifyTechnician(VerifyTechnicianCommand command) {
         User user = getUserById(command.technicianUserId());
 

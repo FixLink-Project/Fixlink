@@ -4,22 +4,31 @@ import Alert from '../components/Alert';
 import AuthLayout from '../components/AuthLayout';
 import Button from '../components/Button';
 import FormSection from '../components/FormSection';
-import ImageUploadField from '../components/ImageUploadField';
 import StatusChip from '../components/StatusChip';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
 import { ApiError, api, toFieldErrors } from '../lib/api';
 
+const SPECIALIZATIONS = [
+  { value: 'Điện tử', label: 'Điện tử (Tivi, Loa, Amply, Bo mạch, Thiết bị âm thanh...)' },
+  { value: 'Điện lạnh', label: 'Điện lạnh (Máy lạnh, Tủ lạnh, Máy giặt, Máy sấy...)' },
+  { value: 'Điện dân dụng', label: 'Điện dân dụng (Hệ thống điện nhà, Công tắc, Đèn chiếu sáng...)' },
+  { value: 'Đồ gia dụng', label: 'Đồ gia dụng (Nồi cơm, Lò vi sóng, Bếp từ, Quạt điện, Máy lọc nước...)' },
+  { value: 'Cấp thoát nước', label: 'Cấp thoát nước (Ống nước, Vòi sen, Bơm nước, Thiết bị vệ sinh...)' },
+  { value: 'Khóa cửa & Cổng tự động', label: 'Khóa cửa & Cổng tự động (Khóa vân tay, Khóa cơ, Cổng từ...)' },
+  { value: 'Thiết bị văn phòng', label: 'Thiết bị văn phòng (Máy in, Máy tính, Laptop, Mạng nội bộ...)' },
+  { value: 'Khác', label: 'Chuyên môn khác' }
+];
+
 const EMPTY = {
-  username: '',
+  fullName: '',
+  email: '',
+  phone: '',
   password: '',
   confirmPassword: '',
-  fullName: '',
-  phone: '',
-  email: '',
+  address: '',
+  specialization: '',
   citizenId: '',
-  idCardFrontUrl: '',
-  idCardBackUrl: '',
   yearsExperience: '',
   bio: ''
 };
@@ -27,26 +36,35 @@ const EMPTY = {
 function validate(form: typeof EMPTY): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  if (form.username.trim().length < 3 || form.username.trim().length > 50) {
-    errors.username = 'Tên đăng nhập cần từ 3 đến 50 ký tự.';
-  }
-  if (!/^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}$/.test(form.password)) {
-    errors.password = 'Mật khẩu cần ít nhất 8 ký tự, có 1 chữ hoa và 1 ký tự đặc biệt.';
-  }
-  if (form.confirmPassword !== form.password) {
-    errors.confirmPassword = 'Hai lần nhập mật khẩu chưa giống nhau.';
-  }
   if (!form.fullName.trim()) {
-    errors.fullName = 'Hãy nhập họ và tên đúng như trên căn cước.';
+    errors.fullName = 'Họ và tên không được để trống.';
   }
-  if (!/^0[35789][0-9]{8}$/.test(form.phone.trim())) {
-    errors.phone = 'Số điện thoại cần 10 chữ số, bắt đầu bằng 03, 05, 07, 08 hoặc 09.';
-  }
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) {
+  if (!form.email.trim()) {
+    errors.email = 'Email không được để trống.';
+  } else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) {
     errors.email = 'Email chưa đúng định dạng.';
   }
-  if (!/^[0-9]{9,12}$/.test(form.citizenId.trim())) {
-    errors.citizenId = 'Số căn cước gồm 9 đến 12 chữ số.';
+  if (!form.phone.trim()) {
+    errors.phone = 'Số điện thoại không được để trống.';
+  } else if (!/^0[35789][0-9]{8}$/.test(form.phone.trim())) {
+    errors.phone = 'Số điện thoại cần 10 chữ số, bắt đầu bằng 03, 05, 07, 08 hoặc 09.';
+  }
+  if (!form.password) {
+    errors.password = 'Mật khẩu không được để trống.';
+  } else if (!/^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}$/.test(form.password)) {
+    errors.password = 'Mật khẩu cần tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ in hoa và 1 ký tự đặc biệt.';
+  }
+  if (form.confirmPassword !== form.password) {
+    errors.confirmPassword = 'Hai lần nhập mật khẩu chưa trùng khớp.';
+  }
+  if (!form.address.trim()) {
+    errors.address = 'Địa chỉ làm việc / khu vực hoạt động không được để trống.';
+  }
+  if (!form.specialization) {
+    errors.specialization = 'Vui lòng chọn lĩnh vực chuyên môn chính.';
+  }
+  if (form.citizenId.trim() && !/^[0-9]{9,12}$/.test(form.citizenId.trim())) {
+    errors.citizenId = 'Số CCCD gồm từ 9 đến 12 chữ số.';
   }
   if (form.yearsExperience.trim()) {
     const years = Number(form.yearsExperience);
@@ -64,6 +82,7 @@ export default function TechnicianRegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   function update(field: keyof typeof EMPTY, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -88,21 +107,18 @@ export default function TechnicianRegisterPage() {
     setSubmitting(true);
     try {
       await api.post('/auth/register/technician', {
-        username: form.username.trim(),
-        password: form.password,
         fullName: form.fullName.trim(),
-        phone: form.phone.trim(),
         email: form.email.trim(),
-        citizenId: form.citizenId.trim(),
-        idCardFrontUrl: form.idCardFrontUrl.trim() || null,
-        idCardBackUrl: form.idCardBackUrl.trim() || null,
+        phone: form.phone.trim(),
+        password: form.password,
+        address: form.address.trim(),
+        specialization: form.specialization,
+        citizenId: form.citizenId.trim() || null,
         bio: form.bio.trim() || null,
         yearsExperience: form.yearsExperience.trim() ? Number(form.yearsExperience) : null
       });
-      navigate('/login', {
-        replace: true,
-        state: { username: form.username.trim(), justRegistered: true }
-      });
+
+      setSuccess(true);
     } catch (err) {
       const fieldErrors = toFieldErrors(err);
       if (Object.keys(fieldErrors).length > 0) {
@@ -117,85 +133,102 @@ export default function TechnicianRegisterPage() {
     }
   }
 
+  if (success) {
+    return (
+      <AuthLayout
+        wide
+        title="Đăng ký thành công!"
+        description="Tài khoản thợ của bạn đã được ghi nhận vào hệ thống FixLink."
+      >
+        <div className="mt-6 space-y-6 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-xs">
+            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 shadow-xs">
+            <h3 className="font-display text-lg font-bold text-emerald-900">
+              Đăng ký thành công! Tài khoản của bạn sẽ được admin xét duyệt.
+            </h3>
+            <p className="mt-2 text-sm text-emerald-800 leading-relaxed">
+              Hồ sơ kỹ thuật viên của bạn đang ở trạng thái <strong className="font-semibold">Chờ duyệt (PENDING_APPROVAL)</strong>.
+              Ban quản trị hệ thống sẽ kiểm tra và phê duyệt trong thời gian sớm nhất.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-left text-sm text-slate-600 space-y-2">
+            <p className="font-semibold text-slate-800">Thông tin tài khoản đã đăng ký:</p>
+            <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
+              <div><span className="text-slate-400">Họ và tên:</span> <span className="font-medium text-slate-900">{form.fullName}</span></div>
+              <div><span className="text-slate-400">Số điện thoại:</span> <span className="font-medium text-slate-900">{form.phone}</span></div>
+              <div><span className="text-slate-400">Email:</span> <span className="font-medium text-slate-900">{form.email}</span></div>
+              <div><span className="text-slate-400">Chuyên môn:</span> <span className="font-medium text-slate-900">{form.specialization}</span></div>
+              <div className="col-span-2"><span className="text-slate-400">Khu vực hoạt động:</span> <span className="font-medium text-slate-900">{form.address}</span></div>
+            </div>
+            <p className="text-xs text-slate-500 pt-2 italic">
+              * Lưu ý: Trong lúc chờ duyệt, bạn chưa thể đăng nhập vào ứng dụng. Sau khi admin phê duyệt, bạn có thể đăng nhập bằng Số điện thoại và Mật khẩu vừa đặt.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row pt-2">
+            <Button fullWidth onClick={() => navigate('/login')}>
+              Về trang đăng nhập
+            </Button>
+            <Button fullWidth variant="secondary" onClick={() => navigate('/')}>
+              Về trang chủ
+            </Button>
+          </div>
+        </div>
+      </AuthLayout>
+    );
+  }
+
   return (
     <AuthLayout
       wide
       title="Đăng ký làm thợ kỹ thuật"
-      description="Gia nhập mạng lưới thợ điện tử FixLink. Khai đúng thông tin để được duyệt nhanh nhất."
+      description="Gia nhập mạng lưới thợ sửa chữa FixLink. Khai đúng thông tin để được admin xét duyệt nhanh nhất."
       footer={
-        <p className="text-sm text-ink-soft">
-          Đã có tài khoản?{' '}
-          <Link to="/login" className="font-medium text-brand-glow hover:text-brand hover:underline">
-            Đăng nhập
-          </Link>
-          . Bạn là khách cần sửa đồ?{' '}
-          <Link to="/dang-ky" className="font-medium text-brand-glow hover:text-brand hover:underline">
-            Đăng ký khách hàng
-          </Link>
-          .
-        </p>
+        <div className="space-y-2 text-center text-sm text-ink-soft">
+          <p>
+            Đã có tài khoản?{' '}
+            <Link to="/login" className="font-medium text-brand-glow hover:text-brand hover:underline">
+              Đăng nhập
+            </Link>
+          </p>
+          <p>
+            Bạn là khách hàng cần sửa đồ?{' '}
+            <Link to="/dang-ky" className="font-medium text-brand-glow hover:text-brand hover:underline">
+              Đăng ký khách hàng
+            </Link>
+          </p>
+        </div>
       }
     >
       <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 shadow-xs">
-        <StatusChip status="PENDING" />
+        <StatusChip status="PENDING_APPROVAL" />
         <p className="text-xs sm:text-sm text-amber-900 leading-relaxed">
-          Hồ sơ mới luôn ở trạng thái chờ duyệt eKYC. Bạn xem được bảng điều khiển ngay, nhưng chỉ
-          nhận được yêu cầu sửa chữa sau khi quản trị viên xác minh căn cước công dân.
+          Tài khoản thợ tự đăng ký sẽ ở trạng thái <strong className="font-semibold">Chờ duyệt</strong>.
+          Admin sẽ kiểm tra thông tin và kích hoạt tài khoản của bạn để nhận đơn sửa chữa.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-8">
+      <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-7">
         {formError && <Alert tone="error">{formError}</Alert>}
 
-        <FormSection title="Tài khoản đăng nhập" description="Thông tin dùng để đăng nhập vào hệ thống">
-          <TextField
-            label="Tên đăng nhập"
-            name="username"
-            autoComplete="username"
-            required
-            value={form.username}
-            error={errors.username}
-            hint="Từ 3 đến 50 ký tự."
-            onChange={(e) => update('username', e.target.value)}
-          />
-          <div className="grid gap-5 sm:grid-cols-2">
-            <TextField
-              label="Mật khẩu"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={form.password}
-              error={errors.password}
-              hint="Ít nhất 8 ký tự, có 1 chữ hoa và 1 ký tự đặc biệt."
-              onChange={(e) => update('password', e.target.value)}
-            />
-            <TextField
-              label="Nhập lại mật khẩu"
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={form.confirmPassword}
-              error={errors.confirmPassword}
-              onChange={(e) => update('confirmPassword', e.target.value)}
-            />
-          </div>
-        </FormSection>
-
-        <FormSection
-          title="Thông tin liên hệ"
-          description="Khách hàng thấy tên và gọi vào số này khi hẹn giờ sửa thiết bị."
-        >
+        <FormSection title="Thông tin cá nhân & Liên hệ" description="Thông tin dùng để đối chiếu hồ sơ và liên hệ làm việc">
           <TextField
             label="Họ và tên"
             name="fullName"
             autoComplete="name"
             required
+            placeholder="Ví dụ: Nguyễn Văn A"
             value={form.fullName}
             error={errors.fullName}
             onChange={(e) => update('fullName', e.target.value)}
           />
+
           <div className="grid gap-5 sm:grid-cols-2">
             <TextField
               label="Số điện thoại"
@@ -207,6 +240,7 @@ export default function TechnicianRegisterPage() {
               placeholder="0912345678"
               value={form.phone}
               error={errors.phone}
+              hint="Dùng để đăng nhập sau khi được duyệt."
               onChange={(e) => update('phone', e.target.value)}
             />
             <TextField
@@ -221,63 +255,82 @@ export default function TechnicianRegisterPage() {
               onChange={(e) => update('email', e.target.value)}
             />
           </div>
+
+          <TextField
+            label="Địa chỉ hoạt động"
+            name="address"
+            autoComplete="street-address"
+            required
+            placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố"
+            value={form.address}
+            error={errors.address}
+            hint="Khu vực bạn có thể đến tận nơi sửa chữa cho khách."
+            onChange={(e) => update('address', e.target.value)}
+          />
         </FormSection>
 
-        <FormSection
-          title="Xác minh danh tính"
-          description="Ảnh căn cước chỉ dùng để đối chiếu, bảo mật tuyệt đối không hiển thị công khai."
-        >
-          <TextField
-            label="Số căn cước công dân"
-            name="citizenId"
-            inputMode="numeric"
-            required
-            placeholder="079123456789"
-            value={form.citizenId}
-            error={errors.citizenId}
-            onChange={(e) => update('citizenId', e.target.value)}
-          />
+        <FormSection title="Chuyên môn kỹ thuật" description="Chọn lĩnh vực dịch vụ sửa chữa chính bạn thực hiện">
+          <div>
+            <label htmlFor="specialization" className="mb-1.5 block text-sm font-medium text-ink">
+              Lĩnh vực chuyên môn <span className="ml-0.5 text-brand-glow">*</span>
+            </label>
+            <select
+              id="specialization"
+              name="specialization"
+              required
+              value={form.specialization}
+              onChange={(e) => update('specialization', e.target.value)}
+              className={[
+                'min-h-[44px] w-full rounded-xl border bg-white px-3.5 text-sm text-ink',
+                'transition-all duration-200 shadow-xs focus:outline-none focus:ring-4 focus:ring-brand/10 focus:border-brand',
+                errors.specialization ? 'border-danger focus:ring-danger/10 focus:border-danger' : 'border-line hover:border-line-strong'
+              ].join(' ')}
+            >
+              <option value="">-- Chọn chuyên môn chính của bạn --</option>
+              {SPECIALIZATIONS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            {errors.specialization && (
+              <p className="mt-1.5 text-sm text-danger" role="alert">
+                {errors.specialization}
+              </p>
+            )}
+          </div>
+
           <div className="grid gap-5 sm:grid-cols-2">
-            <ImageUploadField
-              label="Ảnh mặt trước căn cước"
-              folder="cccd"
-              value={form.idCardFrontUrl}
-              error={errors.idCardFrontUrl}
-              hint="Chụp rõ bốn góc, không loá sáng. Tối đa 5 MB."
-              onChange={(url) => update('idCardFrontUrl', url)}
+            <TextField
+              label="Số CCCD (không bắt buộc)"
+              name="citizenId"
+              inputMode="numeric"
+              placeholder="079123456789"
+              value={form.citizenId}
+              error={errors.citizenId}
+              hint="Giúp admin xác minh hồ sơ nhanh hơn."
+              onChange={(e) => update('citizenId', e.target.value)}
             />
-            <ImageUploadField
-              label="Ảnh mặt sau căn cước"
-              folder="cccd"
-              value={form.idCardBackUrl}
-              error={errors.idCardBackUrl}
-              onChange={(url) => update('idCardBackUrl', url)}
+            <TextField
+              label="Số năm kinh nghiệm"
+              name="yearsExperience"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={60}
+              placeholder="3"
+              value={form.yearsExperience}
+              error={errors.yearsExperience}
+              onChange={(e) => update('yearsExperience', e.target.value)}
             />
           </div>
-        </FormSection>
 
-        <FormSection
-          title="Tay nghề & Chuyên môn"
-          description="Giúp khách hàng tin tưởng và chọn bạn để sửa chữa thiết bị."
-        >
-          <TextField
-            label="Số năm kinh nghiệm"
-            name="yearsExperience"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={60}
-            placeholder="5"
-            value={form.yearsExperience}
-            error={errors.yearsExperience}
-            onChange={(e) => update('yearsExperience', e.target.value)}
-          />
           <TextArea
-            label="Giới thiệu chuyên môn"
+            label="Mô tả tay nghề & Giới thiệu thêm (không bắt buộc)"
             name="bio"
-            rows={4}
+            rows={3}
             maxLength={500}
-            placeholder="Ví dụ: Chuyên sửa điện thoại, máy tính bảng, laptop, bo mạch điện tử gia dụng tại nhà..."
+            placeholder="Ví dụ: Có 5 năm kinh nghiệm sửa bo mạch inverter máy lạnh, nhận sửa tivi sony, samsung tại nhà..."
             value={form.bio}
             error={errors.bio}
             hint={`${form.bio.length}/500 ký tự`}
@@ -285,8 +338,34 @@ export default function TechnicianRegisterPage() {
           />
         </FormSection>
 
+        <FormSection title="Mật khẩu bảo mật" description="Mật khẩu bảo vệ tài khoản kỹ thuật viên của bạn">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TextField
+              label="Mật khẩu"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={form.password}
+              error={errors.password}
+              hint="Ít nhất 8 ký tự, có 1 chữ in hoa và 1 ký tự đặc biệt."
+              onChange={(e) => update('password', e.target.value)}
+            />
+            <TextField
+              label="Xác nhận mật khẩu"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={form.confirmPassword}
+              error={errors.confirmPassword}
+              onChange={(e) => update('confirmPassword', e.target.value)}
+            />
+          </div>
+        </FormSection>
+
         <Button type="submit" fullWidth loading={submitting}>
-          {submitting ? 'Đang gửi hồ sơ...' : 'Gửi hồ sơ đăng ký thợ'}
+          {submitting ? 'Đang gửi hồ sơ đăng ký...' : 'Gửi hồ sơ đăng ký thợ'}
         </Button>
       </form>
     </AuthLayout>

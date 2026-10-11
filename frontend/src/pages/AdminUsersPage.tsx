@@ -14,7 +14,9 @@ interface TechnicianProfileBrief {
   fullName: string;
   phone: string;
   email: string;
-  citizenId: string;
+  citizenId?: string;
+  address?: string;
+  specialization?: string;
   avatarUrl?: string | null;
   verificationStatus: VerificationStatus;
   yearsExperience: number | null;
@@ -70,10 +72,11 @@ const SELECT_CLASS =
  * Mỗi tab là một bộ lọc đặt sẵn. Bộ lọc vai trò và từ khóa bên dưới vẫn áp thêm
  * lên kết quả của tab đang chọn.
  */
-type TabId = 'ALL' | 'PENDING' | 'ACTIVE' | 'BLOCKED';
+type TabId = 'ALL' | 'PENDING_APPROVAL' | 'PENDING' | 'ACTIVE' | 'BLOCKED';
 
 const TABS: Array<{ id: TabId; label: string; status: string }> = [
   { id: 'ALL', label: 'Tất cả', status: 'ALL' },
+  { id: 'PENDING_APPROVAL', label: 'Chờ duyệt', status: 'PENDING_APPROVAL' },
   { id: 'PENDING', label: 'Chờ duyệt KYC', status: 'PENDING' },
   { id: 'ACTIVE', label: 'Đang hoạt động', status: 'ACTIVE' },
   { id: 'BLOCKED', label: 'Đã khoá', status: 'BLOCKED' }
@@ -99,6 +102,7 @@ export default function AdminUsersPage() {
   const [role, setRole] = useState('ALL');
   const [tab, setTab] = useState<TabId>('ALL');
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
 
   const [detail, setDetail] = useState<AdminUser | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -154,15 +158,18 @@ export default function AdminUsersPage() {
     void load(true);
   }, [load]);
 
-  // Con số trên tab "Chờ duyệt KYC" phải đúng kể cả khi đang ở tab khác,
-  // nên đếm bằng một lượt gọi riêng thay vì lấy từ danh sách đang hiển thị.
+  // Con số trên tab "Chờ duyệt KYC" và "Chờ duyệt" đếm bằng lượt gọi riêng
   const refreshPendingCount = useCallback(async () => {
     try {
-      const res = await api.get<AdminUser[]>('/admin/users?page=1&limit=1&status=PENDING');
-      setPendingCount(res.meta?.totalItems ?? 0);
+      const [resKyc, resApprove] = await Promise.all([
+        api.get<AdminUser[]>('/admin/users?page=1&limit=1&status=PENDING'),
+        api.get<AdminUser[]>('/admin/users?page=1&limit=1&status=PENDING_APPROVAL')
+      ]);
+      setPendingCount(resKyc.meta?.totalItems ?? 0);
+      setPendingApprovalCount(resApprove.meta?.totalItems ?? 0);
     } catch {
-      // Không đếm được thì ẩn con số đi, không làm hỏng cả trang.
       setPendingCount(0);
+      setPendingApprovalCount(0);
     }
   }, []);
 
@@ -242,6 +249,42 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function approveUser(user: AdminUser) {
+    setActionError(null);
+    setActionNote(null);
+    setBusyUserId(user.id);
+    try {
+      await api.put(`/admin/users/${user.id.replace('usr_', '')}/approve`);
+      setActionNote(`Đã phê duyệt tài khoản ${user.username}. Thợ có thể đăng nhập.`);
+      await load(true);
+      if (detail?.id === user.id) await openDetail(user.id);
+    } catch (err) {
+      setActionError(
+        err instanceof ApiError ? err.message : 'Không phê duyệt được tài khoản. Thử lại sau.'
+      );
+    } finally {
+      setBusyUserId(null);
+    }
+  }
+
+  async function rejectUser(user: AdminUser) {
+    setActionError(null);
+    setActionNote(null);
+    setBusyUserId(user.id);
+    try {
+      await api.put(`/admin/users/${user.id.replace('usr_', '')}/reject`);
+      setActionNote(`Đã từ chối tài khoản ${user.username}.`);
+      await load(true);
+      if (detail?.id === user.id) await openDetail(user.id);
+    } catch (err) {
+      setActionError(
+        err instanceof ApiError ? err.message : 'Không từ chối được tài khoản. Thử lại sau.'
+      );
+    } finally {
+      setBusyUserId(null);
+    }
+  }
+
   return (
     <DashboardLayout
       nav={ADMIN_NAV}
@@ -273,7 +316,12 @@ export default function AdminUsersPage() {
           items={TABS.map((t) => ({
             id: t.id,
             label: t.label,
-            badge: t.id === 'PENDING' ? pendingCount : undefined
+            badge:
+              t.id === 'PENDING_APPROVAL'
+                ? pendingApprovalCount
+                : t.id === 'PENDING'
+                ? pendingCount
+                : undefined
           }))}
           active={tab}
           onChange={(next) => applyFilter(() => setTab(next))}
@@ -352,6 +400,7 @@ export default function AdminUsersPage() {
               <ul className={`divide-y divide-line ${refreshing ? 'opacity-60' : ''}`}>
                 {users.map((user, index) => {
                   const itemIndex = (page - 1) * pageSize + index + 1;
+                  const isPendingApproval = user.status === 'PENDING_APPROVAL';
                   const pendingTechnician =
                     user.role === 'TECHNICIAN' && user.status === 'PENDING';
                   const blocked = user.status === 'BLOCKED';
@@ -371,9 +420,24 @@ export default function AdminUsersPage() {
                               <p className="font-display font-semibold text-slate-900">{user.username}</p>
                               <StatusChip status={user.role} />
                               <StatusChip status={user.status} />
+                              {user.technicianProfile?.specialization && (
+                                <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
+                                  {user.technicianProfile.specialization}
+                                </span>
+                              )}
                             </div>
                             <p className="mt-1 text-sm text-ink-soft">
+                              {user.technicianProfile?.fullName ?? user.customerProfile?.fullName ? (
+                                <span className="font-medium text-slate-700 mr-2">
+                                  {user.technicianProfile?.fullName ?? user.customerProfile?.fullName}
+                                </span>
+                              ) : null}
                               Tạo ngày {formatDate(user.createdAt)}
+                              {user.technicianProfile?.address && (
+                                <span className="block sm:inline sm:ml-2 text-xs text-slate-500">
+                                  📍 {user.technicianProfile.address}
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
@@ -387,7 +451,25 @@ export default function AdminUsersPage() {
                             Xem hồ sơ
                           </Button>
 
-                          {pendingTechnician && (
+                          {isPendingApproval && (
+                            <>
+                              <Button
+                                loading={busy}
+                                onClick={() => approveUser(user)}
+                              >
+                                Duyệt
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                disabled={busy}
+                                onClick={() => rejectUser(user)}
+                              >
+                                Từ chối
+                              </Button>
+                            </>
+                          )}
+
+                          {!isPendingApproval && pendingTechnician && (
                             <>
                               <Button
                                 loading={busy}
@@ -405,7 +487,7 @@ export default function AdminUsersPage() {
                             </>
                           )}
 
-                          {!pendingTechnician &&
+                          {!isPendingApproval && !pendingTechnician &&
                             (blocked ? (
                               <Button
                                 variant="secondary"
@@ -580,6 +662,22 @@ export default function AdminUsersPage() {
                             {formatCurrency(detail.technicianProfile.walletBalance || 0)}
                           </p>
                         </div>
+                        {detail.technicianProfile.specialization && (
+                          <div className="p-3.5 rounded-xl border border-slate-100 bg-white sm:col-span-2">
+                            <span className="text-xs font-medium text-slate-400">Lĩnh vực chuyên môn</span>
+                            <p className="text-sm font-semibold text-brand mt-0.5">
+                              {detail.technicianProfile.specialization}
+                            </p>
+                          </div>
+                        )}
+                        {detail.technicianProfile.address && (
+                          <div className="p-3.5 rounded-xl border border-slate-100 bg-white sm:col-span-2">
+                            <span className="text-xs font-medium text-slate-400">Địa chỉ hoạt động</span>
+                            <p className="text-sm font-medium text-slate-800 mt-0.5">
+                              {detail.technicianProfile.address}
+                            </p>
+                          </div>
+                        )}
 
                         {detail.technicianProfile.bio && (
                           <div className="p-3.5 rounded-xl border border-slate-100 bg-white sm:col-span-2">
@@ -645,7 +743,29 @@ export default function AdminUsersPage() {
                   {/* Modal Footer Actions */}
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
                     <div className="flex flex-wrap gap-2">
-                      {detail.role === 'TECHNICIAN' && detail.technicianProfile?.verificationStatus === 'PENDING' && (
+                      {detail.status === 'PENDING_APPROVAL' && (
+                        <>
+                          <Button
+                            loading={busyUserId === detail.id}
+                            onClick={async () => {
+                              await approveUser(detail);
+                            }}
+                          >
+                            ✓ Phê duyệt tài khoản
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            disabled={busyUserId === detail.id}
+                            onClick={async () => {
+                              await rejectUser(detail);
+                            }}
+                          >
+                            ✕ Từ chối tài khoản
+                          </Button>
+                        </>
+                      )}
+
+                      {detail.status !== 'PENDING_APPROVAL' && detail.role === 'TECHNICIAN' && detail.technicianProfile?.verificationStatus === 'PENDING' && (
                         <>
                           <Button
                             loading={busyUserId === detail.id}
@@ -667,7 +787,7 @@ export default function AdminUsersPage() {
                         </>
                       )}
 
-                      {!(detail.role === 'TECHNICIAN' && detail.technicianProfile?.verificationStatus === 'PENDING') && (
+                      {detail.status !== 'PENDING_APPROVAL' && !(detail.role === 'TECHNICIAN' && detail.technicianProfile?.verificationStatus === 'PENDING') && (
                         detail.status === 'BLOCKED' ? (
                           <Button
                             variant="secondary"

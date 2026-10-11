@@ -13,6 +13,10 @@ public interface UserManagementUseCase {
 
     void updateUserStatus(Long userId, UserStatus status);
 
+    User approveUser(Long userId);
+
+    User rejectUser(Long userId);
+
     record UserQuery(
             int page,
             int limit,
