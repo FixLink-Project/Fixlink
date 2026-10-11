@@ -1,33 +1,48 @@
 package com.fixlink.infrastructure.config;
 
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.env.EnvironmentPostProcessor;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.MapPropertySource;
 
-import jakarta.annotation.PostConstruct;
 import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 
-@Configuration
-@Profile("prod")
-public class DatabaseUrlConfig {
+public class DatabaseUrlConfig implements EnvironmentPostProcessor {
 
-    @PostConstruct
-    public void parseDatabaseUrl() {
-        String databaseUrl = System.getenv("DATABASE_URL");
+    @Override
+    public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+        String databaseUrl = environment.getProperty("DATABASE_URL");
         if (databaseUrl == null || databaseUrl.isBlank()) {
             return;
         }
 
-        URI uri = URI.create(databaseUrl.replace("postgres://", "postgresql://"));
+        String normalized = databaseUrl;
+        if (normalized.startsWith("postgres://")) {
+            normalized = "postgresql://" + normalized.substring("postgres://".length());
+        }
+
+        URI uri = URI.create(normalized);
+
+        int port = uri.getPort() > 0 ? uri.getPort() : 5432;
+
+        String query = uri.getQuery();
+        String params = (query != null && !query.isBlank()) ? "?" + query : "?sslmode=require";
 
         String jdbcUrl = "jdbc:postgresql://" + uri.getHost()
-                + ":" + uri.getPort()
+                + ":" + port
                 + uri.getPath()
-                + "?sslmode=require";
+                + params;
 
         String[] userInfo = uri.getUserInfo().split(":", 2);
 
-        System.setProperty("JDBC_DATABASE_URL", jdbcUrl);
-        System.setProperty("DATABASE_USERNAME", userInfo[0]);
-        System.setProperty("DATABASE_PASSWORD", userInfo.length > 1 ? userInfo[1] : "");
+        Map<String, Object> props = new HashMap<>();
+        props.put("spring.datasource.url", jdbcUrl);
+        props.put("spring.datasource.username", userInfo[0]);
+        props.put("spring.datasource.password", userInfo.length > 1 ? userInfo[1] : "");
+
+        environment.getPropertySources()
+                .addFirst(new MapPropertySource("databaseUrlConfig", props));
     }
 }
