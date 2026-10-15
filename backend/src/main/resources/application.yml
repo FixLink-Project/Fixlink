@@ -3,9 +3,14 @@ server:
   servlet:
     context-path: /
 
+fixlink:
+  timezone: Asia/Ho_Chi_Minh
+
 spring:
   application:
     name: fixlink-backend
+  jackson:
+    time-zone: Asia/Ho_Chi_Minh
 
   datasource:
     url: jdbc:postgresql://localhost:5432/fixlink_db

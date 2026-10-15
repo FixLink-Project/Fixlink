@@ -16,7 +16,11 @@ public interface AuthUseCase {
 
     TechnicianRegisterResult registerTechnician(RegisterTechnicianCommand command);
 
-    record LoginCommand(String username, String password, String deviceToken) {}
+    record LoginCommand(String username, String password, String deviceToken, Role requestedRole) {
+        public LoginCommand(String username, String password, String deviceToken) {
+            this(username, password, deviceToken, null);
+        }
+    }
 
     record RegisterCustomerCommand(String username, String password, String fullName, String phone, String email) {}
 
