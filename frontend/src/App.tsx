@@ -23,7 +23,7 @@ function RepairRequestRedirect() {
   const { user } = useAuth();
 
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: `/yeu-cau/${id}` }} />;
+    return <Navigate to="/dang-nhap" replace state={{ from: `/yeu-cau/${id}` }} />;
   }
 
   if (user.role === 'TECHNICIAN') {
@@ -37,7 +37,7 @@ function RequestsListRedirect() {
   const { user } = useAuth();
 
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: '/yeu-cau' }} />;
+    return <Navigate to="/dang-nhap" replace state={{ from: '/yeu-cau' }} />;
   }
 
   if (user.role === 'TECHNICIAN') {
@@ -51,7 +51,9 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/login" element={<LoginPage role="CUSTOMER" />} />
+      <Route path="/dang-nhap" element={<LoginPage role="CUSTOMER" />} />
+      <Route path="/dang-nhap-tho" element={<LoginPage role="TECHNICIAN" />} />
       <Route path="/yeu-cau" element={<RequestsListRedirect />} />
       <Route path="/yeu-cau/:id" element={<RepairRequestRedirect />} />
       <Route path="/dang-ky" element={<CustomerRegisterPage />} />

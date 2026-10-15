@@ -60,12 +60,20 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Đăng nhập hệ thống", description = "Đăng nhập cho Khách hàng, Thợ và Admin. Trả về JWT Token.")
+    @Operation(summary = "Đăng nhập hệ thống", description = "Đăng nhập cho Khách hàng, Thợ và Admin. Trả về JWT Token. Gửi kèm field 'role' (CUSTOMER/TECHNICIAN) để phân biệt trang đăng nhập.")
     public ResponseEntity<ApiResponse<AuthResult>> login(@Valid @RequestBody LoginRequest request) {
+        com.fixlink.domain.model.Role requestedRole = null;
+        if (request.getRole() != null && !request.getRole().isBlank()) {
+            try {
+                requestedRole = com.fixlink.domain.model.Role.valueOf(request.getRole().trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
         LoginCommand command = new LoginCommand(
                 request.getUsername(),
                 request.getPassword(),
-                request.getDeviceToken()
+                request.getDeviceToken(),
+                requestedRole
         );
 
         AuthResult result = authUseCase.login(command);

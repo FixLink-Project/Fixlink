@@ -24,7 +24,7 @@ function readStoredUser(): AuthUser | null {
 
 interface AuthContextValue {
   user: AuthUser | null;
-  signIn: (username: string, password: string) => Promise<AuthUser>;
+  signIn: (username: string, password: string, role?: string) => Promise<AuthUser>;
   signOut: () => void;
   updateUser: (patch: Partial<AuthUser>) => void;
   setSession: (result: AuthResult) => void;
@@ -46,8 +46,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(
-    async (username: string, password: string) => {
-      const res = await api.post<AuthResult>('/auth/login', { username, password });
+    async (username: string, password: string, role?: string) => {
+      const body: Record<string, string> = { username, password };
+      if (role) body.role = role;
+      const res = await api.post<AuthResult>('/auth/login', body);
       setToken(res.data.accessToken);
       try {
         localStorage.setItem(REFRESH_KEY, res.data.refreshToken);

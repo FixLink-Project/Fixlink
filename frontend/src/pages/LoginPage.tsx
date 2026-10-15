@@ -20,11 +20,17 @@ interface LoginLocationState {
   from?: string;
 }
 
-export default function LoginPage() {
+interface LoginPageProps {
+  role?: 'CUSTOMER' | 'TECHNICIAN';
+}
+
+export default function LoginPage({ role }: LoginPageProps = {}) {
   const navigate = useNavigate();
   const { signIn } = useAuth();
   const { username: prefilled, justRegistered, passwordReset, from } =
     (useLocation().state as LoginLocationState | null) ?? {};
+
+  const isTechnician = role === 'TECHNICIAN';
 
   const [username, setUsername] = useState(prefilled ?? '');
   const [password, setPassword] = useState('');
@@ -52,7 +58,7 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const user = await signIn(username.trim(), password);
+      const user = await signIn(username.trim(), password, role);
       const destination = from || (HOME_BY_ROLE[user.role] ?? '/');
       navigate(destination, { replace: true });
     } catch (err) {
@@ -71,15 +77,41 @@ export default function LoginPage() {
 
   return (
     <AuthLayout
-      title="Đăng nhập"
-      description="Dùng chung một tài khoản cho khách hàng, thợ và quản trị viên."
+      title={isTechnician ? 'Đăng nhập - Thợ sửa chữa' : 'Đăng nhập - Khách hàng'}
+      description={
+        isTechnician
+          ? 'Đăng nhập để nhận việc và quản lý lịch sửa chữa.'
+          : 'Đăng nhập để đăng yêu cầu sửa chữa và theo dõi tiến độ.'
+      }
       footer={
-        <p className="text-sm text-ink-soft">
-          Chưa có tài khoản?{' '}
-          <Link to="/dang-ky" className="text-brand-glow hover:text-brand hover:underline">
-            Đăng ký ngay
-          </Link>
-        </p>
+        <div className="space-y-2 text-center text-sm text-ink-soft">
+          <p>
+            {isTechnician ? (
+              <>
+                Bạn là khách hàng?{' '}
+                <Link to="/dang-nhap" className="text-brand-glow hover:text-brand hover:underline">
+                  Đăng nhập tại đây
+                </Link>
+              </>
+            ) : (
+              <>
+                Bạn là thợ?{' '}
+                <Link to="/dang-nhap-tho" className="text-brand-glow hover:text-brand hover:underline">
+                  Đăng nhập tại đây
+                </Link>
+              </>
+            )}
+          </p>
+          <p>
+            Chưa có tài khoản?{' '}
+            <Link
+              to={isTechnician ? '/dang-ky-tho' : '/dang-ky'}
+              className="text-brand-glow hover:text-brand hover:underline"
+            >
+              Đăng ký ngay
+            </Link>
+          </p>
+        </div>
       }
     >
       <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">

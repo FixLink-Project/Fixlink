@@ -69,8 +69,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<ApiResp
     const isLoginCall = path.startsWith('/auth/login');
     if (response.status === 401 && !isLoginCall && token) {
       setToken(null);
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && window.location.pathname !== '/') {
-        window.location.assign('/login?phien=het-han');
+      const p = typeof window !== 'undefined' ? window.location.pathname : '';
+      if (p && !p.startsWith('/login') && !p.startsWith('/dang-nhap') && p !== '/') {
+        window.location.assign('/dang-nhap?phien=het-han');
       }
     }
     throw new ApiError(

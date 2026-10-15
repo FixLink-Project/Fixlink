@@ -114,6 +114,15 @@ public class AuthService implements AuthUseCase, RegisterTechnicianUseCase, com.
         // Đăng nhập thành công -> xóa bộ đếm thất bại
         loginAttemptService.recordSuccess(username);
 
+        // Kiểm tra vai trò nếu frontend gửi kèm (trang đăng nhập riêng theo role)
+        Role requestedRole = command.requestedRole();
+        if (requestedRole != null
+                && user.getRole() != Role.ADMIN
+                && user.getRole() != Role.STAFF
+                && user.getRole() != requestedRole) {
+            throw new InvalidCredentialsException("Tài khoản không tồn tại với vai trò này");
+        }
+
         String fullName = user.getUsername();
         String avatarUrl = null;
         boolean isVerified = false;
