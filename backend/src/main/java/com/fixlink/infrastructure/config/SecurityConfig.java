@@ -94,6 +94,10 @@ public class SecurityConfig {
                                 "/api/v1/areas/**"
                         ).permitAll()
 
+                        // Chatbot CSKH & Tư vấn FixLink (Mở công khai cho khách vãng lai và user)
+                        .requestMatchers("/api/v1/chatbot/**").permitAll()
+
+
                         // Khách hàng tự đăng ký tài khoản (public).
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
 

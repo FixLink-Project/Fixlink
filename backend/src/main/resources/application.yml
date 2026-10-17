@@ -51,3 +51,37 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
+
+# Cấu hình Chatbot CSKH & Tư vấn thông minh FixLink
+chatbot:
+  enabled: ${CHATBOT_ENABLED:true}
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    base-url: https://generativelanguage.googleapis.com/v1beta
+    models:
+      - gemini-3.8-flash
+      - gemini-3.6-flash
+      - gemini-3.5-flash-lite
+      - gemini-3-flash-preview
+      - gemini-3.1-flash-lite
+    timeout-seconds: 20
+    max-retries: 1
+    cooldown-seconds: 60
+    temperature: 0.3
+    max-output-tokens: 700
+  tools:
+    mode: ${CHATBOT_TOOLS_MODE:native} # native | mcp
+    mcp:
+      command: node
+      args:
+        - ../MCPSERVER/server.js
+  rag:
+    top-k: 6
+    min-score: 0.35
+    window: 1
+  limits:
+    max-input-chars: 1000
+    max-tool-rounds: 4
+    history-turns: 10
+    guest-rate-per-10min: 20
+
