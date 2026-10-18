@@ -85,7 +85,11 @@ async function requestChatbot<T>(path: string, options: RequestInit = {}): Promi
     throw new Error(errorMsg);
   }
 
-  return res.json() as Promise<T>;
+  const json = await res.json().catch(() => null);
+  if (json && typeof json === 'object' && 'data' in json && 'statusCode' in json) {
+    return json.data as T;
+  }
+  return json as T;
 }
 
 export const chatbotApi = {

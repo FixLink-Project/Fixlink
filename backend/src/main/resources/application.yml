@@ -68,7 +68,7 @@ chatbot:
     max-retries: 1
     cooldown-seconds: 60
     temperature: 0.3
-    max-output-tokens: 700
+    max-output-tokens: 2048
   tools:
     mode: ${CHATBOT_TOOLS_MODE:native} # native | mcp
     mcp:

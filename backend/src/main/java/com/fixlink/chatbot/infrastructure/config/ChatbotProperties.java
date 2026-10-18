@@ -35,7 +35,7 @@ public class ChatbotProperties {
         private int maxRetries = 1;
         private int cooldownSeconds = 60;
         private double temperature = 0.3;
-        private int maxOutputTokens = 700;
+        private int maxOutputTokens = 2048;
     }
 
     @Getter

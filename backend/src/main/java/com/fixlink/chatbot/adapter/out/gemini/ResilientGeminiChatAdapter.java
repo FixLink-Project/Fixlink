@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -248,7 +250,7 @@ public class ResilientGeminiChatAdapter implements GeminiChatPort {
                         "response", Map.of("content", toolResult.content())
                 );
                 contents.add(Map.of(
-                        "role", "function",
+                        "role", "user",
                         "parts", List.of(Map.of("functionResponse", responseObj))
                 ));
 
@@ -268,16 +270,26 @@ public class ResilientGeminiChatAdapter implements GeminiChatPort {
     private ChatOrchestrationResult parseFinalOutput(String rawText, String ticketId, String modelName) {
         String cleanJson = rawText;
 
-        // Strip code fences if present (```json ... ```)
-        if (cleanJson.startsWith("```json")) {
-            cleanJson = cleanJson.substring(7);
-        } else if (cleanJson.startsWith("```")) {
-            cleanJson = cleanJson.substring(3);
+        // If wrapped in code blocks anywhere
+        int jsonFenceStart = cleanJson.indexOf("```json");
+        if (jsonFenceStart != -1) {
+            int jsonFenceEnd = cleanJson.indexOf("```", jsonFenceStart + 7);
+            if (jsonFenceEnd != -1) {
+                cleanJson = cleanJson.substring(jsonFenceStart + 7, jsonFenceEnd).trim();
+            } else {
+                cleanJson = cleanJson.substring(jsonFenceStart + 7).trim();
+            }
+        } else {
+            int genericFenceStart = cleanJson.indexOf("```");
+            if (genericFenceStart != -1) {
+                int genericFenceEnd = cleanJson.indexOf("```", genericFenceStart + 3);
+                if (genericFenceEnd != -1) {
+                    cleanJson = cleanJson.substring(genericFenceStart + 3, genericFenceEnd).trim();
+                } else {
+                    cleanJson = cleanJson.substring(genericFenceStart + 3).trim();
+                }
+            }
         }
-        if (cleanJson.endsWith("```")) {
-            cleanJson = cleanJson.substring(0, cleanJson.length() - 3);
-        }
-        cleanJson = cleanJson.trim();
 
         // Check for JSON object boundaries
         int startBrace = cleanJson.indexOf('{');
@@ -323,8 +335,9 @@ public class ResilientGeminiChatAdapter implements GeminiChatPort {
             );
         } catch (Exception ex) {
             LOG.warn("Failed to parse structured JSON from LLM: {}. Falling back to cleaned text.", ex.getMessage());
+            String extractedReply = rescueReplyText(cleanJson, rawText);
             return new ChatOrchestrationResult(
-                    rawText,
+                    extractedReply,
                     List.of("Đăng yêu cầu", "Tra cứu dịch vụ", "Gặp nhân viên hỗ trợ"),
                     List.of(Map.of("type", "link", "label", "Trang chủ", "url", "/")),
                     false,
@@ -332,6 +345,26 @@ public class ResilientGeminiChatAdapter implements GeminiChatPort {
                     modelName
             );
         }
+    }
+
+    private String rescueReplyText(String cleanJson, String rawText) {
+        try {
+            Matcher m = Pattern.compile("\"reply\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"").matcher(cleanJson);
+            if (m.find()) {
+                return m.group(1).replace("\\n", "\n").replace("\\\"", "\"");
+            }
+            Matcher unterminated = Pattern.compile("\"reply\"\\s*:\\s*\"([\\s\\S]*)").matcher(cleanJson);
+            if (unterminated.find()) {
+                String partial = unterminated.group(1).trim();
+                if (partial.endsWith("\"")) {
+                    partial = partial.substring(0, partial.length() - 1);
+                }
+                return partial.replace("\\n", "\n").replace("\\\"", "\"");
+            }
+        } catch (Exception ignored) {
+            // ignore and fallback below
+        }
+        return rawText.replaceAll("(?s)```json\\s*", "").replaceAll("```", "").trim();
     }
 
     private boolean isValidInternalUrl(String url) {
