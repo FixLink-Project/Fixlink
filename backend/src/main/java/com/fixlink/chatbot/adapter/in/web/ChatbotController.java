@@ -107,9 +107,13 @@ public class ChatbotController {
     }
 
     @DeleteMapping("/sessions/{id}")
-    @Operation(summary = "Xóa phiên hội thoại", description = "Xóa lịch sử và giải phóng bộ nhớ của phiên hội thoại theo sessionId.")
-    public ResponseEntity<ApiResponse<Void>> deleteSession(@PathVariable("id") String sessionId) {
-        chatbotUseCase.deleteSession(sessionId);
+    @Operation(summary = "Xóa phiên hội thoại", description = "Xóa lịch sử và giải phóng bộ nhớ của phiên hội thoại theo sessionId. Chỉ cho phép xóa session thuộc về user đang đăng nhập.")
+    public ResponseEntity<ApiResponse<Void>> deleteSession(
+            @PathVariable("id") String sessionId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        Long userId = principal != null ? principal.getId() : null;
+        chatbotUseCase.deleteSession(sessionId, userId);
         return ResponseEntity.ok(ApiResponse.success("Xóa phiên hội thoại thành công", null));
     }
 

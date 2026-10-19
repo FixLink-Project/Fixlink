@@ -75,6 +75,7 @@ chatbot:
       command: node
       args:
         - ../MCPSERVER/server.js
+      server-path: ${CHATBOT_MCP_SERVER_PATH:../MCPSERVER/server.js}
   rag:
     top-k: 6
     min-score: 0.35

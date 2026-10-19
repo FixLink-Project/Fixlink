@@ -50,6 +50,7 @@ public class ChatbotProperties {
     public static class McpProperties {
         private String command = "node";
         private List<String> args = new ArrayList<>(List.of("../MCPSERVER/server.js"));
+        private String serverPath = "../MCPSERVER/server.js";
     }
 
     @Getter

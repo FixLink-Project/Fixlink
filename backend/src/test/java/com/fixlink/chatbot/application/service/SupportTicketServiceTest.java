@@ -39,7 +39,6 @@ class SupportTicketServiceTest {
     @Test
     @DisplayName("Tạo mã phiếu hỗ trợ đồng thời an toàn không trùng lặp")
     void shouldGenerateUniqueTicketCodesConcurrently() throws InterruptedException {
-        when(ticketRepository.count()).thenReturn(10L);
         when(ticketRepository.save(any(SupportTicket.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         int threadCount = 20;

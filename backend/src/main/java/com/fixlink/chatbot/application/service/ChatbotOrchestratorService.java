@@ -273,7 +273,17 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
     }
 
     @Override
-    public void deleteSession(String sessionId) {
+    public void deleteSession(String sessionId, Long userId) {
+        ChatSession session = memoryService.getSession(sessionId);
+        if (session != null && session.getUserId() != null) {
+            if (userId == null || !session.getUserId().equals(userId)) {
+                throw new DomainException(
+                        "CHATBOT_SESSION_FORBIDDEN",
+                        "Bạn không có quyền xóa phiên hội thoại này.",
+                        403
+                );
+            }
+        }
         memoryService.clearSession(sessionId);
     }
 }

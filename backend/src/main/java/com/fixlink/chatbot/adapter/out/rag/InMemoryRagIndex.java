@@ -7,6 +7,7 @@ import com.fixlink.chatbot.infrastructure.config.ChatbotProperties;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +28,7 @@ public class InMemoryRagIndex {
     private final ChatbotProperties properties;
 
     private final List<RagChunk> indexedChunks = new CopyOnWriteArrayList<>();
-    private final Map<String, Integer> docFrequencies = new HashMap<>();
+    private final Map<String, Integer> docFrequencies = new ConcurrentHashMap<>();
     private double avgDocLength = 50.0;
 
     public InMemoryRagIndex(

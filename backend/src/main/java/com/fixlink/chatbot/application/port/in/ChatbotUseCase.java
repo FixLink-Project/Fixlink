@@ -12,7 +12,7 @@ public interface ChatbotUseCase {
 
     void recordFeedback(String sessionId, String messageId, Long userId, String rating, String comment);
 
-    void deleteSession(String sessionId);
+    void deleteSession(String sessionId, Long userId);
 
     record ChatCommand(
             String sessionId,

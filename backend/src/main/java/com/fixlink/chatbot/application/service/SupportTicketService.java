@@ -8,7 +8,7 @@ import com.fixlink.chatbot.domain.model.TicketStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -20,24 +20,23 @@ public class SupportTicketService implements SupportTicketUseCase {
     private static final Logger LOG = LoggerFactory.getLogger(SupportTicketService.class);
 
     private final SupportTicketRepositoryPort ticketRepository;
-    private final AtomicLong ticketSequence = new AtomicLong(1000);
-    private boolean sequenceInitialized = false;
 
     public SupportTicketService(SupportTicketRepositoryPort ticketRepository) {
         this.ticketRepository = ticketRepository;
     }
 
-    private synchronized void initSequenceIfNeeded() {
-        if (!sequenceInitialized) {
-            long count = ticketRepository.count();
-            ticketSequence.set(1000 + count);
-            sequenceInitialized = true;
-        }
+    /**
+     * Generates a unique ticket code using UUID to avoid race conditions
+     * and eliminate dependency on DB count() for sequence generation.
+     */
+    private String generateTicketCode() {
+        String uuid = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        return "TCK-" + uuid;
     }
 
     @Override
     @Transactional
-    public synchronized SupportTicket createTicket(
+    public SupportTicket createTicket(
             Long userId,
             String guestName,
             String guestContact,
@@ -46,9 +45,7 @@ public class SupportTicketService implements SupportTicketUseCase {
             TicketPriority priority,
             String assignee
     ) {
-        initSequenceIfNeeded();
-        long seq = ticketSequence.incrementAndGet();
-        String ticketCode = "TCK-" + seq;
+        String ticketCode = generateTicketCode();
 
         Instant now = Instant.now();
         SupportTicket ticket = SupportTicket.builder()
