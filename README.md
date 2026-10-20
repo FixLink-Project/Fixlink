@@ -243,9 +243,35 @@ Bật git hook kiểm tra định dạng trước khi commit:
 
 ---
 
+## Trợ lý ảo FixLink AI (Chatbot CSKH & Tư Vấn Kỹ Thuật)
+
+Hệ thống trợ lý ảo thông minh được tích hợp đa kênh trên FixLink:
+- **Widget Frontend:** React 18 bottom-right floating widget `<ChatWidget />`, gợi ý câu hỏi theo route, hiển thị trích dẫn nguồn RAG và phản hồi 👍/👎.
+- **Standalone Widget:** Nhúng script `/js/chatbot-widget.js` cho mọi trang HTML tĩnh.
+- **Backend RAG Đa tầng:** Kết hợp BM25 + Vector Deterministic + RRF (Reciprocal Rank Fusion) và mở rộng ngữ cảnh (Window Retrieval $i \pm 1$).
+- **Tool Calling (Native & MCP):** 10 công cụ nghiệp vụ tra cứu danh mục, khu vực, trạng thái đơn hàng, lịch hẹn và tạo phiếu hỗ trợ (`TCK-XXXX`).
+- **Resilient Model Failover:** Tự động chuyển đổi mượt mà khi quá tải hạn mức: `gemini-3.8-flash` → `gemini-3.6-flash` → `gemini-3.5-flash-lite` → `gemini-3-flash-preview` → `gemini-3.1-flash-lite` → Extractive Local Fallback.
+
+### Cấu hình biến môi trường
+Thêm vào file `.env` (hoặc biến môi trường hệ thống):
+```bash
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+### Chạy Golden QA Suite & Đánh giá
+```bash
+node scripts/chatbot/run-qa-suite.js
+```
+
+---
+
 ## Tài liệu
 
 - [Đặc tả API](docs/API_SPECIFICATION.md)
+- [Hướng dẫn vận hành Trợ lý FixLink AI](docs/chatbot/USER_GUIDE.md)
+- [Báo cáo kiểm thử Chatbot (TEST_REPORT.md)](docs/chatbot/TEST_REPORT.md)
+- [Báo cáo dò quét mô hình Gemini (MODEL_REPORT.md)](docs/chatbot/MODEL_REPORT.md)
+- [Quyết định kiến trúc Chatbot (DECISIONS.md)](docs/chatbot/DECISIONS.md)
 - [Kiến trúc phân tầng](docs/architecture.md)
 - [Thiết kế cơ sở dữ liệu](docs/database-design-erd.md) — [sơ đồ ERD](docs/database-erd.jpg)
 - [Mô hình dữ liệu và hướng mở rộng](docs/database-conceptual-model.md)

@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
+import ChatWidget from './components/chatbot/ChatWidget';
 import RequireAuth from './components/RequireAuth';
 import { useAuth } from './lib/auth';
 import AdminCategoriesPage from './pages/AdminCategoriesPage';
@@ -49,91 +50,94 @@ function RequestsListRedirect() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<LoginPage role="CUSTOMER" />} />
-      <Route path="/dang-nhap" element={<LoginPage role="CUSTOMER" />} />
-      <Route path="/dang-nhap-tho" element={<LoginPage role="TECHNICIAN" />} />
-      <Route path="/yeu-cau" element={<RequestsListRedirect />} />
-      <Route path="/yeu-cau/:id" element={<RepairRequestRedirect />} />
-      <Route path="/dang-ky" element={<CustomerRegisterPage />} />
-      <Route path="/register" element={<CustomerRegisterPage />} />
-      <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
-      <Route path="/dat-lai-mat-khau" element={<ResetPasswordPage />} />
-      <Route path="/dang-ky-tho" element={<TechnicianRegisterPage />} />
-      <Route
-        path="/khach-hang"
-        element={
-          <RequireAuth roles={['CUSTOMER']}>
-            <CustomerDashboardPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/dang-yeu-cau"
-        element={
-          <RequireAuth roles={['CUSTOMER']}>
-            <CreateRepairRequestPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/yeu-cau-cua-toi"
-        element={
-          <RequireAuth roles={['CUSTOMER']}>
-            <MyRepairRequestsPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/yeu-cau-cua-toi/:id"
-        element={
-          <RequireAuth roles={['CUSTOMER']}>
-            <RepairRequestDetailPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/tho"
-        element={
-          <RequireAuth roles={['TECHNICIAN']}>
-            <TechnicianDashboardPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/tho/yeu-cau/:id"
-        element={
-          <RequireAuth roles={['TECHNICIAN']}>
-            <TechnicianRequestDetailPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/quan-tri"
-        element={
-          <RequireAuth roles={['ADMIN', 'STAFF']}>
-            <AdminUsersPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/quan-tri/danh-muc"
-        element={
-          <RequireAuth roles={['ADMIN']}>
-            <AdminCategoriesPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/tho/ho-so"
-        element={
-          <RequireAuth roles={['TECHNICIAN']}>
-            <TechnicianProfilePage />
-          </RequireAuth>
-        }
-      />
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage role="CUSTOMER" />} />
+        <Route path="/dang-nhap" element={<LoginPage role="CUSTOMER" />} />
+        <Route path="/dang-nhap-tho" element={<LoginPage role="TECHNICIAN" />} />
+        <Route path="/yeu-cau" element={<RequestsListRedirect />} />
+        <Route path="/yeu-cau/:id" element={<RepairRequestRedirect />} />
+        <Route path="/dang-ky" element={<CustomerRegisterPage />} />
+        <Route path="/register" element={<CustomerRegisterPage />} />
+        <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
+        <Route path="/dat-lai-mat-khau" element={<ResetPasswordPage />} />
+        <Route path="/dang-ky-tho" element={<TechnicianRegisterPage />} />
+        <Route
+          path="/khach-hang"
+          element={
+            <RequireAuth roles={['CUSTOMER']}>
+              <CustomerDashboardPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/dang-yeu-cau"
+          element={
+            <RequireAuth roles={['CUSTOMER']}>
+              <CreateRepairRequestPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/yeu-cau-cua-toi"
+          element={
+            <RequireAuth roles={['CUSTOMER']}>
+              <MyRepairRequestsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/yeu-cau-cua-toi/:id"
+          element={
+            <RequireAuth roles={['CUSTOMER']}>
+              <RepairRequestDetailPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/tho"
+          element={
+            <RequireAuth roles={['TECHNICIAN']}>
+              <TechnicianDashboardPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/tho/yeu-cau/:id"
+          element={
+            <RequireAuth roles={['TECHNICIAN']}>
+              <TechnicianRequestDetailPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/quan-tri"
+          element={
+            <RequireAuth roles={['ADMIN', 'STAFF']}>
+              <AdminUsersPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/quan-tri/danh-muc"
+          element={
+            <RequireAuth roles={['ADMIN']}>
+              <AdminCategoriesPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/tho/ho-so"
+          element={
+            <RequireAuth roles={['TECHNICIAN']}>
+              <TechnicianProfilePage />
+            </RequireAuth>
+          }
+        />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+      <ChatWidget />
+    </>
   );
 }
