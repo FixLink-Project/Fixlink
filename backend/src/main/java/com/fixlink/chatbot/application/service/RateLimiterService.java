@@ -3,7 +3,6 @@ package com.fixlink.chatbot.application.service;
 import com.fixlink.chatbot.infrastructure.config.ChatbotProperties;
 import com.fixlink.domain.exception.DomainException;
 import java.time.Instant;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,6 +46,11 @@ public class RateLimiterService {
         }
 
         timestamps.offer(now);
+
+        // Safeguard: trigger immediate cleanup if map grows too large under high load
+        if (requestLog.size() > 5000) {
+            cleanupStaleEntries();
+        }
     }
 
     /**
@@ -56,25 +60,17 @@ public class RateLimiterService {
     @Scheduled(fixedRate = 5 * 60 * 1000, initialDelay = 5 * 60 * 1000)
     public void cleanupStaleEntries() {
         long now = Instant.now().toEpochMilli();
-        int removedKeys = 0;
+        int initialSize = requestLog.size();
 
-        Iterator<Map.Entry<String, Queue<Long>>> it = requestLog.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<String, Queue<Long>> entry = it.next();
+        requestLog.entrySet().removeIf(entry -> {
             Queue<Long> timestamps = entry.getValue();
-
-            // Evict expired timestamps
             while (!timestamps.isEmpty() && now - timestamps.peek() > WINDOW_MILLIS) {
                 timestamps.poll();
             }
+            return timestamps.isEmpty();
+        });
 
-            // Remove entirely empty queues
-            if (timestamps.isEmpty()) {
-                it.remove();
-                removedKeys++;
-            }
-        }
-
+        int removedKeys = initialSize - requestLog.size();
         if (removedKeys > 0) {
             LOG.info("RateLimiter cleanup: removed {} stale client entries. Remaining: {}", removedKeys, requestLog.size());
         }

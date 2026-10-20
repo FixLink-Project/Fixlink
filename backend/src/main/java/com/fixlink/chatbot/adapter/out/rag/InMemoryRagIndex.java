@@ -7,13 +7,12 @@ import com.fixlink.chatbot.infrastructure.config.ChatbotProperties;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -27,9 +26,20 @@ public class InMemoryRagIndex {
     private final DocumentContextRegistry contextRegistry;
     private final ChatbotProperties properties;
 
-    private final List<RagChunk> indexedChunks = new CopyOnWriteArrayList<>();
-    private final Map<String, Integer> docFrequencies = new ConcurrentHashMap<>();
-    private double avgDocLength = 50.0;
+    public record IndexSnapshot(
+            List<RagChunk> chunks,
+            Map<String, Integer> docFrequencies,
+            double avgDocLength
+    ) {
+        public IndexSnapshot {
+            chunks = List.copyOf(chunks);
+            docFrequencies = Map.copyOf(docFrequencies);
+        }
+    }
+
+    private final AtomicReference<IndexSnapshot> snapshotRef = new AtomicReference<>(
+            new IndexSnapshot(List.of(), Map.of(), 50.0)
+    );
 
     public InMemoryRagIndex(
             MarkdownDocumentLoader loader,
@@ -49,8 +59,8 @@ public class InMemoryRagIndex {
     public synchronized void reindex() {
         LOG.info("Starting knowledge base indexing...");
         List<RagChunk> chunks = loader.loadAllDocuments();
-        indexedChunks.clear();
-        docFrequencies.clear();
+        List<RagChunk> newChunks = new ArrayList<>();
+        Map<String, Integer> newDocFrequencies = new HashMap<>();
 
         long totalTokens = 0;
         for (RagChunk chunk : chunks) {
@@ -60,17 +70,16 @@ public class InMemoryRagIndex {
             // Document frequency for BM25
             Set<String> uniqueTokens = Bm25Scorer.tokenize(chunk.getContent());
             for (String token : uniqueTokens) {
-                docFrequencies.merge(token, 1, Integer::sum);
+                newDocFrequencies.merge(token, 1, Integer::sum);
             }
             totalTokens += Bm25Scorer.tokenizeList(chunk.getContent()).size();
-            indexedChunks.add(chunk);
+            newChunks.add(chunk);
         }
 
-        if (!indexedChunks.isEmpty()) {
-            avgDocLength = (double) totalTokens / indexedChunks.size();
-        }
+        double newAvgDocLength = newChunks.isEmpty() ? 50.0 : (double) totalTokens / newChunks.size();
+        snapshotRef.set(new IndexSnapshot(newChunks, newDocFrequencies, newAvgDocLength));
 
-        LOG.info("Indexed {} knowledge chunks successfully. Avg doc length: {}", indexedChunks.size(), avgDocLength);
+        LOG.info("Indexed {} knowledge chunks successfully. Avg doc length: {}", newChunks.size(), newAvgDocLength);
     }
 
     public record RetrievalResult(
@@ -80,6 +89,11 @@ public class InMemoryRagIndex {
     ) { }
 
     public RetrievalResult retrieve(String query, String userRole) {
+        IndexSnapshot snapshot = snapshotRef.get();
+        List<RagChunk> indexedChunks = snapshot.chunks();
+        Map<String, Integer> docFrequencies = snapshot.docFrequencies();
+        double avgDocLength = snapshot.avgDocLength();
+
         if (query == null || query.isBlank() || indexedChunks.isEmpty()) {
             return new RetrievalResult("", List.of(), 0.0);
         }
@@ -208,6 +222,6 @@ public class InMemoryRagIndex {
     }
 
     public int getIndexedCount() {
-        return indexedChunks.size();
+        return snapshotRef.get().chunks().size();
     }
 }

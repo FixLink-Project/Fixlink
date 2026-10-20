@@ -112,47 +112,37 @@ public class McpChatbotToolAdapter implements ChatbotToolPort {
     }
 
     /**
-     * Starts or returns the persistent MCP subprocess.
+     * Starts or returns the persistent MCP subprocess while holding processLock.
      * The process is initialized once and reused for all subsequent calls.
      */
-    private void ensureMcpProcessStarted() throws Exception {
+    private void ensureMcpProcessStartedLocked() throws Exception {
         if (mcpProcess != null && mcpProcess.isAlive()) {
             return;
         }
 
-        processLock.lock();
-        try {
-            // Double-check after acquiring lock
-            if (mcpProcess != null && mcpProcess.isAlive()) {
-                return;
-            }
+        File serverJs = resolveServerJsPath();
+        String command = properties.getTools().getMcp().getCommand();
 
-            File serverJs = resolveServerJsPath();
-            String command = properties.getTools().getMcp().getCommand();
+        ProcessBuilder pb = new ProcessBuilder(command, serverJs.getAbsolutePath());
+        pb.redirectErrorStream(false);
+        mcpProcess = pb.start();
 
-            ProcessBuilder pb = new ProcessBuilder(command, serverJs.getAbsolutePath());
-            pb.redirectErrorStream(false);
-            mcpProcess = pb.start();
+        mcpWriter = new BufferedWriter(new OutputStreamWriter(mcpProcess.getOutputStream(), StandardCharsets.UTF_8));
+        mcpReader = new BufferedReader(new InputStreamReader(mcpProcess.getInputStream(), StandardCharsets.UTF_8));
 
-            mcpWriter = new BufferedWriter(new OutputStreamWriter(mcpProcess.getOutputStream(), StandardCharsets.UTF_8));
-            mcpReader = new BufferedReader(new InputStreamReader(mcpProcess.getInputStream(), StandardCharsets.UTF_8));
+        // Initialize the MCP protocol
+        String initReq = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"clientInfo\":{\"name\":\"fixlink-chatbot-client\",\"version\":\"1.0.0\"},\"capabilities\":{}}}\n";
+        mcpWriter.write(initReq);
+        mcpWriter.flush();
 
-            // Initialize the MCP protocol
-            String initReq = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"clientInfo\":{\"name\":\"fixlink-chatbot-client\",\"version\":\"1.0.0\"},\"capabilities\":{}}}\n";
-            mcpWriter.write(initReq);
-            mcpWriter.flush();
+        String initRes = readLineWithTimeout(mcpReader);
+        LOG.debug("MCP Init response: {}", initRes);
 
-            String initRes = readLineWithTimeout(mcpReader);
-            LOG.debug("MCP Init response: {}", initRes);
+        // Initialized notification
+        mcpWriter.write("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n");
+        mcpWriter.flush();
 
-            // Initialized notification
-            mcpWriter.write("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n");
-            mcpWriter.flush();
-
-            LOG.info("MCP subprocess started and initialized (PID: {}, server: {})", mcpProcess.pid(), serverJs.getAbsolutePath());
-        } finally {
-            processLock.unlock();
-        }
+        LOG.info("MCP subprocess started and initialized (PID: {}, server: {})", mcpProcess.pid(), serverJs.getAbsolutePath());
     }
 
     private ToolExecutionResult callMcpServer(
@@ -162,10 +152,10 @@ public class McpChatbotToolAdapter implements ChatbotToolPort {
             String currentRole,
             String guestContact
     ) throws Exception {
-        ensureMcpProcessStarted();
-
         processLock.lock();
         try {
+            ensureMcpProcessStartedLocked();
+
             int reqId = requestIdCounter.incrementAndGet();
 
             // Map tool name to MCP tool
@@ -239,6 +229,7 @@ public class McpChatbotToolAdapter implements ChatbotToolPort {
         try {
             return future.get(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
+            future.cancel(true);
             LOG.error("MCP subprocess read timed out after {} seconds. Killing process...", READ_TIMEOUT_SECONDS);
             destroyMcpProcess();
             throw new IllegalStateException("MCP Server read timeout after " + READ_TIMEOUT_SECONDS + " seconds");

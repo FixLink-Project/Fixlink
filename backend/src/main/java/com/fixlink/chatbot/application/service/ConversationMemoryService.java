@@ -6,7 +6,6 @@ import com.fixlink.chatbot.infrastructure.config.ChatbotProperties;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -61,6 +60,12 @@ public class ConversationMemoryService {
                 .build();
 
         sessionStore.put(newId, newSession);
+
+        // Safeguard: trigger immediate cleanup if session store grows too large under high load
+        if (sessionStore.size() > 5000) {
+            evictExpiredSessions();
+        }
+
         return newSession;
     }
 
@@ -111,18 +116,15 @@ public class ConversationMemoryService {
     @Scheduled(fixedRate = 10 * 60 * 1000, initialDelay = 10 * 60 * 1000)
     public void evictExpiredSessions() {
         Instant now = Instant.now();
-        int evicted = 0;
+        int initialSize = sessionStore.size();
 
-        Iterator<Map.Entry<String, ChatSession>> it = sessionStore.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<String, ChatSession> entry = it.next();
+        sessionStore.entrySet().removeIf(entry -> {
             ChatSession session = entry.getValue();
-            if (session.getUpdatedAt() != null && Duration.between(session.getUpdatedAt(), now).compareTo(SESSION_TTL) > 0) {
-                it.remove();
-                evicted++;
-            }
-        }
+            return session.getUpdatedAt() != null
+                    && Duration.between(session.getUpdatedAt(), now).compareTo(SESSION_TTL) > 0;
+        });
 
+        int evicted = initialSize - sessionStore.size();
         if (evicted > 0) {
             LOG.info("Session cleanup: evicted {} expired sessions. Active sessions: {}", evicted, sessionStore.size());
         }

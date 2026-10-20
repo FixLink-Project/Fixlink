@@ -26,12 +26,18 @@ public class SupportTicketService implements SupportTicketUseCase {
     }
 
     /**
-     * Generates a unique ticket code using UUID to avoid race conditions
-     * and eliminate dependency on DB count() for sequence generation.
+     * Generates a unique ticket code using UUID and verifies non-existence in repository
+     * to eliminate dependency on count() and guarantee collision resistance across restarts.
      */
     private String generateTicketCode() {
-        String uuid = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
-        return "TCK-" + uuid;
+        String code;
+        int attempts = 0;
+        do {
+            String uuid = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+            code = "TCK-" + uuid;
+            attempts++;
+        } while (ticketRepository.findByCode(code).isPresent() && attempts < 5);
+        return code;
     }
 
     @Override
