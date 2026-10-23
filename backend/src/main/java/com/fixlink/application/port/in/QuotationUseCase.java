@@ -21,31 +21,16 @@ public interface QuotationUseCase {
      */
     AcceptQuotationResponse apply(Long requestId, Long technicianId);
 
-    /**
-     * @deprecated Mô hình đấu giá cũ — thợ tự nhập giá rồi chờ khách duyệt.
-     *     Dùng {@link #apply(Long, Long)} thay thế.
-     */
-    @Deprecated
     QuotationResponse create(Long requestId, CreateQuotationCommand command, Long technicianId);
 
-    /**
-     * @deprecated Mô hình đấu giá cũ. Giá giờ do khách ấn định, thợ không sửa được báo giá.
-     */
-    @Deprecated
     QuotationResponse update(Long requestId, Long quotationId, UpdateQuotationCommand command, Long technicianId);
 
-    /**
-     * @deprecated Mô hình đấu giá cũ. Không còn khái niệm rút báo giá; thợ đã nhận việc thì huỷ qua luồng huỷ đơn.
-     */
-    @Deprecated
     void withdraw(Long requestId, Long quotationId, Long technicianId);
 
     List<QuotationResponse> getQuotationsForRequest(Long requestId, Long customerId);
 
-    /**
-     * @deprecated Mô hình đấu giá cũ. Khách không còn phải duyệt — thợ nhận việc là xong.
-     */
-    @Deprecated
+    List<QuotationResponse> getQuotationsForRequest(Long requestId, Long userId, String role);
+
     AcceptQuotationResponse accept(Long requestId, Long quotationId, Long customerId);
 
     @Data

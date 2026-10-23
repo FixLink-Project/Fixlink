@@ -6,7 +6,7 @@ import Card from '../components/Card';
 import DashboardLayout from '../components/DashboardLayout';
 import Pagination from '../components/Pagination';
 import StatusChip from '../components/StatusChip';
-import { ApiError, api, applyForJob, formatCurrency } from '../lib/api';
+import { ApiError, api, formatCurrency } from '../lib/api';
 import type { PageMeta, RepairRequest, VerificationStatus } from '../lib/types';
 
 interface SimpleRef {
@@ -76,11 +76,7 @@ export default function TechnicianDashboardPage() {
   const [searchInput, setSearchInput] = useState<string>('');
   const [appliedSearch, setAppliedSearch] = useState<string>('');
 
-  // Mô hình "ai nhận trước được trước": không còn form nhập giá, chỉ cần biết
-  // đang gọi API cho job nào.
-  const [applyingId, setApplyingId] = useState<number | null>(null);
-  const [quoteError, setQuoteError] = useState<string | null>(null);
-  const [quoteSuccess, setQuoteSuccess] = useState<string | null>(null);
+
 
   const loadRequests = useCallback(async () => {
     try {
@@ -208,33 +204,7 @@ export default function TechnicianDashboardPage() {
     }
   }
 
-  async function handleApply(req: RepairRequest) {
-    const confirmed = window.confirm(
-      `Bạn sẽ nhận việc với giá ${formatCurrency(req.budgetRef)}. Xác nhận?`
-    );
-    if (!confirmed) return;
 
-    setQuoteError(null);
-    setQuoteSuccess(null);
-    setApplyingId(req.id);
-    try {
-      await applyForJob(req.id);
-      setQuoteSuccess(`Bạn đã nhận việc "${req.title}". Hãy liên hệ khách để hẹn lịch.`);
-      await loadRequests();
-      loadMatching(matchingPage);
-    } catch (err) {
-      // 409 JOB_ALREADY_TAKEN: thợ khác vừa nhận trước -> làm mới danh sách để
-      // job đó biến mất, tránh cho thợ bấm lại vô ích.
-      if (err instanceof ApiError && err.errorCode === 'JOB_ALREADY_TAKEN') {
-        setQuoteError('Yêu cầu này vừa được thợ khác nhận. Danh sách đã được làm mới.');
-        loadMatching(matchingPage);
-      } else {
-        setQuoteError(err instanceof ApiError ? err.message : 'Không nhận được việc. Vui lòng thử lại.');
-      }
-    } finally {
-      setApplyingId(null);
-    }
-  }
 
   const approved = profile?.verificationStatus === 'APPROVED';
   const notice = profile ? VERIFICATION_NOTICE[profile.verificationStatus] : null;
@@ -415,16 +385,6 @@ export default function TechnicianDashboardPage() {
               title="Yêu cầu phù hợp & Tìm kiếm theo khu vực"
               description="Tìm kiếm và lọc các yêu cầu sửa chữa theo khu vực hoạt động để nhận đơn đúng địa bàn."
             >
-              {quoteError && (
-                <div className="mb-4">
-                  <Alert tone="error">{quoteError}</Alert>
-                </div>
-              )}
-              {quoteSuccess && (
-                <div className="mb-4">
-                  <Alert tone="success">{quoteSuccess}</Alert>
-                </div>
-              )}
 
               {/* RC-38: Filter & Search Toolbar */}
               <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-xs">
@@ -575,6 +535,9 @@ export default function TechnicianDashboardPage() {
                       req.areaName ? { text: req.areaName } : null,
                       req.addressLine ? { text: req.addressLine } : null,
                       req.budgetRef > 0 ? { text: formatCurrency(req.budgetRef), highlight: true } : null,
+                      req.quotationCount > 0
+                        ? { text: `🏷️ ${req.quotationCount} thợ đã báo giá` }
+                        : { text: '🏷️ Chưa có báo giá' },
                       req.applyDeadline
                         ? {
                             text: isExpired
@@ -638,16 +601,17 @@ export default function TechnicianDashboardPage() {
                           ))}
                         </div>
 
-                        {/* Chỉ 1 nút hành động chính ở cuối card; khoá khi đã hết hạn nhận */}
+                        {/* Nút xem chi tiết & gửi báo giá cạnh tranh */}
                         <div className="mt-3 flex justify-end border-t border-slate-100 pt-3">
-                          <Button
-                            variant="primary"
-                            loading={applyingId === req.id}
-                            disabled={applyingId !== null || isExpired}
-                            onClick={() => handleApply(req)}
-                          >
-                            {applyingId === req.id ? 'Đang nhận...' : isExpired ? 'Đã hết hạn' : 'Nhận việc'}
-                          </Button>
+                          <Link to={`/tho/yeu-cau/${req.id}`}>
+                            <Button
+                              variant="primary"
+                              disabled={isExpired}
+                              className="text-xs sm:text-sm py-1.5 px-4"
+                            >
+                              {isExpired ? 'Đã hết hạn' : 'Xem & Báo giá cạnh tranh →'}
+                            </Button>
+                          </Link>
                         </div>
                       </div>
                     );

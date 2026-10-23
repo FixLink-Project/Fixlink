@@ -114,7 +114,7 @@ public class QuotationService implements QuotationUseCase {
     }
 
     // ==================================================================================
-    // LUỒNG CŨ (đấu giá ngược) — giữ lại tạm thời, sẽ xóa sau khi pivot ổn định
+    // ĐẤU GIÁ NGƯỢC & BÁO GIÁ CẠNH TRANH (Bidding & Quotations)
     // ==================================================================================
 
     @Override
@@ -122,7 +122,7 @@ public class QuotationService implements QuotationUseCase {
     public QuotationResponse create(Long requestId, CreateQuotationCommand cmd, Long technicianId) {
         RepairRequestJpaEntity request = findRequest(requestId);
 
-        if (request.getStatus() != RequestStatus.BIDDING_OPEN) {
+        if (request.getStatus() != RequestStatus.OPEN && request.getStatus() != RequestStatus.BIDDING_OPEN) {
             throw new DomainException("INVALID_OPERATION", "Yêu cầu không ở trạng thái nhận báo giá");
         }
         if (request.getApplyDeadline() != null && LocalDateTime.now().isAfter(request.getApplyDeadline())) {
@@ -143,21 +143,34 @@ public class QuotationService implements QuotationUseCase {
             throw new DomainException("INVALID_OPERATION", "Khu vực của bạn không khớp với địa bàn yêu cầu");
         }
 
-        if (quotationRepo.existsByRequestIdAndTechnicianId(requestId, technicianId)) {
-            throw new DomainException("INVALID_OPERATION", "Bạn đã gửi báo giá cho yêu cầu này rồi (BR02)");
+        var existingOpt = quotationRepo.findByRequestIdAndTechnicianId(requestId, technicianId);
+        QuotationJpaEntity entity;
+        if (existingOpt.isPresent()) {
+            entity = existingOpt.get();
+            if (entity.getStatus() == QuotationStatus.ACCEPTED) {
+                throw new DomainException("INVALID_OPERATION", "Báo giá của bạn đã được khách hàng chấp nhận");
+            }
+            entity.setSolution(cmd.getSolution());
+            entity.setPriceLaborVnd(cmd.getPriceLaborVnd());
+            entity.setPriceMaterialsVnd(cmd.getPriceMaterialsVnd());
+            entity.setInspectionTime(cmd.getInspectionTime());
+            entity.setEstimatedFinish(cmd.getEstimatedFinish());
+            entity.setNote(cmd.getNote());
+            entity.setStatus(QuotationStatus.PENDING);
+            entity.setUpdatedBy(technicianId);
+        } else {
+            entity = new QuotationJpaEntity();
+            entity.setRequestId(requestId);
+            entity.setTechnicianId(technicianId);
+            entity.setSolution(cmd.getSolution());
+            entity.setPriceLaborVnd(cmd.getPriceLaborVnd());
+            entity.setPriceMaterialsVnd(cmd.getPriceMaterialsVnd());
+            entity.setInspectionTime(cmd.getInspectionTime());
+            entity.setEstimatedFinish(cmd.getEstimatedFinish());
+            entity.setNote(cmd.getNote());
+            entity.setStatus(QuotationStatus.PENDING);
+            entity.setCreatedBy(technicianId);
         }
-
-        QuotationJpaEntity entity = new QuotationJpaEntity();
-        entity.setRequestId(requestId);
-        entity.setTechnicianId(technicianId);
-        entity.setSolution(cmd.getSolution());
-        entity.setPriceLaborVnd(cmd.getPriceLaborVnd());
-        entity.setPriceMaterialsVnd(cmd.getPriceMaterialsVnd());
-        entity.setInspectionTime(cmd.getInspectionTime());
-        entity.setEstimatedFinish(cmd.getEstimatedFinish());
-        entity.setNote(cmd.getNote());
-        entity.setStatus(QuotationStatus.PENDING);
-        entity.setCreatedBy(technicianId);
 
         entity = quotationRepo.save(entity);
         return toResponse(entity);
@@ -176,7 +189,7 @@ public class QuotationService implements QuotationUseCase {
         }
 
         RepairRequestJpaEntity request = findRequest(requestId);
-        if (request.getStatus() != RequestStatus.BIDDING_OPEN) {
+        if (request.getStatus() != RequestStatus.OPEN && request.getStatus() != RequestStatus.BIDDING_OPEN) {
             throw new DomainException("INVALID_OPERATION", "Yêu cầu không ở trạng thái nhận báo giá");
         }
 
@@ -212,14 +225,28 @@ public class QuotationService implements QuotationUseCase {
     @Override
     @Transactional(readOnly = true)
     public List<QuotationResponse> getQuotationsForRequest(Long requestId, Long customerId) {
-        RepairRequestJpaEntity request = findRequest(requestId);
-        if (!request.getCustomerId().equals(customerId)) {
-            throw new DomainException("ACCESS_DENIED", "Bạn không phải chủ yêu cầu này", 403);
-        }
+        return getQuotationsForRequest(requestId, customerId, "CUSTOMER");
+    }
 
-        return quotationRepo.findByRequestIdOrderByCreatedAtDesc(requestId).stream()
-                .map(this::toResponse)
-                .toList();
+    @Override
+    @Transactional(readOnly = true)
+    public List<QuotationResponse> getQuotationsForRequest(Long requestId, Long userId, String role) {
+        RepairRequestJpaEntity request = findRequest(requestId);
+        boolean isOwner = request.getCustomerId().equals(userId);
+        boolean isAdmin = "ADMIN".equals(role) || "STAFF".equals(role);
+        boolean isTechnician = "TECHNICIAN".equals(role);
+
+        if (isOwner || isAdmin) {
+            return quotationRepo.findByRequestIdOrderByCreatedAtDesc(requestId).stream()
+                    .map(this::toResponse)
+                    .toList();
+        } else if (isTechnician) {
+            return quotationRepo.findByRequestIdAndTechnicianId(requestId, userId)
+                    .map(this::toResponse)
+                    .stream().toList();
+        } else {
+            throw new DomainException("ACCESS_DENIED", "Bạn không có quyền xem báo giá của yêu cầu này", 403);
+        }
     }
 
     @Override
@@ -229,7 +256,7 @@ public class QuotationService implements QuotationUseCase {
         if (!request.getCustomerId().equals(customerId)) {
             throw new DomainException("ACCESS_DENIED", "Bạn không phải chủ yêu cầu này", 403);
         }
-        if (request.getStatus() != RequestStatus.BIDDING_OPEN) {
+        if (request.getStatus() != RequestStatus.OPEN && request.getStatus() != RequestStatus.BIDDING_OPEN) {
             throw new DomainException("INVALID_OPERATION", "Yêu cầu không ở trạng thái nhận báo giá");
         }
 
@@ -244,6 +271,7 @@ public class QuotationService implements QuotationUseCase {
 
         // 1. Accept chosen
         chosen.setStatus(QuotationStatus.ACCEPTED);
+        chosen.setAcceptedAt(LocalDateTime.now());
         chosen.setUpdatedBy(customerId);
         quotationRepo.save(chosen);
 
@@ -267,17 +295,16 @@ public class QuotationService implements QuotationUseCase {
         request.setTechnicianId(chosen.getTechnicianId());
         request.setAgreedPrice(agreedPrice);
         request.setDepositAmount(deposit);
-        request.setStatus(RequestStatus.MATCHED_AWAITING_DEPOSIT);
+        request.setStatus(RequestStatus.ASSIGNED);
         request.setUpdatedBy(customerId);
         requestRepo.save(request);
 
         // 4. Work progress
-        repairRequestService.recordProgress(requestId, oldStatus, RequestStatus.MATCHED_AWAITING_DEPOSIT,
-                "Khách chọn thợ, chờ đặt cọc", customerId);
-
-        // 5. Build response
         String techName = techProfileRepo.findById(chosen.getTechnicianId())
-                .map(TechnicianProfileJpaEntity::getFullName).orElse(null);
+                .map(TechnicianProfileJpaEntity::getFullName).orElse("Thợ");
+
+        repairRequestService.recordProgress(requestId, oldStatus, RequestStatus.ASSIGNED,
+                "Khách hàng đã chọn báo giá của thợ " + techName, customerId);
 
         return AcceptQuotationResponse.builder()
                 .requestId(requestId)
@@ -285,7 +312,7 @@ public class QuotationService implements QuotationUseCase {
                 .technicianName(techName)
                 .agreedPrice(agreedPrice)
                 .depositAmount(deposit)
-                .status(RequestStatus.MATCHED_AWAITING_DEPOSIT)
+                .status(RequestStatus.ASSIGNED)
                 .build();
     }
 
