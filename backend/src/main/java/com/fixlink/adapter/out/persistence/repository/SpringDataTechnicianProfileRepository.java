@@ -2,17 +2,23 @@ package com.fixlink.adapter.out.persistence.repository;
 
 import com.fixlink.adapter.out.persistence.entity.TechnicianProfileJpaEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.List;
+import jakarta.persistence.LockModeType;
 
 @Repository
 public interface SpringDataTechnicianProfileRepository extends JpaRepository<TechnicianProfileJpaEntity, Long> {
     Optional<TechnicianProfileJpaEntity> findByUserId(Long userId);
     Optional<TechnicianProfileJpaEntity> findByUserIdAndDeletedAtIsNull(Long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM TechnicianProfileJpaEntity t WHERE t.userId = :userId AND t.deletedAt IS NULL")
+    Optional<TechnicianProfileJpaEntity> findByUserIdAndDeletedAtIsNullForUpdate(@Param("userId") Long userId);
     Optional<TechnicianProfileJpaEntity> findByEmailAndDeletedAtIsNull(String email);
     Optional<TechnicianProfileJpaEntity> findByEmail(String email);
     Optional<TechnicianProfileJpaEntity> findByPhoneAndDeletedAtIsNull(String phone);
@@ -46,6 +52,18 @@ public interface SpringDataTechnicianProfileRepository extends JpaRepository<Tec
             "WHERE a = :areaId AND t.deletedAt IS NULL AND t.isOnline = true " +
             "AND t.verificationStatus = com.fixlink.domain.model.VerificationStatus.APPROVED")
     long countAvailableByArea(@Param("areaId") Long areaId);
+
+    @Query("SELECT c, COUNT(DISTINCT t.userId) FROM TechnicianProfileJpaEntity t JOIN t.categoryIds c " +
+            "WHERE t.deletedAt IS NULL AND t.isOnline = true " +
+            "AND t.verificationStatus = com.fixlink.domain.model.VerificationStatus.APPROVED " +
+            "AND (:areaId IS NULL OR t.userId IN (SELECT t2.userId FROM TechnicianProfileJpaEntity t2 JOIN t2.areaIds a WHERE a = :areaId AND t2.deletedAt IS NULL)) " +
+            "GROUP BY c")
+    List<Object[]> countAvailableByCategoryGrouped(@Param("areaId") Long areaId);
+
+    @Query("SELECT a, COUNT(DISTINCT t.userId) FROM TechnicianProfileJpaEntity t JOIN t.areaIds a " +
+            "WHERE t.deletedAt IS NULL AND t.isOnline = true " +
+            "AND t.verificationStatus = com.fixlink.domain.model.VerificationStatus.APPROVED GROUP BY a")
+    List<Object[]> countAvailableByAreaGrouped();
 
     @Query("SELECT DISTINCT t FROM TechnicianProfileJpaEntity t JOIN t.areaIds a " +
             "WHERE a = :areaId AND t.deletedAt IS NULL AND t.isOnline = false " +

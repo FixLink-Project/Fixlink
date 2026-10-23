@@ -96,3 +96,7 @@ temp/
 
 # Claude Code local tooling/config
 .claude/
+
+# Local Maven cache
+.m2repo/
+backend/.m2repo/

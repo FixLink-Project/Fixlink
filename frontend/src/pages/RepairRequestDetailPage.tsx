@@ -63,12 +63,14 @@ export default function RepairRequestDetailPage() {
     setActionError(null);
     setLifecycleMessage(null);
     try {
-      if (targetStatus === 'COMPLETED' && detail.request.status === 'AWAITING_ACCEPTANCE' && !reviewSubmitted) {
+      const completingWithReview = targetStatus === 'COMPLETED' && detail.request.status === 'AWAITING_ACCEPTANCE';
+      if (completingWithReview) {
         if (!reviewComment.trim()) throw new Error('Vui lòng nhập phản hồi trước khi hoàn tất yêu cầu.');
         await api.post(`/repair-requests/${detail.request.id}/review`, { rating: reviewRating, comment: reviewComment.trim() });
         setReviewSubmitted(true);
+      } else {
+        await updateRequestStatus(detail.request.id, targetStatus, note);
       }
-      await updateRequestStatus(detail.request.id, targetStatus, note);
       await loadDetail();
       if (targetStatus === 'COMPLETED') {
         setLifecycleMessage('Chúc mừng! Bạn đã hoàn tất nghiệm thu và kích hoạt bảo hành điện tử 90 ngày thành công.');
