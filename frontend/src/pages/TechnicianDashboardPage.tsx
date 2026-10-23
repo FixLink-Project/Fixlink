@@ -7,7 +7,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import Pagination from '../components/Pagination';
 import StatusChip from '../components/StatusChip';
 import { ApiError, api, applyForJob, formatCurrency } from '../lib/api';
-import type { PageMeta, RepairRequest as MatchingRequest, VerificationStatus } from '../lib/types';
+import type { PageMeta, RepairRequest, VerificationStatus } from '../lib/types';
 
 interface SimpleRef {
   id: number;
@@ -26,16 +26,7 @@ interface TechnicianProfile {
   areas: SimpleRef[];
 }
 
-interface RepairRequest {
-  id: string;
-  customerName: string;
-  customerPhone: string;
-  serviceType: string;
-  address: string;
-  description: string;
-  status: string;
-  scheduledTime: string;
-}
+
 
 const VERIFICATION_NOTICE: Record<
   VerificationStatus,
@@ -73,7 +64,7 @@ export default function TechnicianDashboardPage() {
   const [togglingOnline, setTogglingOnline] = useState(false);
   const [onlineError, setOnlineError] = useState<string | null>(null);
 
-  const [matching, setMatching] = useState<MatchingRequest[]>([]);
+  const [matching, setMatching] = useState<RepairRequest[]>([]);
   const [matchingMeta, setMatchingMeta] = useState<PageMeta | null>(null);
   const [matchingPage, setMatchingPage] = useState(1);
   const [matchingLoading, setMatchingLoading] = useState(false);
@@ -93,8 +84,8 @@ export default function TechnicianDashboardPage() {
 
   const loadRequests = useCallback(async () => {
     try {
-      const res = await api.get<RepairRequest[]>('/technicians/me/repair-requests');
-      setRequests(res.data);
+      const res = await api.get<RepairRequest[]>('/repair-requests?tab=ALL&limit=50');
+      setRequests(res.data || []);
       setRequestsLocked(false);
     } catch (err) {
       if (err instanceof ApiError && err.statusCode === 403) {
@@ -217,7 +208,7 @@ export default function TechnicianDashboardPage() {
     }
   }
 
-  async function handleApply(req: MatchingRequest) {
+  async function handleApply(req: RepairRequest) {
     const confirmed = window.confirm(
       `Bạn sẽ nhận việc với giá ${formatCurrency(req.budgetRef)}. Xác nhận?`
     );
@@ -229,6 +220,7 @@ export default function TechnicianDashboardPage() {
     try {
       await applyForJob(req.id);
       setQuoteSuccess(`Bạn đã nhận việc "${req.title}". Hãy liên hệ khách để hẹn lịch.`);
+      await loadRequests();
       loadMatching(matchingPage);
     } catch (err) {
       // 409 JOB_ALREADY_TAKEN: thợ khác vừa nhận trước -> làm mới danh sách để
@@ -333,8 +325,12 @@ export default function TechnicianDashboardPage() {
           </Card>
 
           <Card
-            title="Yêu cầu gửi tới bạn"
-            description={approved ? 'Gọi cho khách để xác nhận trước khi tới.' : undefined}
+            title="Công việc bạn đã nhận"
+            description={
+              approved
+                ? 'Danh sách các yêu cầu bạn đã nhận việc. Nhấn vào đơn để xem số điện thoại khách, đặt lịch hẹn và trao đổi.'
+                : undefined
+            }
           >
             {requestsLocked ? (
               <div className="py-8 text-center">
@@ -348,42 +344,65 @@ export default function TechnicianDashboardPage() {
             ) : requests.length === 0 ? (
               <div className="py-8 text-center">
                 <p className="text-3xl">📭</p>
-                <p className="mt-2 font-display font-semibold text-slate-900">Chưa có yêu cầu nào</p>
+                <p className="mt-2 font-display font-semibold text-slate-900">Chưa có công việc nào đã nhận</p>
                 <p className="mt-2 text-sm text-slate-500">
-                  Bật chế độ nhận việc và chọn thêm khu vực để tiếp cận nhiều khách hơn.
+                  Xem danh sách "Yêu cầu phù hợp" bên dưới và bấm "Nhận việc" để bắt đầu nhận đơn.
                 </p>
               </div>
             ) : (
               <ul className="divide-y divide-slate-100">
                 {requests.map((request) => (
-                  <li key={request.id} className="border-l-4 border-brand/70 py-4 pl-4 first:pt-0 last:pb-0">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <h3 className="font-display font-semibold text-slate-900">{request.serviceType}</h3>
-                      <StatusChip status={request.status} label="Yêu cầu mới" />
+                  <li
+                    key={request.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4.5 first:pt-0 last:pb-0"
+                  >
+                    <div className="space-y-1.5 min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                          {request.requestCode || `#${request.id}`}
+                        </span>
+                        <StatusChip status={request.status} label={request.statusLabel} />
+                        {request.categoryName && (
+                          <span className="text-xs text-slate-500 font-medium">
+                            • {request.categoryName}
+                          </span>
+                        )}
+                        <span className="text-xs text-slate-400">
+                          {new Date(request.createdAt).toLocaleDateString('vi-VN')}
+                        </span>
+                      </div>
+                      <Link
+                        to={`/tho/yeu-cau/${request.id}`}
+                        className="block font-bold text-slate-900 hover:text-brand transition-colors text-base"
+                      >
+                        {request.title}
+                      </Link>
+                      {request.description && (
+                        <p className="text-sm text-slate-600 line-clamp-2">
+                          {request.description}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 pt-1">
+                        {request.customerName && (
+                          <span>
+                            Khách hàng: <strong className="text-slate-700">{request.customerName}</strong>
+                          </span>
+                        )}
+                        <span>
+                          Địa chỉ: <strong className="text-slate-700">{request.addressLine || request.address || '—'}</strong>
+                        </span>
+                        <span>
+                          Giá: <strong className="text-emerald-600 font-semibold">{formatCurrency(request.agreedPrice || request.budgetRef)}</strong>
+                        </span>
+                      </div>
                     </div>
-                    <p className="mt-1.5 text-sm text-slate-600">{request.description}</p>
-                    <dl className="mt-3 space-y-1 text-sm">
-                      <div className="flex gap-2">
-                        <dt className="w-24 shrink-0 text-slate-400">Khách hàng</dt>
-                        <dd className="text-slate-800 font-medium">
-                          {request.customerName}{' '}
-                          <a
-                            href={`tel:${request.customerPhone}`}
-                            className="text-brand hover:underline"
-                          >
-                            {request.customerPhone}
-                          </a>
-                        </dd>
-                      </div>
-                      <div className="flex gap-2">
-                        <dt className="w-24 shrink-0 text-slate-400">Địa chỉ</dt>
-                        <dd className="text-slate-800">{request.address}</dd>
-                      </div>
-                      <div className="flex gap-2">
-                        <dt className="w-24 shrink-0 text-slate-400">Hẹn lúc</dt>
-                        <dd className="text-slate-800">{request.scheduledTime}</dd>
-                      </div>
-                    </dl>
+                    <div className="shrink-0 flex items-center gap-2 pt-2 sm:pt-0">
+                      <Link to={`/tho/yeu-cau/${request.id}`}>
+                        <Button variant="primary">
+                          Làm việc với khách →
+                        </Button>
+                      </Link>
+                    </div>
                   </li>
                 ))}
               </ul>
