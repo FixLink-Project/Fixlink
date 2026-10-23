@@ -290,4 +290,3 @@ public class AdminStatisticsService implements AdminStatisticsUseCase {
         responseMinutesByRequest.merge(requestId, minutes, Math::min);
     }
 }
-
