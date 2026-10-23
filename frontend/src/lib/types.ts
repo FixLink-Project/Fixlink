@@ -155,8 +155,10 @@ export interface Quotation {
   note: string | null;
   status: QuotationStatus;
   createdAt: string;
-  /** Thời điểm thợ bấm "Nhận việc" (mô hình ai nhận trước được trước). */
+  /** Thời điểm thợ bấm "Nhận việc" (nếu có) */
   acceptedAt?: string | null;
+  /** Đánh dấu báo giá này là của chính thợ đang đăng nhập */
+  isMine?: boolean;
 }
 
 export interface WorkProgress {

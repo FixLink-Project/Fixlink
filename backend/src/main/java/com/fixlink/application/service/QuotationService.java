@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -241,9 +242,33 @@ public class QuotationService implements QuotationUseCase {
                     .map(this::toResponse)
                     .toList();
         } else if (isTechnician) {
-            return quotationRepo.findByRequestIdAndTechnicianId(requestId, userId)
-                    .map(this::toResponse)
-                    .stream().toList();
+            List<QuotationJpaEntity> allQuotes = quotationRepo.findByRequestIdOrderByCreatedAtDesc(requestId);
+            List<QuotationResponse> result = new ArrayList<>();
+            int anonIndex = 1;
+            for (QuotationJpaEntity q : allQuotes) {
+                if (q.getTechnicianId().equals(userId)) {
+                    QuotationResponse mine = toResponse(q);
+                    mine.setIsMine(true);
+                    result.add(mine);
+                } else {
+                    BigDecimal total = (q.getPriceLaborVnd() != null ? q.getPriceLaborVnd() : BigDecimal.ZERO)
+                            .add(q.getPriceMaterialsVnd() != null ? q.getPriceMaterialsVnd() : BigDecimal.ZERO);
+                    result.add(QuotationResponse.builder()
+                            .id(q.getId())
+                            .requestId(q.getRequestId())
+                            .technicianId(null)
+                            .technicianName("Thợ ẩn danh #" + anonIndex++)
+                            .priceLaborVnd(q.getPriceLaborVnd())
+                            .priceMaterialsVnd(q.getPriceMaterialsVnd())
+                            .totalPrice(total)
+                            .solution(q.getSolution())
+                            .status(q.getStatus())
+                            .createdAt(q.getCreatedAt())
+                            .isMine(false)
+                            .build());
+                }
+            }
+            return result;
         } else {
             throw new DomainException("ACCESS_DENIED", "Bạn không có quyền xem báo giá của yêu cầu này", 403);
         }
