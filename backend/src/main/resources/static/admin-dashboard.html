@@ -580,10 +580,16 @@
                 const roleClass = u.role === 'ADMIN' ? 'role-admin' : (u.role === 'TECHNICIAN' ? 'role-technician' : 'role-customer');
                 const statusClass = u.status === 'ACTIVE' ? 'status-active' : (u.status === 'BLOCKED' ? 'status-blocked' : (u.status === 'PENDING' ? 'status-pending' : 'status-inactive'));
                 
+                const isAdmin = (u.role === 'ADMIN');
                 const isBlocked = (u.status === 'BLOCKED');
-                const toggleStatusBtn = isBlocked
-                    ? `<button class="btn-action btn-unblock" onclick="updateUserStatus('${u.id}', 'ACTIVE')">🔓 Mở Khóa</button>`
-                    : `<button class="btn-action btn-block" onclick="updateUserStatus('${u.id}', 'BLOCKED')">🔒 Khóa Nick</button>`;
+                let toggleStatusBtn = '';
+                if (isAdmin) {
+                    toggleStatusBtn = `<button class="btn-action" style="opacity: 0.5; cursor: not-allowed;" title="Không thể khóa tài khoản Quản trị viên" disabled>🛡️ Quản trị viên</button>`;
+                } else if (isBlocked) {
+                    toggleStatusBtn = `<button class="btn-action btn-unblock" onclick="updateUserStatus('${u.id}', 'ACTIVE')">🔓 Mở Khóa</button>`;
+                } else {
+                    toggleStatusBtn = `<button class="btn-action btn-block" onclick="updateUserStatus('${u.id}', 'BLOCKED')">🔒 Khóa Nick</button>`;
+                }
 
                 return `
                     <tr>
@@ -652,7 +658,9 @@
                     alert(`Đã ${actionText} tài khoản thành công!`);
                     loadUsers();
                 } else {
-                    alert(`Thao tác thất bại (HTTP ${res.status}).`);
+                    const errData = await res.json().catch(() => null);
+                    const msg = (errData && (errData.message || errData.error)) || `HTTP ${res.status}`;
+                    alert(`Thao tác thất bại: ${msg}`);
                 }
             } catch (e) {
                 alert('Lỗi kết nối máy chủ.');
@@ -689,7 +697,9 @@
                     }
                     loadUsers();
                 } else {
-                    alert('Lỗi khi duyệt hồ sơ.');
+                    const errData = await res.json().catch(() => null);
+                    const msg = (errData && (errData.message || errData.error)) || `HTTP ${res.status}`;
+                    alert(`Lỗi khi duyệt hồ sơ: ${msg}`);
                 }
             } catch (e) {
                 alert('Lỗi kết nối.');
