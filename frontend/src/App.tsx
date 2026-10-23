@@ -15,6 +15,7 @@ import MyRepairRequestsPage from './pages/MyRepairRequestsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import RepairRequestDetailPage from './pages/RepairRequestDetailPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import TechnicianCompletedJobsPage from './pages/TechnicianCompletedJobsPage';
 import TechnicianDashboardPage from './pages/TechnicianDashboardPage';
 import TechnicianProfilePage from './pages/TechnicianProfilePage';
 import TechnicianRegisterPage from './pages/TechnicianRegisterPage';
@@ -101,6 +102,14 @@ export default function App() {
           element={
             <RequireAuth roles={['TECHNICIAN']}>
               <TechnicianDashboardPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/tho/lich-su"
+          element={
+            <RequireAuth roles={['TECHNICIAN']}>
+              <TechnicianCompletedJobsPage />
             </RequireAuth>
           }
         />

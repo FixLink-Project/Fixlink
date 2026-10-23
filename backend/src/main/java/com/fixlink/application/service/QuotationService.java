@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -143,6 +144,11 @@ public class QuotationService implements QuotationUseCase {
             throw new DomainException("INVALID_OPERATION", "Khu vực của bạn không khớp với địa bàn yêu cầu");
         }
 
+        String solution = (cmd.getSolution() != null && !cmd.getSolution().isBlank())
+                ? cmd.getSolution()
+                : "Báo giá sửa chữa theo yêu cầu";
+        BigDecimal priceMaterials = cmd.getPriceMaterialsVnd() != null ? cmd.getPriceMaterialsVnd() : BigDecimal.ZERO;
+
         var existingOpt = quotationRepo.findByRequestIdAndTechnicianId(requestId, technicianId);
         QuotationJpaEntity entity;
         if (existingOpt.isPresent()) {
@@ -150,9 +156,9 @@ public class QuotationService implements QuotationUseCase {
             if (entity.getStatus() == QuotationStatus.ACCEPTED) {
                 throw new DomainException("INVALID_OPERATION", "Báo giá của bạn đã được khách hàng chấp nhận");
             }
-            entity.setSolution(cmd.getSolution());
+            entity.setSolution(solution);
             entity.setPriceLaborVnd(cmd.getPriceLaborVnd());
-            entity.setPriceMaterialsVnd(cmd.getPriceMaterialsVnd());
+            entity.setPriceMaterialsVnd(priceMaterials);
             entity.setInspectionTime(cmd.getInspectionTime());
             entity.setEstimatedFinish(cmd.getEstimatedFinish());
             entity.setNote(cmd.getNote());
@@ -162,9 +168,9 @@ public class QuotationService implements QuotationUseCase {
             entity = new QuotationJpaEntity();
             entity.setRequestId(requestId);
             entity.setTechnicianId(technicianId);
-            entity.setSolution(cmd.getSolution());
+            entity.setSolution(solution);
             entity.setPriceLaborVnd(cmd.getPriceLaborVnd());
-            entity.setPriceMaterialsVnd(cmd.getPriceMaterialsVnd());
+            entity.setPriceMaterialsVnd(priceMaterials);
             entity.setInspectionTime(cmd.getInspectionTime());
             entity.setEstimatedFinish(cmd.getEstimatedFinish());
             entity.setNote(cmd.getNote());
@@ -193,9 +199,16 @@ public class QuotationService implements QuotationUseCase {
             throw new DomainException("INVALID_OPERATION", "Yêu cầu không ở trạng thái nhận báo giá");
         }
 
-        entity.setSolution(cmd.getSolution());
+        String solution = (cmd.getSolution() != null && !cmd.getSolution().isBlank())
+                ? cmd.getSolution()
+                : (entity.getSolution() != null ? entity.getSolution() : "Báo giá sửa chữa theo yêu cầu");
+        BigDecimal priceMaterials = cmd.getPriceMaterialsVnd() != null
+                ? cmd.getPriceMaterialsVnd()
+                : (entity.getPriceMaterialsVnd() != null ? entity.getPriceMaterialsVnd() : BigDecimal.ZERO);
+
+        entity.setSolution(solution);
         entity.setPriceLaborVnd(cmd.getPriceLaborVnd());
-        entity.setPriceMaterialsVnd(cmd.getPriceMaterialsVnd());
+        entity.setPriceMaterialsVnd(priceMaterials);
         entity.setInspectionTime(cmd.getInspectionTime());
         entity.setEstimatedFinish(cmd.getEstimatedFinish());
         entity.setNote(cmd.getNote());
@@ -241,9 +254,33 @@ public class QuotationService implements QuotationUseCase {
                     .map(this::toResponse)
                     .toList();
         } else if (isTechnician) {
-            return quotationRepo.findByRequestIdAndTechnicianId(requestId, userId)
-                    .map(this::toResponse)
-                    .stream().toList();
+            List<QuotationJpaEntity> allQuotes = quotationRepo.findByRequestIdOrderByCreatedAtDesc(requestId);
+            List<QuotationResponse> result = new ArrayList<>();
+            int anonIndex = 1;
+            for (QuotationJpaEntity q : allQuotes) {
+                if (q.getTechnicianId().equals(userId)) {
+                    QuotationResponse mine = toResponse(q);
+                    mine.setIsMine(true);
+                    result.add(mine);
+                } else {
+                    BigDecimal total = (q.getPriceLaborVnd() != null ? q.getPriceLaborVnd() : BigDecimal.ZERO)
+                            .add(q.getPriceMaterialsVnd() != null ? q.getPriceMaterialsVnd() : BigDecimal.ZERO);
+                    result.add(QuotationResponse.builder()
+                            .id(q.getId())
+                            .requestId(q.getRequestId())
+                            .technicianId(null)
+                            .technicianName("Thợ ẩn danh #" + anonIndex++)
+                            .priceLaborVnd(q.getPriceLaborVnd())
+                            .priceMaterialsVnd(q.getPriceMaterialsVnd())
+                            .totalPrice(total)
+                            .solution(q.getSolution())
+                            .status(q.getStatus())
+                            .createdAt(q.getCreatedAt())
+                            .isMine(false)
+                            .build());
+                }
+            }
+            return result;
         } else {
             throw new DomainException("ACCESS_DENIED", "Bạn không có quyền xem báo giá của yêu cầu này", 403);
         }

@@ -30,4 +30,5 @@ public class QuotationResponse {
     private String note;
     private QuotationStatus status;
     private LocalDateTime createdAt;
+    private Boolean isMine;
 }
