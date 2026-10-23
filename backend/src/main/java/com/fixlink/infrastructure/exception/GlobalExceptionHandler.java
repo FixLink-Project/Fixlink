@@ -154,6 +154,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("statusCode", HttpStatus.BAD_REQUEST.value());
+        error.put("errorCode", "INVALID_ARGUMENT");
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGlobalException(Exception ex) {
         // Ghi log đầy đủ cho lập trình viên, nhưng không trả chi tiết nội bộ ra ngoài.

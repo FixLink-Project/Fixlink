@@ -5,6 +5,7 @@ import com.fixlink.application.port.in.UserManagementUseCase;
 import com.fixlink.application.port.out.TechnicianProfileRepositoryPort;
 import com.fixlink.application.port.out.UserRepositoryPort;
 import com.fixlink.domain.exception.ResourceNotFoundException;
+import com.fixlink.domain.model.Role;
 import com.fixlink.domain.model.TechnicianProfile;
 import com.fixlink.domain.model.User;
 import com.fixlink.domain.model.UserStatus;
@@ -41,6 +42,9 @@ public class UserManagementService implements UserManagementUseCase, TechnicianV
     @Transactional
     public void updateUserStatus(Long userId, UserStatus status) {
         User user = getUserById(userId);
+        if (user.getRole() == Role.ADMIN && status == UserStatus.BLOCKED) {
+            throw new IllegalArgumentException("Không thể khóa tài khoản Quản trị viên (ADMIN)");
+        }
         user.setStatus(status);
         userRepository.save(user);
     }
