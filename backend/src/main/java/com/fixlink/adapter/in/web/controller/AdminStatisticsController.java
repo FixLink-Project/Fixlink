@@ -15,7 +15,6 @@ import com.fixlink.adapter.out.persistence.entity.ServiceAreaJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.RepairRequestJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.QuotationJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.AppointmentJpaEntity;
-import com.fixlink.adapter.out.persistence.entity.TechnicianProfileJpaEntity;
 import com.fixlink.domain.model.Role;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
