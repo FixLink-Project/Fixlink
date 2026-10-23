@@ -4,6 +4,7 @@ import RequireAuth from './components/RequireAuth';
 import { useAuth } from './lib/auth';
 import AdminCategoriesPage from './pages/AdminCategoriesPage';
 import AdminUsersPage from './pages/AdminUsersPage';
+import AdminStatisticsPage from './pages/AdminStatisticsPage';
 import CreateRepairRequestPage from './pages/CreateRepairRequestPage';
 import CustomerDashboardPage from './pages/CustomerDashboardPage';
 import CustomerRegisterPage from './pages/CustomerRegisterPage';
@@ -116,6 +117,14 @@ export default function App() {
           element={
             <RequireAuth roles={['ADMIN', 'STAFF']}>
               <AdminUsersPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/quan-tri/thong-ke"
+          element={
+            <RequireAuth roles={['ADMIN']}>
+              <AdminStatisticsPage />
             </RequireAuth>
           }
         />

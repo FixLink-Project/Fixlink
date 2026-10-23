@@ -39,6 +39,22 @@ public interface SpringDataRepairRequestRepository extends JpaRepository<RepairR
     List<RepairRequestJpaEntity> findByStatus(RequestStatus status);
     long countByCategoryId(Long categoryId);
 
+    List<RepairRequestJpaEntity> findByDeletedAtIsNullAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            LocalDateTime from, LocalDateTime to);
+
+    @Query("SELECT COUNT(DISTINCT r.customerId) FROM RepairRequestJpaEntity r " +
+            "WHERE r.deletedAt IS NULL AND r.createdAt >= :from AND r.createdAt < :to")
+    long countDistinctCustomersActiveBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("SELECT COUNT(r) FROM RepairRequestJpaEntity r WHERE r.deletedAt IS NULL AND r.createdAt >= :from AND r.createdAt < :to")
+    long countCreatedBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("SELECT COUNT(DISTINCT r.customerId) FROM RepairRequestJpaEntity r WHERE r.deletedAt IS NULL AND r.createdAt >= :from AND r.createdAt < :to")
+    long countActiveCustomersBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("SELECT COUNT(DISTINCT r.technicianId) FROM RepairRequestJpaEntity r WHERE r.deletedAt IS NULL AND r.technicianId IS NOT NULL AND r.updatedAt >= :from AND r.updatedAt < :to AND EXISTS (SELECT w.id FROM WorkProgressJpaEntity w WHERE w.requestId = r.id AND w.createdBy = r.technicianId AND w.toStatus = com.fixlink.domain.model.RequestStatus.ASSIGNED AND w.createdAt >= :from AND w.createdAt < :to)")
+    long countActiveTechniciansBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
     Page<RepairRequestJpaEntity> findByCustomerIdAndDeletedAtIsNull(Long customerId, Pageable pageable);
 
     Page<RepairRequestJpaEntity> findByCustomerIdAndStatusAndDeletedAtIsNull(

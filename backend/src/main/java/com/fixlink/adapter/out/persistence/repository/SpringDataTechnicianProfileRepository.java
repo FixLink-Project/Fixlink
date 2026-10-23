@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
 
 @Repository
 public interface SpringDataTechnicianProfileRepository extends JpaRepository<TechnicianProfileJpaEntity, Long> {
@@ -34,4 +35,24 @@ public interface SpringDataTechnicianProfileRepository extends JpaRepository<Tec
 
     @Query("SELECT COUNT(t) FROM TechnicianProfileJpaEntity t JOIN t.areaIds a WHERE a = :areaId")
     long countByAreaId(@Param("areaId") Long areaId);
+
+    @Query("SELECT COUNT(DISTINCT t.userId) FROM TechnicianProfileJpaEntity t JOIN t.categoryIds c " +
+            "WHERE c = :categoryId AND t.deletedAt IS NULL AND t.isOnline = true " +
+            "AND t.verificationStatus = com.fixlink.domain.model.VerificationStatus.APPROVED " +
+            "AND (:areaId IS NULL OR t.userId IN (SELECT t2.userId FROM TechnicianProfileJpaEntity t2 JOIN t2.areaIds a WHERE a = :areaId AND t2.deletedAt IS NULL))")
+    long countAvailableByCategoryAndArea(@Param("categoryId") Long categoryId, @Param("areaId") Long areaId);
+
+    @Query("SELECT COUNT(DISTINCT t.userId) FROM TechnicianProfileJpaEntity t JOIN t.areaIds a " +
+            "WHERE a = :areaId AND t.deletedAt IS NULL AND t.isOnline = true " +
+            "AND t.verificationStatus = com.fixlink.domain.model.VerificationStatus.APPROVED")
+    long countAvailableByArea(@Param("areaId") Long areaId);
+
+    @Query("SELECT DISTINCT t FROM TechnicianProfileJpaEntity t JOIN t.areaIds a " +
+            "WHERE a = :areaId AND t.deletedAt IS NULL AND t.isOnline = false " +
+            "AND t.verificationStatus = com.fixlink.domain.model.VerificationStatus.APPROVED " +
+            "AND t.user.status = com.fixlink.domain.model.UserStatus.ACTIVE " +
+            "AND (:categoryId IS NULL OR :categoryId MEMBER OF t.categoryIds) " +
+            "ORDER BY t.avgRating DESC, t.completedJobs DESC")
+    List<TechnicianProfileJpaEntity> findVerifiedOfflineByAreaAndCategory(
+            @Param("areaId") Long areaId, @Param("categoryId") Long categoryId);
 }
