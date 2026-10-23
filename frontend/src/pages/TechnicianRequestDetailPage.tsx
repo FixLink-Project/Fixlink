@@ -12,11 +12,13 @@ import TextField from '../components/TextField';
 import {
   ApiError,
   api,
-  applyForJob,
   createAppointment,
+  createQuotation,
   fetchAppointmentsForRequest,
   formatCurrency,
-  updateRequestStatus
+  updateQuotation,
+  updateRequestStatus,
+  withdrawQuotation
 } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { Appointment, Quotation, RepairRequestDetail } from '../lib/types';
@@ -105,9 +107,17 @@ export default function TechnicianRequestDetailPage() {
   // Modal xem ảnh phóng to
   const [activeMediaUrl, setActiveMediaUrl] = useState<string | null>(null);
 
-  // State cho luồng "Nhận việc" (thay cho form gửi/sửa báo giá cũ)
-  const [applying, setApplying] = useState(false);
-  const [applyError, setApplyError] = useState<string | null>(null);
+  // Báo giá & Đấu giá cạnh tranh
+  const [priceLabor, setPriceLabor] = useState<number>(0);
+  const [priceMaterials, setPriceMaterials] = useState<number>(0);
+  const [solution, setSolution] = useState<string>('');
+  const [estimatedFinish, setEstimatedFinish] = useState<string>('');
+  const [quotationNote, setQuotationNote] = useState<string>('');
+  const [isEditingQuote, setIsEditingQuote] = useState<boolean>(false);
+  const [submittingQuote, setSubmittingQuote] = useState<boolean>(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteSuccess, setQuoteSuccess] = useState<string | null>(null);
+  const [withdrawingQuote, setWithdrawingQuote] = useState<boolean>(false);
 
   useEffect(() => {
     loadDetail();
@@ -119,6 +129,22 @@ export default function TechnicianRequestDetailPage() {
       .then((res) => {
         setDetail(res.data);
         setError(null);
+        // Pre-fill form if technician already has a quotation
+        const myQuote = res.data.quotations && res.data.quotations.length > 0 ? res.data.quotations[0] : null;
+        if (myQuote && myQuote.status === 'PENDING') {
+          setPriceLabor(myQuote.priceLaborVnd || 0);
+          setPriceMaterials(myQuote.priceMaterialsVnd || 0);
+          setSolution(myQuote.solution || '');
+          setEstimatedFinish(myQuote.estimatedFinish ? myQuote.estimatedFinish.split('T')[0] : '');
+          setQuotationNote(myQuote.note || '');
+        } else if (!myQuote) {
+          // Default labor price to customer's budget if available
+          setPriceLabor(res.data.request.budgetRef || 0);
+          setPriceMaterials(0);
+          setSolution('');
+          setEstimatedFinish('');
+          setQuotationNote('');
+        }
       })
       .catch((err) => {
         setError(err instanceof ApiError ? err.message : 'Không tải được chi tiết yêu cầu sửa chữa.');
@@ -132,11 +158,77 @@ export default function TechnicianRequestDetailPage() {
     }
   }
 
-  // Gửi báo giá mới
+  function handleStartEditQuote(quote: Quotation) {
+    setPriceLabor(quote.priceLaborVnd || 0);
+    setPriceMaterials(quote.priceMaterialsVnd || 0);
+    setSolution(quote.solution || '');
+    setEstimatedFinish(quote.estimatedFinish ? quote.estimatedFinish.split('T')[0] : '');
+    setQuotationNote(quote.note || '');
+    setIsEditingQuote(true);
+    setQuoteError(null);
+    setQuoteSuccess(null);
+  }
 
-  // Chỉnh sửa báo giá đã nộp
+  async function handleSubmitQuote(e: React.FormEvent) {
+    e.preventDefault();
+    if (!detail) return;
+    if (!solution.trim()) {
+      setQuoteError('Vui lòng nhập phương án xử lý.');
+      return;
+    }
+    if (priceLabor <= 0) {
+      setQuoteError('Vui lòng nhập tiền công hợp lệ (> 0 đ).');
+      return;
+    }
 
-  // Rút báo giá
+    setSubmittingQuote(true);
+    setQuoteError(null);
+    setQuoteSuccess(null);
+    try {
+      const myQuotation = detail.quotations && detail.quotations.length > 0 ? detail.quotations[0] : null;
+      const payload = {
+        solution: solution.trim(),
+        priceLaborVnd: priceLabor,
+        priceMaterialsVnd: priceMaterials,
+        estimatedFinish: estimatedFinish ? `${estimatedFinish}T18:00:00` : undefined,
+        note: quotationNote.trim() || undefined
+      };
+
+      if (myQuotation && isEditingQuote) {
+        await updateQuotation(detail.request.id, myQuotation.id, payload);
+        setQuoteSuccess('Đã cập nhật báo giá thành công. Khách hàng sẽ xem mức giá mới nhất.');
+      } else {
+        await createQuotation(detail.request.id, payload);
+        setQuoteSuccess('Đã gửi báo giá thành công. Chờ khách hàng xem xét và lựa chọn.');
+      }
+      setIsEditingQuote(false);
+      await loadDetail();
+    } catch (err: any) {
+      setQuoteError(err instanceof ApiError ? err.message : 'Lỗi khi gửi báo giá.');
+    } finally {
+      setSubmittingQuote(false);
+    }
+  }
+
+  async function handleWithdrawQuote(quotationId: number) {
+    if (!detail) return;
+    const confirm = window.confirm('Bạn có chắc chắn muốn rút báo giá này? Bạn sẽ có thể gửi lại sau.');
+    if (!confirm) return;
+
+    setWithdrawingQuote(true);
+    setQuoteError(null);
+    setQuoteSuccess(null);
+    try {
+      await withdrawQuotation(detail.request.id, quotationId);
+      setQuoteSuccess('Đã rút báo giá thành công.');
+      setIsEditingQuote(false);
+      await loadDetail();
+    } catch (err: any) {
+      setQuoteError(err instanceof ApiError ? err.message : 'Không thể rút báo giá.');
+    } finally {
+      setWithdrawingQuote(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -162,32 +254,6 @@ export default function TechnicianRequestDetailPage() {
   }
 
   const req = detail.request;
-  async function handleApply() {
-    const confirmed = window.confirm(
-      `Bạn sẽ nhận việc với giá ${formatCurrency(detail!.request.budgetRef)}. Xác nhận?`
-    );
-    if (!confirmed) return;
-
-    setApplyError(null);
-    setApplying(true);
-    try {
-      await applyForJob(Number(id));
-      loadDetail();
-    } catch (err) {
-      if (err instanceof ApiError && err.errorCode === 'JOB_ALREADY_TAKEN') {
-        setApplyError('Yêu cầu này vừa được thợ khác nhận.');
-        loadDetail();
-      } else {
-        setApplyError(err instanceof ApiError ? err.message : 'Không nhận được việc. Vui lòng thử lại.');
-      }
-    } finally {
-      setApplying(false);
-    }
-  }
-
-  const myQuote: Quotation | undefined = detail.quotations?.[0];
-  const isDeadlineExpired = req.applyDeadline ? new Date(req.applyDeadline).getTime() <= Date.now() : false;
-  const isOpenForApply = req.status === 'OPEN';
 
   // Danh sách hình ảnh
   const displayPhotos: string[] = req.media && req.media.length > 0
@@ -286,12 +352,15 @@ export default function TechnicianRequestDetailPage() {
         {/* Nhận việc & Thao tác tiến trình thi công */}
         {(() => {
           const numericUserId = user?.id ? Number(user.id.replace('usr_', '')) : null;
-          const isAssignedToMe = (req.technicianId && numericUserId && req.technicianId === numericUserId) || Boolean(myQuote);
+          const myQuote = detail.quotations && detail.quotations.length > 0 ? detail.quotations[0] : null;
+          const isAssignedToMe = (req.technicianId && numericUserId && req.technicianId === numericUserId) || (myQuote?.status === 'ACCEPTED');
+          const isOpenForBidding = req.status === 'OPEN' || req.status === 'BIDDING_OPEN';
+          const isDeadlineExpired = req.applyDeadline ? new Date(req.applyDeadline).getTime() <= Date.now() : false;
 
           if (isAssignedToMe) {
             return (
               <Card
-                title="Bạn đã nhận việc này"
+                title="Bạn đã được giao việc này"
                 description="Theo dõi chi phí và cập nhật từng bước khảo sát, thi công, nghiệm thu."
               >
                 <dl className="divide-y divide-slate-100 text-sm">
@@ -438,60 +507,264 @@ export default function TechnicianRequestDetailPage() {
             );
           }
 
-          if (isOpenForApply) {
+          if (isOpenForBidding) {
+            // Trường hợp 1: Thợ đã gửi báo giá (PENDING) và không đang mở form sửa
+            if (myQuote && myQuote.status === 'PENDING' && !isEditingQuote) {
+              return (
+                <Card
+                  title="Báo giá của bạn (Đang chờ khách duyệt)"
+                  description="Khách hàng đang xem xét các báo giá cạnh tranh để chọn thợ phù hợp."
+                >
+                  {quoteSuccess && (
+                    <div className="mb-4">
+                      <Alert tone="success">{quoteSuccess}</Alert>
+                    </div>
+                  )}
+                  {quoteError && (
+                    <div className="mb-4">
+                      <Alert tone="error">{quoteError}</Alert>
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 mb-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold text-blue-900 flex items-center gap-1.5">
+                        <span>🏷️</span> Đấu thầu kín: Hiện có <strong>{req.quotationCount} thợ</strong> tham gia báo giá
+                      </span>
+                      {req.applyDeadline && (
+                        <span className="text-blue-700">
+                          Hạn chót: {new Date(req.applyDeadline).toLocaleString('vi-VN')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                      <div>
+                        <span className="text-xs text-slate-500 font-medium">Trạng thái báo giá:</span>
+                        <div className="mt-1">
+                          <StatusChip status="PENDING" />
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs text-slate-500 font-medium">Tổng giá bạn đề xuất</span>
+                        <div className="font-display font-bold text-xl text-brand">
+                          {formatCurrency(myQuote.totalPrice)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        <span className="text-slate-500">Tiền công thợ:</span>
+                        <p className="font-semibold text-slate-800 text-sm mt-0.5">
+                          {formatCurrency(myQuote.priceLaborVnd)}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        <span className="text-slate-500">Linh kiện & vật tư:</span>
+                        <p className="font-semibold text-slate-800 text-sm mt-0.5">
+                          {formatCurrency(myQuote.priceMaterialsVnd)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+                      <span className="text-xs font-semibold text-slate-500">Phương án khắc phục đề xuất:</span>
+                      <p className="text-xs sm:text-sm text-slate-800 mt-1 leading-relaxed">
+                        {myQuote.solution}
+                      </p>
+                    </div>
+
+                    {myQuote.estimatedFinish && (
+                      <div className="text-xs text-slate-600">
+                        <span>📅 Thời gian hoàn thành dự kiến: </span>
+                        <strong>{new Date(myQuote.estimatedFinish).toLocaleDateString('vi-VN')}</strong>
+                      </div>
+                    )}
+
+                    {myQuote.note && (
+                      <div className="text-xs text-slate-500 italic">
+                        <span>Ghi chú cho khách: </span>{myQuote.note}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap justify-end gap-2.5 pt-3 border-t border-slate-100">
+                      <Button
+                        variant="secondary"
+                        loading={withdrawingQuote}
+                        onClick={() => handleWithdrawQuote(myQuote.id)}
+                        className="text-xs py-2 px-3.5 text-rose-600 border-rose-200 hover:bg-rose-50"
+                      >
+                        🗑️ Rút báo giá
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={() => handleStartEditQuote(myQuote)}
+                        className="text-xs py-2 px-4"
+                      >
+                        ✏️ Trả giá lại / Điều chỉnh báo giá
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            }
+
+            // Trường hợp 2: Thợ chưa báo giá hoặc đang bấm sửa / trả giá lại
             return (
               <Card
-                title="Nhận việc này"
-                description="Thợ đầu tiên bấm nhận sẽ được giao việc ngay, khách không cần xác nhận thêm."
+                title={isEditingQuote ? 'Điều chỉnh báo giá / Trả giá lại' : 'Gửi báo giá & Trả giá cạnh tranh'}
+                description={
+                  isEditingQuote
+                    ? 'Cập nhật lại mức chi phí để cạnh tranh và tăng cơ hội được khách hàng chọn.'
+                    : 'Đề xuất chi phí và giải pháp tốt nhất để giành quyền deal với khách hàng.'
+                }
               >
-            {applyError && (
-              <div className="mb-4">
-                <Alert tone="error">{applyError}</Alert>
-              </div>
-            )}
-            {isDeadlineExpired && (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 mb-4 text-center">
-                <p className="font-bold text-rose-900 text-sm">⛔ Yêu cầu đã hết hạn hiệu lực nhận việc</p>
-                <p className="text-xs text-rose-700 mt-1">
-                  Đơn này đã quá thời hạn 3 ngày ({new Date(req.applyDeadline!).toLocaleString('vi-VN')}). Kỹ thuật viên không thể nhận việc được nữa.
-                </p>
-              </div>
-            )}
-            <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-semibold text-slate-700">Giá khách đưa ra (cố định):</span>
-                <span className="font-display text-lg font-bold text-brand">
-                  {formatCurrency(req.budgetRef)}
-                </span>
-              </div>
-              {req.applyDeadline && (
-                <p className={`mt-2 text-xs font-medium ${isDeadlineExpired ? 'text-rose-600' : 'text-slate-500'}`}>
-                  Hạn nhận việc: {new Date(req.applyDeadline).toLocaleString('vi-VN')} {isDeadlineExpired ? '(Đã hết hạn)' : ''}
-                </p>
-              )}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <Button
-                variant="primary"
-                loading={applying}
-                disabled={isDeadlineExpired}
-                onClick={handleApply}
-              >
-                {applying ? 'Đang nhận...' : isDeadlineExpired ? 'Đã hết hạn hiệu lực' : 'Nhận việc'}
-              </Button>
-            </div>
-          </Card>
-        );
-      }
+                {quoteSuccess && (
+                  <div className="mb-4">
+                    <Alert tone="success">{quoteSuccess}</Alert>
+                  </div>
+                )}
+                {quoteError && (
+                  <div className="mb-4">
+                    <Alert tone="error">{quoteError}</Alert>
+                  </div>
+                )}
+                {isDeadlineExpired && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 mb-4 text-center">
+                    <p className="font-bold text-rose-900 text-sm">⛔ Yêu cầu đã hết hạn nhận báo giá</p>
+                    <p className="text-xs text-rose-700 mt-1">
+                      Đơn này đã quá thời hạn ({new Date(req.applyDeadline!).toLocaleString('vi-VN')}).
+                    </p>
+                  </div>
+                )}
 
-      return (
-        <Card title="Không thể nhận việc">
-          <div className="py-4 text-center text-sm text-slate-500">
-            Đơn này hiện không mở cho thợ nhận (Trạng thái: <strong>{req.statusLabel || req.status}</strong>).
-          </div>
-        </Card>
-      );
-    })()}
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 mb-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <div>
+                      <span className="text-xs text-slate-600 font-medium">Ngân sách khách dự kiến:</span>
+                      <p className="font-display font-bold text-base text-brand">
+                        {formatCurrency(req.budgetRef)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-slate-600 font-medium">Đấu thầu kín:</span>
+                      <p className="text-xs font-semibold text-slate-800">
+                        {req.quotationCount} thợ đang báo giá
+                      </p>
+                    </div>
+                  </div>
+                  {req.applyDeadline && (
+                    <p className={`mt-2 text-xs font-medium ${isDeadlineExpired ? 'text-rose-600' : 'text-slate-500'}`}>
+                      Hạn nhận: {new Date(req.applyDeadline).toLocaleString('vi-VN')} {isDeadlineExpired ? '(Đã hết hạn)' : ''}
+                    </p>
+                  )}
+                </div>
+
+                <form onSubmit={handleSubmitQuote} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <TextField
+                        label="Tiền công thợ (VNĐ)"
+                        type="number"
+                        min="0"
+                        step="10000"
+                        value={priceLabor ? String(priceLabor) : ''}
+                        onChange={(e) => setPriceLabor(Number(e.target.value))}
+                        placeholder="Ví dụ: 200000"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <TextField
+                        label="Tiền linh kiện, vật tư (VNĐ)"
+                        type="number"
+                        min="0"
+                        step="10000"
+                        value={priceMaterials ? String(priceMaterials) : ''}
+                        onChange={(e) => setPriceMaterials(Number(e.target.value))}
+                        placeholder="Ví dụ: 150000"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Tổng chi phí dự kiến */}
+                  <div className="rounded-xl bg-slate-50 border border-slate-200/90 p-3.5 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700">Tổng giá báo cho khách:</span>
+                    <span className="font-display font-bold text-base text-brand">
+                      {formatCurrency(Number(priceLabor || 0) + Number(priceMaterials || 0))}
+                    </span>
+                  </div>
+
+                  <div>
+                    <TextArea
+                      label="Phương án khắc phục & Giải pháp kỹ thuật"
+                      rows={3}
+                      placeholder="Mô tả hướng giải quyết, nguyên nhân lỗi và phương án bạn sẽ thực hiện..."
+                      value={solution}
+                      onChange={(e) => setSolution(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <TextField
+                      label="Ngày dự kiến hoàn thành"
+                      type="date"
+                      min={new Date().toISOString().split('T')[0]}
+                      value={estimatedFinish}
+                      onChange={(e) => setEstimatedFinish(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <TextArea
+                      label="Ghi chú thêm cho khách hàng"
+                      rows={2}
+                      placeholder="Ví dụ: Bảo hành linh kiện 6 tháng, kiểm tra tận nơi, tư vấn miễn phí..."
+                      value={quotationNote}
+                      onChange={(e) => setQuotationNote(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+                    {isEditingQuote && (
+                      <Button
+                        variant="secondary"
+                        type="button"
+                        onClick={() => setIsEditingQuote(false)}
+                      >
+                        Hủy
+                      </Button>
+                    )}
+                    <Button
+                      variant="primary"
+                      type="submit"
+                      loading={submittingQuote}
+                      disabled={isDeadlineExpired}
+                    >
+                      {submittingQuote
+                        ? 'Đang gửi...'
+                        : isEditingQuote
+                          ? '💾 Lưu điều chỉnh giá'
+                          : '🚀 Gửi báo giá cạnh tranh'}
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+            );
+          }
+
+          return (
+            <Card title="Không thể gửi báo giá">
+              <div className="py-4 text-center text-sm text-slate-500">
+                Đơn này hiện không mở cho thợ nhận (Trạng thái: <strong>{req.statusLabel || req.status}</strong>).
+              </div>
+            </Card>
+          );
+        })()}
 
         {/* Lịch hẹn làm việc / khảo sát (Jira RC-48: Appointment Status Lifecycle) */}
         {(() => {
