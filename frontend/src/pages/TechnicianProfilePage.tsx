@@ -42,6 +42,7 @@ const TABS = [
 
 const TECHNICIAN_NAV = [
   { to: '/tho', label: 'Bảng điều khiển' },
+  { to: '/tho/lich-su', label: 'Việc đã hoàn thành' },
   { to: '/tho/ho-so', label: 'Hồ sơ của tôi' }
 ];
 

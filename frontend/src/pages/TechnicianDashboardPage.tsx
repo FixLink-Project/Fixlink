@@ -51,6 +51,7 @@ const VERIFICATION_NOTICE: Record<
 
 const TECHNICIAN_NAV = [
   { to: '/tho', label: 'Bảng điều khiển' },
+  { to: '/tho/lich-su', label: 'Việc đã hoàn thành' },
   { to: '/tho/ho-so', label: 'Hồ sơ của tôi' }
 ];
 
@@ -249,21 +250,41 @@ export default function TechnicianDashboardPage() {
 
           {/* Stats cards with clean white backgrounds and soft tinted badges */}
           <dl className="grid gap-4 sm:grid-cols-3">
-            {[
-              { icon: '✅', label: 'Việc đã hoàn tất', value: profile.completedJobs, badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-              { icon: '⭐', label: 'Điểm đánh giá', value: profile.completedJobs > 0 ? Number(profile.avgRating).toFixed(1) : 'Chưa có', badgeBg: 'bg-amber-50 text-amber-700 border-amber-200' },
-              { icon: '💰', label: 'Số dư ví FixLink', value: formatCurrency(profile.walletBalance), badgeBg: 'bg-blue-50 text-brand border-blue-200' }
-            ].map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+            <Link to="/tho/lich-su" className="group block transition-transform hover:-translate-y-0.5">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition group-hover:border-emerald-300 group-hover:shadow-md h-full">
                 <dt className="flex items-center justify-between text-xs font-semibold text-slate-500">
-                  <span>{stat.label}</span>
-                  <span className={`inline-flex items-center justify-center h-7 w-7 rounded-lg border text-sm ${stat.badgeBg}`}>
-                    {stat.icon}
+                  <span className="group-hover:text-emerald-700">Việc đã hoàn tất ↗</span>
+                  <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg border text-sm bg-emerald-50 text-emerald-700 border-emerald-200">
+                    ✅
                   </span>
                 </dt>
-                <dd className="mt-3 font-display text-2xl font-bold text-slate-900">{stat.value}</dd>
+                <dd className="mt-3 font-display text-2xl font-bold text-slate-900 group-hover:text-emerald-600">
+                  {profile.completedJobs}
+                </dd>
               </div>
-            ))}
+            </Link>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+              <dt className="flex items-center justify-between text-xs font-semibold text-slate-500">
+                <span>Điểm đánh giá</span>
+                <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg border text-sm bg-amber-50 text-amber-700 border-amber-200">
+                  ⭐
+                </span>
+              </dt>
+              <dd className="mt-3 font-display text-2xl font-bold text-slate-900">
+                {profile.completedJobs > 0 ? Number(profile.avgRating).toFixed(1) : 'Chưa có'}
+              </dd>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+              <dt className="flex items-center justify-between text-xs font-semibold text-slate-500">
+                <span>Số dư ví FixLink</span>
+                <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg border text-sm bg-blue-50 text-brand border-blue-200">
+                  💰
+                </span>
+              </dt>
+              <dd className="mt-3 font-display text-2xl font-bold text-slate-900">
+                {formatCurrency(profile.walletBalance)}
+              </dd>
+            </div>
           </dl>
 
           <Card
@@ -294,90 +315,118 @@ export default function TechnicianDashboardPage() {
             </p>
           </Card>
 
-          <Card
-            title="Công việc bạn đã nhận"
-            description={
-              approved
-                ? 'Danh sách các yêu cầu bạn đã nhận việc. Nhấn vào đơn để xem số điện thoại khách, đặt lịch hẹn và trao đổi.'
-                : undefined
-            }
-          >
-            {requestsLocked ? (
-              <div className="py-8 text-center">
-                <p className="text-3xl">🔒</p>
-                <p className="mt-2 font-display font-semibold text-slate-900">Chưa mở khoá phần này</p>
-                <p className="mx-auto mt-2 max-w-sm text-sm text-slate-500">
-                  Yêu cầu sửa chữa chỉ hiện ra sau khi hồ sơ của bạn được xác minh. Trong lúc chờ,
-                  hãy hoàn thiện nhóm việc và khu vực hoạt động để được ghép đúng khách.
-                </p>
-              </div>
-            ) : requests.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-3xl">📭</p>
-                <p className="mt-2 font-display font-semibold text-slate-900">Chưa có công việc nào đã nhận</p>
-                <p className="mt-2 text-sm text-slate-500">
-                  Xem danh sách "Yêu cầu phù hợp" bên dưới và bấm "Nhận việc" để bắt đầu nhận đơn.
-                </p>
-              </div>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {requests.map((request) => (
-                  <li
-                    key={request.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4.5 first:pt-0 last:pb-0"
-                  >
-                    <div className="space-y-1.5 min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                          {request.requestCode || `#${request.id}`}
-                        </span>
-                        <StatusChip status={request.status} label={request.statusLabel} />
-                        {request.categoryName && (
-                          <span className="text-xs text-slate-500 font-medium">
-                            • {request.categoryName}
-                          </span>
-                        )}
-                        <span className="text-xs text-slate-400">
-                          {new Date(request.createdAt).toLocaleDateString('vi-VN')}
-                        </span>
+          {/* Lọc riêng các công việc đang thực hiện (chưa hoàn thành và chưa hủy) */}
+          {(() => {
+            const ongoingRequests = requests.filter(
+              (r) => r.status !== 'COMPLETED' && r.status !== 'CANCELLED'
+            );
+            const completedJobsCount = profile.completedJobs || requests.filter((r) => r.status === 'COMPLETED').length;
+
+            return (
+              <Card
+                title="Công việc đang thực hiện"
+                description={
+                  approved
+                    ? 'Danh sách các yêu cầu bạn đang phụ trách. Nhấn vào đơn để xem số điện thoại khách, đặt lịch hẹn và tiến hành sửa chữa.'
+                    : undefined
+                }
+                actions={
+                  completedJobsCount > 0 ? (
+                    <Link to="/tho/lich-su">
+                      <Button variant="quiet" className="text-xs">
+                        Xem việc đã hoàn thành ({completedJobsCount}) →
+                      </Button>
+                    </Link>
+                  ) : undefined
+                }
+              >
+                {requestsLocked ? (
+                  <div className="py-8 text-center">
+                    <p className="text-3xl">🔒</p>
+                    <p className="mt-2 font-display font-semibold text-slate-900">Chưa mở khoá phần này</p>
+                    <p className="mx-auto mt-2 max-w-sm text-sm text-slate-500">
+                      Yêu cầu sửa chữa chỉ hiện ra sau khi hồ sơ của bạn được xác minh. Trong lúc chờ,
+                      hãy hoàn thiện nhóm việc và khu vực hoạt động để được ghép đúng khách.
+                    </p>
+                  </div>
+                ) : ongoingRequests.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <p className="text-3xl">📭</p>
+                    <p className="mt-2 font-display font-semibold text-slate-900">Không có công việc nào đang thực hiện</p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Xem danh sách "Yêu cầu phù hợp" bên dưới và bấm "Nhận việc" hoặc tham gia báo giá để nhận đơn mới.
+                    </p>
+                    {completedJobsCount > 0 && (
+                      <div className="mt-4">
+                        <Link to="/tho/lich-su">
+                          <Button variant="secondary" className="text-xs">
+                            👉 Xem {completedJobsCount} công việc đã hoàn thành trong trang riêng →
+                          </Button>
+                        </Link>
                       </div>
-                      <Link
-                        to={`/tho/yeu-cau/${request.id}`}
-                        className="block font-bold text-slate-900 hover:text-brand transition-colors text-base"
+                    )}
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-slate-100">
+                    {ongoingRequests.map((request) => (
+                      <li
+                        key={request.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4.5 first:pt-0 last:pb-0"
                       >
-                        {request.title}
-                      </Link>
-                      {request.description && (
-                        <p className="text-sm text-slate-600 line-clamp-2">
-                          {request.description}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 pt-1">
-                        {request.customerName && (
-                          <span>
-                            Khách hàng: <strong className="text-slate-700">{request.customerName}</strong>
-                          </span>
-                        )}
-                        <span>
-                          Địa chỉ: <strong className="text-slate-700">{request.addressLine || request.address || '—'}</strong>
-                        </span>
-                        <span>
-                          Giá: <strong className="text-emerald-600 font-semibold">{formatCurrency(request.agreedPrice || request.budgetRef)}</strong>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="shrink-0 flex items-center gap-2 pt-2 sm:pt-0">
-                      <Link to={`/tho/yeu-cau/${request.id}`}>
-                        <Button variant="primary">
-                          Làm việc với khách →
-                        </Button>
-                      </Link>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              {request.requestCode || `#${request.id}`}
+                            </span>
+                            <StatusChip status={request.status} label={request.statusLabel} />
+                            {request.categoryName && (
+                              <span className="text-xs text-slate-500 font-medium">
+                                • {request.categoryName}
+                              </span>
+                            )}
+                            <span className="text-xs text-slate-400">
+                              {new Date(request.createdAt).toLocaleDateString('vi-VN')}
+                            </span>
+                          </div>
+                          <Link
+                            to={`/tho/yeu-cau/${request.id}`}
+                            className="block font-bold text-slate-900 hover:text-brand transition-colors text-base"
+                          >
+                            {request.title}
+                          </Link>
+                          {request.description && (
+                            <p className="text-sm text-slate-600 line-clamp-2">
+                              {request.description}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 pt-1">
+                            {request.customerName && (
+                              <span>
+                                Khách hàng: <strong className="text-slate-700">{request.customerName}</strong>
+                              </span>
+                            )}
+                            <span>
+                              Địa chỉ: <strong className="text-slate-700">{request.addressLine || request.address || '—'}</strong>
+                            </span>
+                            <span>
+                              Giá chốt: <strong className="text-emerald-600 font-semibold">{formatCurrency(request.agreedPrice || request.budgetRef)}</strong>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-2 pt-2 sm:pt-0">
+                          <Link to={`/tho/yeu-cau/${request.id}`}>
+                            <Button variant="primary">
+                              Làm việc với khách →
+                            </Button>
+                          </Link>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            );
+          })()}
 
           {/* Matching requests for bidding */}
           {approved && (
