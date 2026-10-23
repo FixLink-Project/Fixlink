@@ -30,6 +30,7 @@ logs/
 # --- Maven & Gradle ---
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
+.maven-repository/
 .gradle/
 gradle-app.setting
 
