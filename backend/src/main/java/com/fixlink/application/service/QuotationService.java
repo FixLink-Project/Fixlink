@@ -144,6 +144,11 @@ public class QuotationService implements QuotationUseCase {
             throw new DomainException("INVALID_OPERATION", "Khu vực của bạn không khớp với địa bàn yêu cầu");
         }
 
+        String solution = (cmd.getSolution() != null && !cmd.getSolution().isBlank())
+                ? cmd.getSolution()
+                : "Báo giá sửa chữa theo yêu cầu";
+        BigDecimal priceMaterials = cmd.getPriceMaterialsVnd() != null ? cmd.getPriceMaterialsVnd() : BigDecimal.ZERO;
+
         var existingOpt = quotationRepo.findByRequestIdAndTechnicianId(requestId, technicianId);
         QuotationJpaEntity entity;
         if (existingOpt.isPresent()) {
@@ -151,9 +156,9 @@ public class QuotationService implements QuotationUseCase {
             if (entity.getStatus() == QuotationStatus.ACCEPTED) {
                 throw new DomainException("INVALID_OPERATION", "Báo giá của bạn đã được khách hàng chấp nhận");
             }
-            entity.setSolution(cmd.getSolution());
+            entity.setSolution(solution);
             entity.setPriceLaborVnd(cmd.getPriceLaborVnd());
-            entity.setPriceMaterialsVnd(cmd.getPriceMaterialsVnd());
+            entity.setPriceMaterialsVnd(priceMaterials);
             entity.setInspectionTime(cmd.getInspectionTime());
             entity.setEstimatedFinish(cmd.getEstimatedFinish());
             entity.setNote(cmd.getNote());
@@ -163,9 +168,9 @@ public class QuotationService implements QuotationUseCase {
             entity = new QuotationJpaEntity();
             entity.setRequestId(requestId);
             entity.setTechnicianId(technicianId);
-            entity.setSolution(cmd.getSolution());
+            entity.setSolution(solution);
             entity.setPriceLaborVnd(cmd.getPriceLaborVnd());
-            entity.setPriceMaterialsVnd(cmd.getPriceMaterialsVnd());
+            entity.setPriceMaterialsVnd(priceMaterials);
             entity.setInspectionTime(cmd.getInspectionTime());
             entity.setEstimatedFinish(cmd.getEstimatedFinish());
             entity.setNote(cmd.getNote());
@@ -194,9 +199,16 @@ public class QuotationService implements QuotationUseCase {
             throw new DomainException("INVALID_OPERATION", "Yêu cầu không ở trạng thái nhận báo giá");
         }
 
-        entity.setSolution(cmd.getSolution());
+        String solution = (cmd.getSolution() != null && !cmd.getSolution().isBlank())
+                ? cmd.getSolution()
+                : (entity.getSolution() != null ? entity.getSolution() : "Báo giá sửa chữa theo yêu cầu");
+        BigDecimal priceMaterials = cmd.getPriceMaterialsVnd() != null
+                ? cmd.getPriceMaterialsVnd()
+                : (entity.getPriceMaterialsVnd() != null ? entity.getPriceMaterialsVnd() : BigDecimal.ZERO);
+
+        entity.setSolution(solution);
         entity.setPriceLaborVnd(cmd.getPriceLaborVnd());
-        entity.setPriceMaterialsVnd(cmd.getPriceMaterialsVnd());
+        entity.setPriceMaterialsVnd(priceMaterials);
         entity.setInspectionTime(cmd.getInspectionTime());
         entity.setEstimatedFinish(cmd.getEstimatedFinish());
         entity.setNote(cmd.getNote());

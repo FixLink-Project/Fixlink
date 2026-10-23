@@ -10,13 +10,11 @@ import java.time.LocalDateTime;
 @Data
 public class CreateQuotationRequest {
 
-    @NotBlank(message = "Giải pháp sửa chữa không được để trống")
     private String solution;
 
-    @NotNull(message = "Giá công không được để trống")
+    @NotNull(message = "Giá báo không được để trống")
     private BigDecimal priceLaborVnd;
 
-    @NotNull(message = "Giá vật tư không được để trống")
     private BigDecimal priceMaterialsVnd;
 
     private LocalDateTime inspectionTime;

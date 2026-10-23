@@ -107,12 +107,8 @@ export default function TechnicianRequestDetailPage() {
   // Modal xem ảnh phóng to
   const [activeMediaUrl, setActiveMediaUrl] = useState<string | null>(null);
 
-  // Báo giá & Đấu giá cạnh tranh
-  const [priceLabor, setPriceLabor] = useState<number>(0);
-  const [priceMaterials, setPriceMaterials] = useState<number>(0);
-  const [solution, setSolution] = useState<string>('');
-  const [estimatedFinish, setEstimatedFinish] = useState<string>('');
-  const [quotationNote, setQuotationNote] = useState<string>('');
+  // Báo giá & Đấu giá cạnh tranh (Chỉ đấu giá thuần túy về giá)
+  const [bidPrice, setBidPrice] = useState<number>(0);
   const [isEditingQuote, setIsEditingQuote] = useState<boolean>(false);
   const [submittingQuote, setSubmittingQuote] = useState<boolean>(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -134,18 +130,10 @@ export default function TechnicianRequestDetailPage() {
           (q) => q.isMine || (numericUserId && q.technicianId === numericUserId)
         );
         if (myQuote && myQuote.status === 'PENDING') {
-          setPriceLabor(myQuote.priceLaborVnd || 0);
-          setPriceMaterials(myQuote.priceMaterialsVnd || 0);
-          setSolution(myQuote.solution || '');
-          setEstimatedFinish(myQuote.estimatedFinish ? myQuote.estimatedFinish.split('T')[0] : '');
-          setQuotationNote(myQuote.note || '');
+          setBidPrice(myQuote.totalPrice || myQuote.priceLaborVnd || 0);
         } else if (!myQuote) {
-          // Mặc định tiền công là ngân sách khách đưa ra (nếu có)
-          setPriceLabor(res.data.request.budgetRef || 0);
-          setPriceMaterials(0);
-          setSolution('');
-          setEstimatedFinish('');
-          setQuotationNote('');
+          // Mặc định giá báo là ngân sách khách đưa ra (nếu có)
+          setBidPrice(res.data.request.budgetRef || 0);
         }
       }
     } catch (err) {
@@ -181,11 +169,7 @@ export default function TechnicianRequestDetailPage() {
   }, [id, detail?.request?.status]);
 
   function handleStartEditQuote(quote: Quotation) {
-    setPriceLabor(quote.priceLaborVnd || 0);
-    setPriceMaterials(quote.priceMaterialsVnd || 0);
-    setSolution(quote.solution || '');
-    setEstimatedFinish(quote.estimatedFinish ? quote.estimatedFinish.split('T')[0] : '');
-    setQuotationNote(quote.note || '');
+    setBidPrice(quote.totalPrice || quote.priceLaborVnd || 0);
     setIsEditingQuote(true);
     setQuoteError(null);
     setQuoteSuccess(null);
@@ -194,12 +178,8 @@ export default function TechnicianRequestDetailPage() {
   async function handleSubmitQuote(e: React.FormEvent) {
     e.preventDefault();
     if (!detail) return;
-    if (!solution.trim()) {
-      setQuoteError('Vui lòng nhập phương án xử lý.');
-      return;
-    }
-    if (priceLabor <= 0) {
-      setQuoteError('Vui lòng nhập tiền công hợp lệ (> 0 đ).');
+    if (bidPrice <= 0) {
+      setQuoteError('Vui lòng nhập mức giá báo hợp lệ (> 0 đ).');
       return;
     }
 
@@ -211,19 +191,17 @@ export default function TechnicianRequestDetailPage() {
         (q) => q.isMine || (numericUserId && q.technicianId === numericUserId)
       );
       const payload = {
-        solution: solution.trim(),
-        priceLaborVnd: priceLabor,
-        priceMaterialsVnd: priceMaterials,
-        estimatedFinish: estimatedFinish ? `${estimatedFinish}T18:00:00` : undefined,
-        note: quotationNote.trim() || undefined
+        solution: 'Báo giá sửa chữa theo yêu cầu',
+        priceLaborVnd: bidPrice,
+        priceMaterialsVnd: 0
       };
 
       if (myQuotation && isEditingQuote) {
         await updateQuotation(detail.request.id, myQuotation.id, payload);
-        setQuoteSuccess('Đã cập nhật báo giá thành công. Mức giá mới đã được đưa lên sàn đấu giá.');
+        setQuoteSuccess('Đã cập nhật mức giá thành công lên sàn đấu giá.');
       } else {
         await createQuotation(detail.request.id, payload);
-        setQuoteSuccess('Đã gửi báo giá thành công vào phiên đấu giá công khai.');
+        setQuoteSuccess('Đã gửi mức giá thành công vào phiên đấu giá công khai.');
       }
       setIsEditingQuote(false);
       await loadDetail(true);
@@ -382,6 +360,12 @@ export default function TechnicianRequestDetailPage() {
           const isOpenForBidding = req.status === 'OPEN' || req.status === 'BIDDING_OPEN';
           const isDeadlineExpired = req.applyDeadline ? new Date(req.applyDeadline).getTime() <= Date.now() : false;
 
+          const activeAppointments = appointments.filter(
+            (a) => a.status === 'CONFIRMED' || a.status === 'RESCHEDULED' || a.status === 'COMPLETED'
+          );
+          const hasActiveAppointment = activeAppointments.length > 0;
+          const latestAppt = activeAppointments[0];
+
           if (isAssignedToMe) {
             return (
               <Card
@@ -409,27 +393,71 @@ export default function TechnicianRequestDetailPage() {
                   )}
 
                   {req.status === 'ASSIGNED' && (
-                    <div className="rounded-xl bg-teal-50/90 border border-teal-200/90 p-4 space-y-3">
-                      <div className="flex items-start gap-2.5">
-                        <span className="text-xl">📍</span>
-                        <div>
-                          <p className="text-xs font-bold text-teal-950">
-                            Bước tiếp theo: Khảo sát hiện trường
-                          </p>
-                          <p className="text-xs text-teal-800 mt-0.5 leading-relaxed">
-                            Khi bạn đã có mặt tại nhà khách hàng, hãy bấm bắt đầu khảo sát để hệ thống ghi nhận mốc hiện trường.
-                          </p>
+                    !hasActiveAppointment ? (
+                      <div className="rounded-xl bg-amber-50/90 border border-amber-300 p-4 space-y-3">
+                        <div className="flex items-start gap-2.5">
+                          <span className="text-xl">📅</span>
+                          <div>
+                            <p className="text-xs font-bold text-amber-950">
+                              Bước 1: Chốt lịch hẹn khảo sát với khách hàng
+                            </p>
+                            <p className="text-xs text-amber-900 mt-0.5 leading-relaxed">
+                              Khách hàng đã chấp nhận bạn phụ trách yêu cầu này. Vui lòng liên hệ và đặt lịch hẹn khảo sát trên hệ thống trước khi đến nhà khách hàng.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 pt-1">
+                          <Button
+                            variant="primary"
+                            onClick={() => {
+                              setCreateApptError(null);
+                              setShowCreateApptModal(true);
+                            }}
+                            className="text-xs py-2 px-4 shadow-sm bg-amber-600 hover:bg-amber-700 text-white"
+                          >
+                            📅 + Đặt lịch hẹn khảo sát ngay
+                          </Button>
+                          <span className="text-[11px] text-amber-800 italic">
+                            (Nút bắt đầu khảo sát sẽ được mở sau khi có lịch hẹn)
+                          </span>
                         </div>
                       </div>
-                      <Button
-                        variant="primary"
-                        loading={updatingLifecycle}
-                        onClick={() => handleTransition('INSPECTING', 'Kỹ thuật viên đã có mặt tại hiện trường và bắt đầu khảo sát thiết bị')}
-                        className="w-full sm:w-auto text-xs py-2 px-4 shadow-sm"
-                      >
-                        🔍 Bắt đầu khảo sát hiện trường
-                      </Button>
-                    </div>
+                    ) : (
+                      <div className="rounded-xl bg-teal-50/90 border border-teal-200/90 p-4 space-y-3">
+                        <div className="flex items-start gap-2.5">
+                          <span className="text-xl">📍</span>
+                          <div>
+                            <p className="text-xs font-bold text-teal-950">
+                              Bước 2: Khảo sát hiện trường (Đã có lịch hẹn)
+                            </p>
+                            <p className="text-xs text-teal-800 mt-0.5 leading-relaxed">
+                              Lịch hẹn đã chốt: <strong>{latestAppt.scheduledTime?.slice(0, 5)} ngày {new Date(latestAppt.scheduledDate).toLocaleDateString('vi-VN')}</strong>.
+                              Khi bạn đã có mặt tại nhà khách hàng theo lịch hẹn, hãy bấm bắt đầu khảo sát để ghi nhận mốc hiện trường.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <Button
+                            variant="primary"
+                            loading={updatingLifecycle}
+                            onClick={() => handleTransition('INSPECTING', 'Kỹ thuật viên đã có mặt tại hiện trường theo lịch hẹn và bắt đầu khảo sát thiết bị')}
+                            className="w-full sm:w-auto text-xs py-2 px-4 shadow-sm"
+                          >
+                            🔍 Bắt đầu khảo sát hiện trường
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setCreateApptError(null);
+                              setShowCreateApptModal(true);
+                            }}
+                            className="text-xs py-2 px-3 text-slate-700 bg-white"
+                          >
+                            📅 Đổi / Thêm lịch hẹn
+                          </Button>
+                        </div>
+                      </div>
+                    )
                   )}
 
                   {req.status === 'INSPECTING' && (
@@ -649,21 +677,12 @@ export default function TechnicianRequestDetailPage() {
                                       {new Date(q.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} • {new Date(q.createdAt).toLocaleDateString('vi-VN')}
                                     </span>
                                   </div>
-
-                                  {q.solution && (
-                                    <p className="text-xs text-slate-700 mt-1 line-clamp-2">
-                                      <strong className="text-slate-500 font-medium">Giải pháp:</strong> {q.solution}
-                                    </p>
-                                  )}
                                 </div>
 
                                 <div className="text-right">
-                                  <span className="text-[11px] text-slate-400 font-medium">Tổng giá đề xuất</span>
+                                  <span className="text-[11px] text-slate-400 font-medium">Mức giá đề xuất</span>
                                   <div className={`font-display font-bold text-lg ${isMine ? 'text-brand' : 'text-slate-900'}`}>
                                     {formatCurrency(q.totalPrice)}
-                                  </div>
-                                  <div className="text-[11px] text-slate-500">
-                                    Công: {formatCurrency(q.priceLaborVnd)} • Vật tư: {formatCurrency(q.priceMaterialsVnd)}
                                   </div>
                                 </div>
                               </div>
@@ -688,7 +707,7 @@ export default function TechnicianRequestDetailPage() {
                                       onClick={() => handleStartEditQuote(q)}
                                       className="text-xs py-1.5 px-3"
                                     >
-                                      ✏️ Điều chỉnh báo giá
+                                      ✏️ Điều chỉnh mức giá
                                     </Button>
                                   </div>
                                 </div>
@@ -705,83 +724,34 @@ export default function TechnicianRequestDetailPage() {
                   </div>
                 </Card>
 
-                {/* 2. FORM GỬI HOẶC ĐIỀU CHỈNH BÁO GIÁ (NHẬP GIÁ THỦ CÔNG) */}
+                {/* 2. FORM GỬI HOẶC ĐIỀU CHỈNH MỨC GIÁ (CHỈ NHẬP GIÁ THUẦN TÚY) */}
                 {(!myQuote || isEditingQuote) ? (
                   <Card
-                    title={isEditingQuote ? '✏️ Điều chỉnh báo giá / Trả giá lại' : '🚀 Gửi báo giá cạnh tranh'}
+                    title={isEditingQuote ? '✏️ Điều chỉnh mức giá / Trả giá lại' : '🚀 Gửi mức giá cạnh tranh'}
                     description={
                       isEditingQuote
-                        ? 'Tự nhập lại mức tiền công hoặc vật tư mong muốn để đưa ra mức giá tốt hơn giành quyền làm việc với khách.'
-                        : 'Tự nhập mức chi phí và giải pháp của bạn để tham gia vào phiên đấu giá công khai.'
+                        ? 'Nhập lại mức giá bạn đề xuất để cạnh tranh giành quyền làm việc với khách hàng.'
+                        : 'Nhập mức giá bạn đề xuất để tham gia vào phiên đấu giá công khai.'
                     }
                   >
                     <form onSubmit={handleSubmitQuote} className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <TextField
-                            label="Tiền công thợ (VNĐ) *"
-                            type="number"
-                            min="0"
-                            step="10000"
-                            value={priceLabor ? String(priceLabor) : ''}
-                            onChange={(e) => setPriceLabor(Number(e.target.value))}
-                            placeholder="Ví dụ: 200000"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <TextField
-                            label="Tiền linh kiện, vật tư (VNĐ)"
-                            type="number"
-                            min="0"
-                            step="10000"
-                            value={priceMaterials ? String(priceMaterials) : ''}
-                            onChange={(e) => setPriceMaterials(Number(e.target.value))}
-                            placeholder="Ví dụ: 150000"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Tổng chi phí dự kiến */}
-                      <div className="rounded-xl bg-slate-50 border border-slate-200/90 p-3.5 flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-bold text-slate-700">Tổng giá báo cho khách hàng:</span>
-                          <p className="text-[11px] text-slate-500 mt-0.5">Bao gồm tiền công và linh kiện vật tư dự kiến</p>
-                        </div>
-                        <span className="font-display font-bold text-lg text-brand">
-                          {formatCurrency(Number(priceLabor || 0) + Number(priceMaterials || 0))}
-                        </span>
-                      </div>
-
-                      <div>
-                        <TextArea
-                          label="Phương án khắc phục & Giải pháp kỹ thuật *"
-                          rows={3}
-                          placeholder="Mô tả hướng giải quyết, nguyên nhân lỗi và phương án bạn sẽ thực hiện..."
-                          value={solution}
-                          onChange={(e) => setSolution(e.target.value)}
-                          required
-                        />
-                      </div>
-
                       <div>
                         <TextField
-                          label="Ngày dự kiến hoàn thành"
-                          type="date"
-                          min={new Date().toISOString().split('T')[0]}
-                          value={estimatedFinish}
-                          onChange={(e) => setEstimatedFinish(e.target.value)}
+                          label="Mức giá báo của bạn (VNĐ) *"
+                          type="number"
+                          min="0"
+                          step="10000"
+                          value={bidPrice ? String(bidPrice) : ''}
+                          onChange={(e) => setBidPrice(Number(e.target.value))}
+                          placeholder="Ví dụ: 300000"
+                          required
                         />
-                      </div>
-
-                      <div>
-                        <TextArea
-                          label="Ghi chú thêm cho khách hàng"
-                          rows={2}
-                          placeholder="Ví dụ: Bảo hành linh kiện 6 tháng, kiểm tra tận nơi, tư vấn miễn phí..."
-                          value={quotationNote}
-                          onChange={(e) => setQuotationNote(e.target.value)}
-                        />
+                        {bidPrice > 0 && (
+                          <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-1.5">
+                            <span>💰 Mức giá hiển thị trên sàn:</span>
+                            <strong className="text-brand font-bold">{formatCurrency(bidPrice)}</strong>
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
@@ -803,8 +773,8 @@ export default function TechnicianRequestDetailPage() {
                           {submittingQuote
                             ? 'Đang gửi...'
                             : isEditingQuote
-                              ? '💾 Lưu điều chỉnh giá'
-                              : '🚀 Gửi báo giá'}
+                              ? '💾 Lưu mức giá mới'
+                              : '🚀 Gửi giá đấu thầu'}
                         </Button>
                       </div>
                     </form>
@@ -814,10 +784,10 @@ export default function TechnicianRequestDetailPage() {
                   <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-4 flex flex-wrap items-center justify-between gap-3">
                     <div className="text-xs text-blue-900 space-y-0.5">
                       <p className="font-bold">
-                        Bạn đã gửi báo giá ({formatCurrency(myQuote.totalPrice)}) vào phiên đấu giá.
+                        Bạn đã gửi mức giá ({formatCurrency(myQuote.totalPrice)}) vào phiên đấu giá.
                       </p>
                       <p className="text-blue-700">
-                        Dữ liệu đối thủ đang được cập nhật tự động. Bạn có thể tự do điều chỉnh giá bất cứ lúc nào để tăng tính cạnh tranh.
+                        Dữ liệu đối thủ đang được cập nhật tự động. Bạn có thể tự do điều chỉnh mức giá bất cứ lúc nào để tăng tính cạnh tranh.
                       </p>
                     </div>
                     <Button
@@ -825,7 +795,7 @@ export default function TechnicianRequestDetailPage() {
                       onClick={() => handleStartEditQuote(myQuote)}
                       className="text-xs py-2 px-4 shadow-sm"
                     >
-                      ✏️ Trả giá lại / Điều chỉnh báo giá
+                      ✏️ Trả giá lại / Điều chỉnh mức giá
                     </Button>
                   </div>
                 )}
@@ -842,10 +812,14 @@ export default function TechnicianRequestDetailPage() {
           );
         })()}
 
-        {/* Lịch hẹn làm việc / khảo sát (Jira RC-48: Appointment Status Lifecycle) */}
+        {/* Lịch hẹn làm việc / khảo sát (Chỉ hiển thị khi đã chốt thợ, ẩn hoàn toàn khi đang đấu giá) */}
         {(() => {
           const numericUserId = user?.id ? Number(user.id.replace('usr_', '')) : null;
           const isAssignedToOther = detail.request.technicianId && numericUserId && detail.request.technicianId !== numericUserId;
+          const isOpenForBidding = req.status === 'OPEN' || req.status === 'BIDDING_OPEN';
+
+          // Khi đang đấu giá: ẨN HOÀN TOÀN khối đặt lịch hẹn
+          if (isOpenForBidding) return null;
 
           return (
             <Card
