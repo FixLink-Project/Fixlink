@@ -60,6 +60,7 @@ public class RepairRequestService implements RepairRequestUseCase {
     private static final DateTimeFormatter CODE_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final SpringDataRepairRequestRepository requestRepo;
+    private final SpringDataRepairRequestReviewRepository reviewRepo;
     private final SpringDataMediaRepository mediaRepo;
     private final SpringDataWorkProgressRepository progressRepo;
     private final SpringDataQuotationRepository quotationRepo;
@@ -299,6 +300,11 @@ public class RepairRequestService implements RepairRequestUseCase {
             boolean publishDraft = targetStatus == RequestStatus.PENDING && currentStatus == RequestStatus.DRAFT;
             boolean approveCost = targetStatus == RequestStatus.IN_PROGRESS && currentStatus == RequestStatus.AWAITING_COST_APPROVAL;
             boolean completeAcceptance = targetStatus == RequestStatus.COMPLETED && currentStatus == RequestStatus.AWAITING_ACCEPTANCE;
+
+            if (completeAcceptance && !reviewRepo.existsByRequestIdAndDeletedAtIsNull(entity.getId())) {
+                throw new ValidationFailedException("Vui lòng chấm điểm và để lại phản hồi trước khi hoàn tất yêu cầu.",
+                        Map.of("review", "Đánh giá sao và nhận xét là bắt buộc."));
+            }
 
             if (!cancelOwnRequest && !publishDraft && !approveCost && !completeAcceptance) {
                 throw new InvalidStateTransitionException(currentStatus, targetStatus);

@@ -53,6 +53,9 @@ export default function RepairRequestDetailPage() {
   // Thao tác vòng đời (Khách duyệt giá phát sinh & Nghiệm thu)
   const [updatingLifecycle, setUpdatingLifecycle] = useState(false);
   const [lifecycleMessage, setLifecycleMessage] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   async function handleCustomerAction(targetStatus: string, note?: string) {
     if (!detail) return;
@@ -60,7 +63,14 @@ export default function RepairRequestDetailPage() {
     setActionError(null);
     setLifecycleMessage(null);
     try {
-      await updateRequestStatus(detail.request.id, targetStatus, note);
+      const completingWithReview = targetStatus === 'COMPLETED' && detail.request.status === 'AWAITING_ACCEPTANCE';
+      if (completingWithReview) {
+        if (!reviewComment.trim()) throw new Error('Vui lòng nhập phản hồi trước khi hoàn tất yêu cầu.');
+        await api.post(`/repair-requests/${detail.request.id}/review`, { rating: reviewRating, comment: reviewComment.trim() });
+        setReviewSubmitted(true);
+      } else {
+        await updateRequestStatus(detail.request.id, targetStatus, note);
+      }
       await loadDetail();
       if (targetStatus === 'COMPLETED') {
         setLifecycleMessage('Chúc mừng! Bạn đã hoàn tất nghiệm thu và kích hoạt bảo hành điện tử 90 ngày thành công.');
@@ -84,6 +94,16 @@ export default function RepairRequestDetailPage() {
       .then((res) => {
         setDetail(res.data);
         setError(null);
+        if (id && res.data.request.status === 'AWAITING_ACCEPTANCE') {
+          api.get<{ rating: number; comment: string } | null>(`/repair-requests/${id}/review`)
+            .then((review) => {
+              if (review.data) {
+                setReviewRating(review.data.rating);
+                setReviewComment(review.data.comment);
+                setReviewSubmitted(true);
+              }
+            }).catch(() => setReviewSubmitted(false));
+        }
       })
       .catch((err) => {
         setError(err instanceof ApiError ? err.message : 'Không tải được chi tiết yêu cầu.');
@@ -298,18 +318,22 @@ export default function RepairRequestDetailPage() {
               Quý khách vui lòng trực tiếp kiểm tra thiết bị xem đã hoạt động ổn định và hài lòng chưa. Sau khi bạn xác nhận nghiệm thu đạt, tiền công sẽ được giải ngân cho thợ và <strong>Bảo hành điện tử 90 ngày</strong> sẽ được kích hoạt ngay lập tức.
             </p>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-emerald-200/80 pt-3">
-              <span className="text-xs font-semibold text-emerald-800">
-                ⭐ Tổng chi phí quyết toán: <strong>{formatCurrency(req.agreedPrice)}</strong>
-              </span>
-              <Button
-                variant="primary"
-                loading={updatingLifecycle}
-                onClick={() => handleCustomerAction('COMPLETED', 'Khách hàng đã nghiệm thu thiết bị đạt chuẩn và hoàn tất đơn')}
-                className="text-xs py-2.5 px-5 shadow-md bg-emerald-600 hover:bg-emerald-700"
-              >
-                ✅ Nghiệm thu đạt & Hoàn tất đơn
-              </Button>
+            <div className="space-y-3 border-t border-emerald-200/80 pt-3">
+              <div className="rounded-xl border border-emerald-200 bg-white/80 p-4">
+                <p className="text-sm font-bold text-slate-800">Đánh giá bắt buộc trước khi hoàn tất</p>
+                <div className="mt-2 flex items-center gap-1" role="radiogroup" aria-label="Chấm điểm thợ từ 1 đến 5 sao">
+                  {[1, 2, 3, 4, 5].map((star) => <button key={star} type="button" role="radio" aria-checked={reviewRating === star} aria-label={`${star} sao`} disabled={reviewSubmitted} onClick={() => setReviewRating(star)} className={`text-2xl transition ${star <= reviewRating ? 'text-amber-500' : 'text-slate-300'} disabled:cursor-default`}>★</button>)}
+                  <span className="ml-2 text-sm font-semibold text-slate-600">{reviewRating}/5</span>
+                </div>
+                <textarea value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} disabled={reviewSubmitted} maxLength={2000} rows={3} placeholder="Chia sẻ trải nghiệm sửa chữa của bạn..." className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-50" />
+                {reviewSubmitted && <p className="mt-1 text-xs font-medium text-emerald-700">Đã lưu đánh giá của bạn.</p>}
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span className="text-xs font-semibold text-emerald-800">⭐ Tổng chi phí quyết toán: <strong>{formatCurrency(req.agreedPrice)}</strong></span>
+                <Button variant="primary" loading={updatingLifecycle} onClick={() => handleCustomerAction('COMPLETED', 'Khách hàng đã nghiệm thu thiết bị đạt chuẩn và hoàn tất đơn')} className="text-xs py-2.5 px-5 shadow-md bg-emerald-600 hover:bg-emerald-700">
+                  {reviewSubmitted ? 'Nghiệm thu đạt & Hoàn tất đơn' : 'Gửi đánh giá & Hoàn tất đơn'}
+                </Button>
+              </div>
             </div>
           </div>
         )}

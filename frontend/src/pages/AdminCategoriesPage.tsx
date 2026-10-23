@@ -39,6 +39,7 @@ const EMPTY_FORM = {
 
 const ADMIN_NAV = [
   { to: '/quan-tri', label: 'Người dùng' },
+  { to: '/quan-tri/thong-ke', label: 'Thống kê' },
   { to: '/quan-tri/danh-muc', label: 'Danh mục dịch vụ' }
 ];
 

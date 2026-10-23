@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.time.LocalDateTime;
+import com.fixlink.domain.model.Role;
 
 @Repository
 public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, Long>, JpaSpecificationExecutor<UserJpaEntity> {
@@ -14,4 +16,6 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, L
     boolean existsByUsername(String username);
     boolean existsByUsernameAndDeletedAtIsNull(String username);
     Optional<UserJpaEntity> findByIdAndDeletedAtIsNull(Long id);
+    long countByRoleAndDeletedAtIsNullAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            Role role, LocalDateTime from, LocalDateTime to);
 }

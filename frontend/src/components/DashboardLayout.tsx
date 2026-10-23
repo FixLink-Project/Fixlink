@@ -15,6 +15,7 @@ interface DashboardLayoutProps {
   description?: ReactNode;
   /** Nội dung phụ nằm bên phải tiêu đề, ví dụ nút hành động chính. */
   actions?: ReactNode;
+  wide?: boolean;
   children: ReactNode;
 }
 
@@ -23,6 +24,7 @@ export default function DashboardLayout({
   title,
   description,
   actions,
+  wide = false,
   children
 }: DashboardLayoutProps) {
   const { user, signOut } = useAuth();
@@ -100,7 +102,7 @@ export default function DashboardLayout({
         )}
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+      <main className={`mx-auto ${wide ? 'max-w-7xl' : 'max-w-6xl'} px-4 py-8 sm:px-6 sm:py-10`}>
         <div className="flex flex-wrap items-start justify-between gap-4 animate-fade-in">
           <div>
             <div className="flex flex-wrap items-center gap-2.5">

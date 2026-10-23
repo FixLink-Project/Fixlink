@@ -30,6 +30,7 @@ logs/
 # --- Maven & Gradle ---
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
+.maven-repository/
 .gradle/
 gradle-app.setting
 
@@ -95,3 +96,7 @@ temp/
 
 # Claude Code local tooling/config
 .claude/
+
+# Local Maven cache
+.m2repo/
+backend/.m2repo/
