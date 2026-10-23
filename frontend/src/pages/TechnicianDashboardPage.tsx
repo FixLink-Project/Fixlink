@@ -110,7 +110,7 @@ export default function TechnicianDashboardPage() {
       if (search && search.trim()) {
         params.append('search', search.trim());
       }
-      const res = await api.get<MatchingRequest[]>(`/repair-requests/matching?${params.toString()}`);
+      const res = await api.get<RepairRequest[]>(`/repair-requests/matching?${params.toString()}`);
       setMatching(res.data);
       if (res.meta) setMatchingMeta(res.meta);
     } catch (err) {
