@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -52,12 +52,38 @@ export default function CreateRepairRequestPage() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Trợ lý FixLink có thể gửi link /dang-yeu-cau?category=DIEN_LANH&area=Q7&title=...&description=...&budget=...
+  // để điền sẵn form từ nội dung khách đã mô tả trong khung chat.
+  const [searchParams] = useSearchParams();
+  const [prefilledFromChat, setPrefilledFromChat] = useState(false);
+
   useEffect(() => {
     Promise.all([fetchCategories(), fetchAreas()]).then(([catRes, areaRes]) => {
-      setCategories(catRes.data.filter((c) => c.isActive));
+      const activeCategories = catRes.data.filter((c) => c.isActive);
+      setCategories(activeCategories);
       setAreas(areaRes.data);
+
+      const categoryCode = searchParams.get('category');
+      const areaCode = searchParams.get('area');
+      const title = searchParams.get('title');
+      const description = searchParams.get('description');
+      const budget = searchParams.get('budget');
+      if (!categoryCode && !title && !description) return;
+
+      const category = activeCategories.find((c) => c.code.toUpperCase() === (categoryCode ?? '').toUpperCase());
+      const area = areaRes.data.find((a) => a.code.toUpperCase() === (areaCode ?? '').toUpperCase());
+      const budgetDigits = (budget ?? '').replace(/\D/g, '');
+      setForm((f) => ({
+        ...f,
+        categoryId: category ? String(category.id) : f.categoryId,
+        areaId: area ? String(area.id) : f.areaId,
+        title: title ? title.slice(0, 200) : f.title,
+        description: description ? description.slice(0, 5000) : f.description,
+        budgetRef: budgetDigits || f.budgetRef,
+      }));
+      setPrefilledFromChat(true);
     });
-  }, []);
+  }, [searchParams]);
 
   function update(field: keyof typeof form, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -170,6 +196,13 @@ export default function CreateRepairRequestPage() {
       </div>
 
       {saveError && <div className="mb-6"><Alert tone="error">{saveError}</Alert></div>}
+      {prefilledFromChat && (
+        <div className="mb-6">
+          <Alert tone="info" title="Đã điền sẵn từ Trợ lý FixLink">
+            Thông tin bên dưới được điền theo nội dung bạn mô tả trong khung chat. Vui lòng kiểm tra lại, bổ sung địa chỉ, ảnh hiện trường và ngân sách trước khi đăng.
+          </Alert>
+        </div>
+      )}
 
       {/* Step 1: Chọn loại thiết bị */}
       {step === 1 && (

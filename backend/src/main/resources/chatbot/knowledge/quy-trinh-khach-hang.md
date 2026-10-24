@@ -1,36 +1,42 @@
 ---
 title: "Quy trình dành cho khách hàng trên FixLink"
 audience: [guest, customer]
-updated: "2026-10-17"
+updated: "2026-10-23"
 confidence: verified
 ---
 
 # Quy trình dành cho khách hàng
 
 ## 1. Tóm tắt các bước sử dụng dịch vụ
-Khách hàng sử dụng dịch vụ FixLink theo quy trình 6 bước khép kín:
-1. **Đăng ký / Đăng nhập tài khoản:** Khách hàng đăng ký tài khoản bằng SĐT/Username và mật khẩu.
-2. **Đăng yêu cầu sửa chữa:** Chọn danh mục dịch vụ, mô tả triệu chứng hư hỏng, tải ảnh hiện trường, chọn khu vực và đặt mức giá cố định (ngân sách dự kiến).
-3. **Thợ nhận việc (First-Come-First-Served):** Yêu cầu được mở (`OPEN`). Thợ phù hợp bấm "Nhận việc". Người bấm trước nhận việc thành công, trạng thái chuyển sang `ASSIGNED`.
-4. **Hẹn lịch làm việc (Appointments):** Khách hàng và thợ thống nhất lịch hẹn khảo sát/sửa chữa qua tính năng đặt lịch.
-5. **Khảo sát & Thực hiện sửa chữa:** Thợ đến tận nơi kiểm tra (`INSPECTING`). Nếu có chi phí phát sinh, thợ báo để khách duyệt (`AWAITING_COST_APPROVAL`). Sau khi khách đồng ý, thợ tiến hành sửa chữa (`IN_PROGRESS`).
-6. **Nghiệm thu, Thanh toán & Đánh giá:** Khách hàng kiểm tra thiết bị hoạt động tốt thì bấm Nghiệm thu (`COMPLETED`), tiền được giải ngân từ tài khoản trung gian sang ví thợ, và khách đánh giá chất lượng phục vụ.
+Khách hàng sử dụng dịch vụ FixLink theo quy trình 6 bước:
+1. **Đăng ký / Đăng nhập:** Đăng ký miễn phí tại `/dang-ky`, đăng nhập tại `/dang-nhap`.
+2. **Đăng yêu cầu sửa chữa:** Chọn danh mục, mô tả sự cố, đính kèm ảnh hiện trường, chọn khu vực, nhập địa chỉ và **ngân sách cố định**.
+3. **Thợ nhận việc (ai nhận trước được trước):** Yêu cầu mở (`OPEN`) trong 3 ngày. Thợ phù hợp bấm "Nhận việc" trước sẽ nhận đơn, trạng thái chuyển sang `ASSIGNED`, tiền cọc 30% được ghi nhận.
+4. **Hẹn lịch:** Khách và thợ thống nhất lịch hẹn khảo sát/sửa chữa trong trang chi tiết đơn; có thể dời lịch khi cần.
+5. **Khảo sát & sửa chữa:** Thợ đến kiểm tra (`INSPECTING`). Nếu có chi phí phát sinh, thợ gửi để khách duyệt (`AWAITING_COST_APPROVAL`). Thợ sửa (`IN_PROGRESS`).
+6. **Nghiệm thu & thanh toán:** Thợ báo xong (`AWAITING_ACCEPTANCE`), khách kiểm tra rồi bấm **Nghiệm thu** (`COMPLETED`); 70% còn lại được tất toán và giải ngân cho thợ.
 
 ## 2. Hướng dẫn chi tiết cách đăng yêu cầu sửa chữa
-- **Bước 1:** Đăng nhập vào FixLink và vào mục **"Đăng yêu cầu"** (hoặc truy cập `/dang-yeu-cau`).
-- **Bước 2:** Chọn **Danh mục dịch vụ** phù hợp với thiết bị (Điện lạnh, Điện nước, Gia dụng, Khóa & Cửa cuốn). Nếu chưa biết chọn danh mục nào, hãy mô tả triệu chứng cho Trợ lý FixLink để được gợi ý chính xác.
-- **Bước 3:** Nhập tiêu đề và nội dung mô tả sự cố (càng chi tiết càng giúp thợ chẩn đoán đúng lỗi).
-- **Bước 4:** Tải lên tối thiểu 1 hình ảnh hoặc video ngắn chụp rõ hiện trường sự cố thiết bị.
-- **Bước 5:** Chọn **Khu vực phục vụ** (Quận/Huyện tại TP.HCM) và nhập địa chỉ cụ thể.
-- **Bước 6:** Nhập mức giá mong muốn (ngân sách cố định) và bấm **"Đăng yêu cầu"**.
+- **Bước 1:** Đăng nhập bằng tài khoản khách hàng, vào **"Đăng yêu cầu"** (`/dang-yeu-cau`). Chỉ tài khoản Khách hàng đang hoạt động mới đăng được yêu cầu; thợ không đăng yêu cầu được.
+- **Bước 2:** Chọn **danh mục dịch vụ** (Điện lạnh, Điện nước, Điện gia dụng, Khóa & Cửa cuốn); có thể chọn thêm gói dịch vụ cụ thể. Chưa biết chọn gì thì mô tả triệu chứng cho Trợ lý FixLink để được gợi ý.
+- **Bước 3:** Nhập **tiêu đề** (4–200 ký tự) và **mô tả sự cố** (5–5000 ký tự) – càng chi tiết (hãng, model, mã lỗi, hiện tượng) thợ càng chẩn đoán đúng.
+- **Bước 4:** Tải lên **tối đa 6 ảnh/video** hiện trường (ảnh JPG, PNG, WebP tối đa 5 MB mỗi ảnh). Không bắt buộc nhưng rất nên có.
+- **Bước 5:** Chọn **khu vực phục vụ** (quận tại TP.HCM) và nhập địa chỉ cụ thể.
+- **Bước 6:** Nhập **ngân sách** (bắt buộc, > 0 đồng). Bấm **"Đăng yêu cầu"** để mở ngay cho thợ, hoặc **lưu nháp** để đăng sau.
+- Mỗi yêu cầu có mã dạng `REQ-YYYYMMDD-XXXXXX` (ví dụ `REQ-20261023-A1B2C3`) để tra cứu.
 
 ## 3. Thời gian chờ thợ nhận việc
-- Một yêu cầu sửa chữa sau khi đăng sẽ có hiệu lực tối đa **3 ngày (72 giờ)** ở trạng thái `OPEN`.
-- Trong thời gian này, bất kỳ thợ lành nghề nào thuộc đúng khu vực và chuyên môn đều có thể bấm nhận việc.
-- Nếu sau 3 ngày không có thợ nhận, yêu cầu sẽ tự động hết hạn và chuyển sang trạng thái `CANCELLED`. Khách hàng có thể đăng lại yêu cầu hoặc điều chỉnh mức ngân sách hợp lý hơn.
+- Yêu cầu sau khi đăng có hiệu lực tối đa **3 ngày (72 giờ)** ở trạng thái `OPEN`.
+- Chỉ thợ đã được duyệt KYC, **đúng chuyên môn và đúng khu vực** của đơn mới thấy và nhận được đơn.
+- Quá 3 ngày không có thợ nhận, yêu cầu **tự động chuyển sang `CANCELLED`**. Khách có thể đăng lại, mô tả rõ hơn hoặc điều chỉnh ngân sách hợp lý hơn.
+- Trong lúc chờ (đơn Nháp hoặc OPEN chưa có thợ nhận), khách có thể **sửa nội dung đơn** hoặc **hủy đơn**.
 
-## 4. Nghiệm thu và giải ngân
-- Khách hàng không giao tiền mặt trực tiếp trước khi công việc hoàn thành.
-- Tiền cọc/chi phí được bảo đảm trong tài khoản trung gian của FixLink.
-- Khi thợ hoàn thành và báo `AWAITING_ACCEPTANCE`, khách hàng có quyền kiểm tra, vận hành thử thiết bị.
-- Chỉ khi khách hàng bấm **Nghiệm thu**, hệ thống mới chính thức giải ngân cho thợ và kích hoạt thời hạn bảo hành.
+## 4. Theo dõi đơn
+- Xem tất cả đơn tại **"Yêu cầu của tôi"** (`/yeu-cau-cua-toi`), chia tab: Tất cả, Chờ thợ nhận, Đang thực hiện, Hoàn thành, Đã hủy.
+- Bấm vào một đơn (`/yeu-cau-cua-toi/{id}`) để xem trạng thái, thợ phụ trách, giá chốt, tiền cọc, lịch hẹn và tiến độ.
+- Có thể hỏi Trợ lý: "đơn của tôi đang ở trạng thái nào?" – Trợ lý tra cứu dữ liệu thật khi bạn đã đăng nhập.
+
+## 5. Nghiệm thu và giải ngân
+- Khách không giao tiền mặt trực tiếp cho thợ ngoài hệ thống.
+- Khi thợ báo hoàn thành (`AWAITING_ACCEPTANCE`), khách có quyền kiểm tra, vận hành thử thiết bị.
+- Chỉ khi khách bấm **Nghiệm thu**, hệ thống mới giải ngân cho thợ. Nếu chưa hài lòng, đừng bấm nghiệm thu – hãy trao đổi với thợ hoặc tạo phiếu hỗ trợ.

@@ -31,4 +31,19 @@ public class ReciprocalRankFusion {
 
         return scores;
     }
+
+    /**
+     * RRF có trọng số: {@code score = w1 / (k + rank1) + w2 / (k + rank2)}. Dùng khi một nguồn xếp hạng
+     * đáng tin hơn nguồn kia (BM25 khớp từ khóa thật so với embedding băm cục bộ).
+     */
+    public static <T> Map<T, Double> fuseWeighted(List<T> ranking1, double weight1, List<T> ranking2, double weight2) {
+        Map<T, Double> scores = new HashMap<>();
+        for (int rank = 0; rank < ranking1.size(); rank++) {
+            scores.merge(ranking1.get(rank), weight1 / (K + rank + 1), Double::sum);
+        }
+        for (int rank = 0; rank < ranking2.size(); rank++) {
+            scores.merge(ranking2.get(rank), weight2 / (K + rank + 1), Double::sum);
+        }
+        return scores;
+    }
 }

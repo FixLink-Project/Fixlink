@@ -1,36 +1,42 @@
 ---
 title: "Tài khoản, bảo mật và chính sách mật khẩu FixLink"
 audience: [guest, customer, technician, admin]
-updated: "2026-10-17"
+updated: "2026-10-23"
 confidence: verified
 ---
 
 # Tài khoản, bảo mật và chính sách mật khẩu
 
 ## 1. Đăng ký tài khoản
-- **Khách hàng cá nhân:** Có thể tự đăng ký trực tuyến miễn phí tại `/dang-ky` (hoặc `/register`) bằng cách điền Tên đăng nhập, Mật khẩu, Họ tên, Số điện thoại và Email.
-- **Kỹ thuật viên (Thợ):** Đăng ký tại `/dang-ky-tho`, yêu cầu cung cấp thêm Số Căn cước công dân (CCCD/CMND), ảnh chụp 2 mặt CCCD, danh mục chuyên môn và khu vực phục vụ để xét duyệt KYC.
+- **Khách hàng cá nhân:** tự đăng ký miễn phí tại `/dang-ky` với Tên đăng nhập (3–50 ký tự), Mật khẩu (tối thiểu 6 ký tự), Họ tên, Số điện thoại Việt Nam (10 số, đầu 03/05/07/08/09) và Email. Tên đăng nhập, số điện thoại, email không được trùng tài khoản khác. Đăng ký xong có thể dùng ngay.
+- **Kỹ thuật viên (thợ):** đăng ký tại `/dang-ky-tho`, mật khẩu tối thiểu 8 ký tự gồm ít nhất 1 chữ in hoa và 1 ký tự đặc biệt; khai thêm số CCCD, ảnh 2 mặt CCCD, chuyên môn và khu vực. Tài khoản thợ **phải chờ Admin duyệt mới đăng nhập được**.
+- Một người có thể có tài khoản khách hàng và tài khoản thợ riêng biệt.
 
-## 2. Tiêu chuẩn chính sách mật khẩu (Password Policy)
-Để đảm bảo an toàn tối đa cho tài khoản, mật khẩu tại FixLink bắt buộc phải tuân thủ nghiêm ngặt các quy tắc sau (theo đặc tả API §1.5):
-1. **Độ dài:** Tối thiểu **8 ký tự**.
-2. **Ký tự viết hoa:** Chứa ít nhất **1 chữ cái viết hoa** (`A-Z`).
-3. **Ký tự viết thường:** Chứa ít nhất **1 chữ cái viết thường** (`a-z`).
-4. **Chữ số:** Chứa ít nhất **1 chữ số** (`0-9`).
-5. **Ký tự đặc biệt:** Chứa ít nhất **1 ký tự đặc biệt** trong tập hợp: `!@#$%^&*()_+-=`
-6. **Ví dụ mật khẩu hợp lệ:** `Password@123`, `FixLink#2026`, `Abc!5678`.
-7. **Ví dụ mật khẩu KHÔNG hợp lệ:** `12345678` (thiếu chữ hoa, chữ thường, ký tự đặc biệt), `password` (thiếu số và ký tự đặc biệt).
+## 2. Đăng nhập
+- Khách hàng: `/dang-nhap`. Thợ: `/dang-nhap-tho`. Chọn đúng cổng theo loại tài khoản; tài khoản không đúng vai trò sẽ báo không tồn tại.
+- Phiên đăng nhập được duy trì bằng token; bấm Đăng xuất để kết thúc phiên trên thiết bị dùng chung.
 
-## 3. Quy định khóa tài khoản và an ninh đăng nhập
-- **Khóa tạm thời do nhập sai (Brute-force protection):**
-  - Nếu người dùng nhập sai mật khẩu liên tiếp **5 lần**, hệ thống sẽ tự động kích hoạt cơ chế phòng vệ và tạm khóa tài khoản trong vòng **15 phút**.
-  - Mã lỗi trả về là `ACCOUNT_TEMPORARILY_LOCKED` (HTTP 429) kèm số giây còn lại cần chờ trước khi được thử lại.
-- **Khóa tài khoản vĩnh viễn/ngừng hoạt động:**
-  - Nếu tài khoản có dấu hiệu vi phạm chính sách cộng đồng, gian lận hoặc chưa xác minh đầy đủ, Quản trị viên (Admin) có quyền khóa tài khoản (`ACCOUNT_BLOCKED`, HTTP 403) hoặc đưa về trạng thái ngừng hoạt động (`ACCOUNT_INACTIVE`, HTTP 403).
-  - Khi gặp lỗi này, người dùng cần tạo phiếu hỗ trợ để được đội ngũ CSKH thẩm định mở lại tài khoản.
+## 3. Chính sách mật khẩu khi đổi hoặc đặt lại mật khẩu
+Mật khẩu mới bắt buộc:
+1. Tối thiểu **8 ký tự**.
+2. Có ít nhất **1 chữ in hoa** (`A-Z`) và **1 chữ thường** (`a-z`).
+3. Có ít nhất **1 chữ số** (`0-9`).
+4. Có ít nhất **1 ký tự đặc biệt**, ví dụ `!@#$%^&*()_+-=`.
+5. Ví dụ hợp lệ: `Password@123`, `FixLink#2026`. Không hợp lệ: `12345678`, `password`.
 
-## 4. Quên và đặt lại mật khẩu
-- Khi quên mật khẩu, người dùng truy cập trang **Quên mật khẩu** (`/quen-mat-khau`).
-- Nhập email hoặc tên tài khoản đã đăng ký để nhận mã xác thực (Reset Token).
-- Sau khi có mã xác thực, người dùng truy cập trang **Đặt lại mật khẩu** (`/dat-lai-mat-khau`), nhập mã và thiết lập mật khẩu mới tuân thủ đúng chính sách mật khẩu ở trên.
-- **Lưu ý bảo mật:** Trợ lý AI không bao giờ hỏi mật khẩu của bạn, không bao giờ tự ý đổi mật khẩu hộ người dùng, và chỉ hướng dẫn truy cập các liên kết chính thức nêu trên.
+## 4. Khóa tài khoản và an ninh đăng nhập
+- **Khóa tạm thời:** nhập sai mật khẩu **5 lần liên tiếp** → tài khoản bị khóa **15 phút** (mã lỗi `ACCOUNT_TEMPORARILY_LOCKED`, HTTP 429, kèm số giây cần chờ).
+- **Tài khoản chờ duyệt / bị từ chối duyệt** (thợ): `ACCOUNT_PENDING_APPROVAL` / `ACCOUNT_REJECTED` (HTTP 403).
+- **Bị khóa / ngừng hoạt động** do vi phạm hoặc nghi vấn bảo mật: `ACCOUNT_BLOCKED` / `ACCOUNT_INACTIVE` (HTTP 403). Cần tạo phiếu hỗ trợ để CSKH thẩm định mở lại.
+
+## 5. Quên và đặt lại mật khẩu
+1. Vào **Quên mật khẩu** (`/quen-mat-khau`), nhập **email** đã đăng ký.
+2. Hệ thống gửi email chứa liên kết/mã đặt lại; mã có hiệu lực **30 phút** và chỉ dùng được một lần. Vì bảo mật, thông báo trả về luôn giống nhau dù email có tồn tại hay không.
+3. Mỗi email được yêu cầu tối đa **3 lần trong 1 giờ**.
+4. Vào **Đặt lại mật khẩu** (`/dat-lai-mat-khau`), nhập mã và mật khẩu mới theo chính sách mục 3. Sau khi đặt lại, các phiên đăng nhập cũ bị thu hồi.
+- Không nhận được email: kiểm tra hộp thư rác/spam, kiểm tra đúng email đăng ký, chờ vài phút rồi thử lại.
+
+## 6. Cam kết bảo mật
+- Trợ lý AI **không bao giờ hỏi mật khẩu hoặc mã OTP**, không đổi mật khẩu hộ, chỉ hướng dẫn liên kết chính thức.
+- Mật khẩu được lưu dạng băm (hash); mã đặt lại mật khẩu chỉ lưu bản băm.
+- Không chia sẻ mật khẩu cho bất kỳ ai, kể cả người tự xưng là nhân viên FixLink.

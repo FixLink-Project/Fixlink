@@ -23,8 +23,11 @@ confidence: verified
 - **Tại sao tôi bấm nhận việc bị báo lỗi 409 "JOB_ALREADY_TAKEN"?**
   - Hệ thống FixLink vận hành theo cơ chế **ai nhận trước được việc trước**. Có một kỹ thuật viên khác đã bấm nhận việc trước bạn. Vui lòng quay lại danh sách việc và chọn yêu cầu khác.
 - **Tại sao tôi không thấy công việc nào mới trong bảng việc?**
-  - Kiểm tra xem bạn đã bật trạng thái **Trực tuyến (is_online)** chưa.
-  - Đảm bảo danh mục chuyên môn và các khu vực bạn đăng ký có khách hàng đang đăng yêu cầu.
+  - Bảng việc chỉ hiện yêu cầu đang `OPEN`, còn hạn 3 ngày, **khớp chuyên môn và khu vực** bạn đã đăng ký, và chỉ khi hồ sơ KYC đã `APPROVED`.
+  - Kiểm tra lại chuyên môn/khu vực trong hồ sơ `/tho/ho-so`; có thể hiện tại chưa có khách đăng yêu cầu phù hợp.
+  - Công tắc Trực tuyến chỉ thể hiện bạn sẵn sàng, không ảnh hưởng tới danh sách việc.
+- **Bấm nhận việc báo "Chuyên môn/Khu vực của bạn không khớp"?**
+  - Yêu cầu thuộc danh mục hoặc khu vực bạn chưa đăng ký. Chỉ nhận việc đúng chuyên môn và khu vực.
 
 ## 3. Sự cố của khách hàng
 - **Tôi đã đăng yêu cầu nhưng chưa thấy thợ nào nhận?**

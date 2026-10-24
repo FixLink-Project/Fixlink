@@ -6,12 +6,14 @@ import com.fixlink.chatbot.domain.model.SourceReference;
 import com.fixlink.chatbot.infrastructure.config.ChatbotProperties;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +42,13 @@ public class InMemoryRagIndex {
     private final AtomicReference<IndexSnapshot> snapshotRef = new AtomicReference<>(
             new IndexSnapshot(List.of(), Map.of(), 50.0)
     );
+
+    /**
+     * Toàn bộ kho tri thức ghép thành một văn bản. Kho tri thức FixLink nhỏ (vài chục KB) nên
+     * được nạp nguyên vào system prompt: model luôn thấy đủ quy định, không phụ thuộc việc
+     * truy hồi RAG có trúng đoạn cần thiết hay không.
+     */
+    private final AtomicReference<String> fullKnowledgeRef = new AtomicReference<>("");
 
     public InMemoryRagIndex(
             MarkdownDocumentLoader loader,
@@ -78,6 +87,7 @@ public class InMemoryRagIndex {
 
         double newAvgDocLength = newChunks.isEmpty() ? 50.0 : (double) totalTokens / newChunks.size();
         snapshotRef.set(new IndexSnapshot(newChunks, newDocFrequencies, newAvgDocLength));
+        fullKnowledgeRef.set(buildFullKnowledgeText(newChunks));
 
         LOG.info("Indexed {} knowledge chunks successfully. Avg doc length: {}", newChunks.size(), newAvgDocLength);
     }
@@ -138,7 +148,8 @@ public class InMemoryRagIndex {
         vectorRanking.sort((a, b) -> Double.compare(vectorScores.getOrDefault(b, 0.0), vectorScores.getOrDefault(a, 0.0)));
 
         // 4. Reciprocal Rank Fusion (RRF)
-        Map<RagChunk, Double> rrfScores = ReciprocalRankFusion.fuse(vectorRanking, bm25Ranking);
+        // BM25 (khớp từ khóa thật) được tin hơn embedding băm cục bộ nên có trọng số gấp đôi.
+        Map<RagChunk, Double> rrfScores = ReciprocalRankFusion.fuseWeighted(vectorRanking, 0.5, bm25Ranking, 1.0);
 
         // Sort by RRF score
         List<RagChunk> rrfRanked = new ArrayList<>(eligible);
@@ -219,6 +230,29 @@ public class InMemoryRagIndex {
 
         LOG.info("RAG retrieved {} chunks (expanded from {} hits) for query '{}'", expandedList.size(), topResults.size(), query);
         return new RetrievalResult(merged.toString().trim(), distinctSources, highestScore);
+    }
+
+    private String buildFullKnowledgeText(List<RagChunk> chunks) {
+        Map<String, List<RagChunk>> byDocument = new TreeMap<>();
+        for (RagChunk chunk : chunks) {
+            byDocument.computeIfAbsent(chunk.getDocumentName(), k -> new ArrayList<>()).add(chunk);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, List<RagChunk>> entry : byDocument.entrySet()) {
+            List<RagChunk> docChunks = new ArrayList<>(entry.getValue());
+            docChunks.sort(Comparator.comparingInt(RagChunk::getChunkIndex));
+            sb.append("<tai-lieu ten=\"").append(entry.getKey()).append("\">\n");
+            for (RagChunk chunk : docChunks) {
+                sb.append(chunk.getContent()).append("\n\n");
+            }
+            sb.append("</tai-lieu>\n\n");
+        }
+        return sb.toString().trim();
+    }
+
+    /** Toàn bộ nội dung kho tri thức (đã bỏ front-matter), dùng để nạp vào system prompt. */
+    public String getFullKnowledgeText() {
+        return fullKnowledgeRef.get();
     }
 
     public int getIndexedCount() {

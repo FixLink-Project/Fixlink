@@ -1,0 +1,37 @@
+---
+title: "Câu hỏi thường gặp mở rộng của khách hàng và thợ"
+audience: [guest, customer, technician, admin]
+updated: "2026-10-23"
+confidence: verified
+---
+
+# Câu hỏi thường gặp mở rộng
+
+## 1. Về dịch vụ và phạm vi
+- **FixLink có thu phí đăng ký không?** Đăng ký tài khoản khách hàng và thợ đều miễn phí. Tỷ lệ phí nền tảng trên mỗi đơn: `[CẦN XÁC NHẬN]`.
+- **FixLink có phục vụ ngoài TP.HCM (Hà Nội, Đà Nẵng, Bình Dương...) không?** Hiện chưa. FixLink chỉ phục vụ các khu vực tại TP. Hồ Chí Minh có trong danh sách khu vực.
+- **FixLink có sửa điện thoại, laptop, xe máy, ô tô, xây sửa nhà không?** Không. FixLink chỉ có 4 nhóm: Điện lạnh, Điện nước, Điện gia dụng, Khóa & Cửa cuốn.
+- **Một đơn sửa được nhiều thiết bị không?** Mỗi đơn thuộc một danh mục. Nhiều thiết bị cùng danh mục có thể ghi rõ trong mô tả và đặt ngân sách tương ứng; thiết bị khác danh mục nên đăng đơn riêng để đúng thợ chuyên môn.
+- **Có chọn được thợ cụ thể không?** Không. FixLink theo nguyên tắc ai nhận trước được trước; mọi thợ nhận việc đều đã được xác minh danh tính (KYC) và đúng chuyên môn, khu vực.
+- **Thợ có làm ngoài giờ, cuối tuần không?** Lịch làm việc do khách và thợ thống nhất qua lịch hẹn. Gói mở khóa cấp tốc được thiết kế phục vụ 24/7.
+
+## 2. Về chất lượng và khiếu nại
+- **Thợ làm không tốt / thái độ không đúng mực thì sao?** Không bấm Nghiệm thu khi chưa hài lòng. Tạo phiếu hỗ trợ (mô tả rõ sự việc, mã đơn) để CSKH xử lý; tiền vẫn được giữ trung gian cho đến khi nghiệm thu.
+- **Thợ đã nhận việc nhưng không liên hệ / không đến?** Khách có thể hủy đơn khi đơn chưa ở trạng thái Đang sửa chữa, và tạo phiếu hỗ trợ ưu tiên High để yêu cầu xử lý tiền cọc.
+- **Sửa xong một thời gian lại hỏng (bảo hành)?** Khi khách nghiệm thu, hệ thống kích hoạt bảo hành điện tử cho đơn. Thời hạn bảo hành cụ thể theo từng dịch vụ: `[CẦN XÁC NHẬN]`. Hãy tạo phiếu hỗ trợ kèm mã đơn để được hỗ trợ bảo hành.
+- **Thợ đòi thêm tiền mặt ngoài app?** Không trả. Mọi chi phí phát sinh phải gửi qua hệ thống để khách duyệt. Báo ngay qua phiếu hỗ trợ (ưu tiên Critical nếu có dấu hiệu gian lận).
+- **Có đánh giá thợ được không?** Hồ sơ thợ có điểm đánh giá trung bình và số việc đã hoàn thành. Tính năng khách tự chấm điểm trên giao diện web hiện chưa được công bố chi tiết `[CẦN XÁC NHẬN]`.
+
+## 3. Về thanh toán
+- **Thanh toán bằng gì?** Tiền đơn được quản lý qua tài khoản trung gian của FixLink (cọc 30% khi thợ nhận việc, 70% khi nghiệm thu). Phương thức thanh toán trực tuyến cụ thể: `[CẦN XÁC NHẬN]`.
+- **Có xuất hóa đơn VAT không?** `[CẦN XÁC NHẬN]` – tạo phiếu hỗ trợ để bộ phận kế toán phản hồi.
+- **Thợ nhận tiền khi nào?** Ngay khi khách bấm Nghiệm thu, tiền công được giải ngân vào ví của thợ.
+
+## 4. Về tài khoản và dữ liệu
+- **Đổi số điện thoại, email, địa chỉ?** Khách hàng cập nhật trong hồ sơ cá nhân; số điện thoại/email mới không được trùng với tài khoản khác. Thợ cập nhật tại `/tho/ho-so`.
+- **Thông tin cá nhân có bị lộ cho thợ không?** Chỉ thợ đã được duyệt KYC, đúng chuyên môn và khu vực mới xem được đơn đang mở để nhận việc; thông tin liên hệ dùng để thợ phụ trách đến sửa. Khách hàng khác không xem được đơn của bạn.
+- **Có ứng dụng di động không?** FixLink hiện hoạt động trên website, dùng tốt trên trình duyệt điện thoại.
+
+## 5. Về Trợ lý AI
+- Trợ lý trả lời 24/7, tra cứu được đơn, lịch hẹn, hồ sơ thợ, phiếu hỗ trợ của chính người đang đăng nhập; gợi ý danh mục theo triệu chứng; tính tiền cọc; tạo phiếu hỗ trợ khi người dùng đồng ý.
+- Trợ lý không đăng/hủy đơn, không nhận việc, không duyệt chi phí, không nghiệm thu, không đổi mật khẩu hộ người dùng.

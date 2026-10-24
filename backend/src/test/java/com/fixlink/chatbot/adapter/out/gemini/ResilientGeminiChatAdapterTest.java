@@ -5,8 +5,9 @@ import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fixlink.chatbot.adapter.out.rag.InMemoryRagIndex;
+import com.fixlink.chatbot.adapter.out.llm.ChatReplyParser;
 import com.fixlink.chatbot.application.port.out.ChatbotToolPort;
-import com.fixlink.chatbot.application.port.out.GeminiChatPort;
+import com.fixlink.chatbot.application.port.out.LlmChatPort;
 import com.fixlink.chatbot.infrastructure.config.ChatbotProperties;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,7 @@ class ResilientGeminiChatAdapterTest {
                 properties,
                 toolPort,
                 fallbackSynthesizer,
+                new ChatReplyParser(objectMapper),
                 objectMapper
         );
     }
@@ -54,7 +56,7 @@ class ResilientGeminiChatAdapterTest {
     @Test
     @DisplayName("Tự động chuyển sang Fallback trích xuất cục bộ khi API lỗi")
     void shouldFallbackToLocalSynthesizerOnError() {
-        GeminiChatPort.ChatOrchestrationResult result = adapter.generateChatResponse(
+        LlmChatPort.ChatOrchestrationResult result = adapter.generateChatResponse(
                 "System prompt",
                 List.of(),
                 "Quy trình tìm thợ thế nào?",
@@ -62,11 +64,12 @@ class ResilientGeminiChatAdapterTest {
                 1L,
                 "CUSTOMER",
                 "/",
-                null
+                null,
+                "### Mô hình hoạt động (Nguồn: gioi-thieu-fixlink.md)\nThợ nào bấm Nhận việc trước tiên sẽ nhận công việc."
         );
 
         assertThat(result).isNotNull();
-        assertThat(result.modelUsed()).isEqualTo("local-synthesizer");
+        assertThat(result.modelUsed()).startsWith("local-");
         assertThat(result.reply()).isNotEmpty();
     }
 }

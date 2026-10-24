@@ -1,6 +1,7 @@
 package com.fixlink.chatbot.adapter.out.tools;
 
 import com.fixlink.chatbot.application.port.out.ChatbotToolPort;
+import com.fixlink.chatbot.application.service.ToolCallRecorder;
 import com.fixlink.chatbot.infrastructure.config.ChatbotProperties;
 import java.util.List;
 import java.util.Map;
@@ -18,15 +19,18 @@ public class CompositeChatbotToolAdapter implements ChatbotToolPort {
     private final NativeChatbotToolAdapter nativeAdapter;
     private final McpChatbotToolAdapter mcpAdapter;
     private final ChatbotProperties properties;
+    private final ToolCallRecorder recorder;
 
     public CompositeChatbotToolAdapter(
             NativeChatbotToolAdapter nativeAdapter,
             McpChatbotToolAdapter mcpAdapter,
-            ChatbotProperties properties
+            ChatbotProperties properties,
+            ToolCallRecorder recorder
     ) {
         this.nativeAdapter = nativeAdapter;
         this.mcpAdapter = mcpAdapter;
         this.properties = properties;
+        this.recorder = recorder;
     }
 
     @Override
@@ -36,6 +40,18 @@ public class CompositeChatbotToolAdapter implements ChatbotToolPort {
 
     @Override
     public ToolExecutionResult executeTool(
+            String toolName,
+            Map<String, Object> arguments,
+            Long currentUserId,
+            String currentRole,
+            String guestContact
+    ) {
+        ToolExecutionResult result = dispatch(toolName, arguments, currentUserId, currentRole, guestContact);
+        recorder.record(toolName, result.content(), result.isError());
+        return result;
+    }
+
+    private ToolExecutionResult dispatch(
             String toolName,
             Map<String, Object> arguments,
             Long currentUserId,

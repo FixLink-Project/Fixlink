@@ -94,7 +94,9 @@ public class MarkdownDocumentLoader {
         for (String line : lines) {
             String trimmed = line.trim();
             if (trimmed.startsWith("# ") || trimmed.startsWith("## ") || trimmed.startsWith("### ")) {
-                if (currentText.length() > 0) {
+                // Chunk chỉ có dòng tiêu đề (ví dụ H1 ngay trước H2) được gộp vào mục kế tiếp,
+                // tránh sinh chunk không có nội dung nhưng điểm BM25 cao bất thường vì quá ngắn.
+                if (hasBodyContent(currentText)) {
                     String text = currentText.toString().trim();
                     if (!text.isEmpty()) {
                         String chunkId = filename + "#" + chunkIndex;
@@ -132,5 +134,15 @@ public class MarkdownDocumentLoader {
         }
 
         return chunks;
+    }
+
+    private static boolean hasBodyContent(CharSequence text) {
+        for (String line : text.toString().split("\n")) {
+            String t = line.trim();
+            if (!t.isEmpty() && !t.startsWith("#")) {
+                return true;
+            }
+        }
+        return false;
     }
 }
