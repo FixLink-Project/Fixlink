@@ -550,6 +550,16 @@ class FixLinkApiIntegrationTest {
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+
+        // 3. Không cho phép khóa tài khoản Admin (ID = 1)
+        java.util.Map<String, String> blockAdminBody = java.util.Map.of("status", "BLOCKED");
+        mockMvc.perform(patch("/api/v1/admin/users/1/status")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(blockAdminBody)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ARGUMENT"))
+                .andExpect(jsonPath("$.message").value("Không thể khóa tài khoản Quản trị viên (ADMIN)"));
     }
 
     @Test

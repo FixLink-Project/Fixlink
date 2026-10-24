@@ -67,16 +67,25 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        // 1. Seed Admin
-        if (userRepository.findByUsernameAndDeletedAtIsNull("admin").isEmpty()) {
-            UserJpaEntity admin = new UserJpaEntity();
-            admin.setUsername("admin");
-            admin.setPasswordHash(passwordEncoder.encode("Admin@123"));
-            admin.setRole(Role.ADMIN);
-            admin.setStatus(UserStatus.ACTIVE);
-            userRepository.save(admin);
-            log.info(">>> Đã khởi tạo tài khoản Admin mặc định: username=admin / password=Admin@123");
-        }
+        // 1. Seed Admin & Đảm bảo luôn ACTIVE
+        userRepository.findByUsernameAndDeletedAtIsNull("admin").ifPresentOrElse(
+                admin -> {
+                    if (admin.getStatus() != UserStatus.ACTIVE) {
+                        admin.setStatus(UserStatus.ACTIVE);
+                        userRepository.save(admin);
+                        log.info(">>> Đã mở khóa tài khoản Admin: username=admin (status -> ACTIVE)");
+                    }
+                },
+                () -> {
+                    UserJpaEntity admin = new UserJpaEntity();
+                    admin.setUsername("admin");
+                    admin.setPasswordHash(passwordEncoder.encode("Admin@123"));
+                    admin.setRole(Role.ADMIN);
+                    admin.setStatus(UserStatus.ACTIVE);
+                    userRepository.save(admin);
+                    log.info(">>> Đã khởi tạo tài khoản Admin mặc định: username=admin / password=Admin@123");
+                }
+        );
 
         // 2. Seed Customer sample
         if (userRepository.findByUsernameAndDeletedAtIsNull("customer01").isEmpty()) {

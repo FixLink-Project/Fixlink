@@ -60,6 +60,7 @@ public class RepairRequestService implements RepairRequestUseCase {
     private static final DateTimeFormatter CODE_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final SpringDataRepairRequestRepository requestRepo;
+    private final SpringDataRepairRequestReviewRepository reviewRepo;
     private final SpringDataMediaRepository mediaRepo;
     private final SpringDataWorkProgressRepository progressRepo;
     private final SpringDataQuotationRepository quotationRepo;
@@ -299,6 +300,11 @@ public class RepairRequestService implements RepairRequestUseCase {
             boolean publishDraft = targetStatus == RequestStatus.PENDING && currentStatus == RequestStatus.DRAFT;
             boolean approveCost = targetStatus == RequestStatus.IN_PROGRESS && currentStatus == RequestStatus.AWAITING_COST_APPROVAL;
             boolean completeAcceptance = targetStatus == RequestStatus.COMPLETED && currentStatus == RequestStatus.AWAITING_ACCEPTANCE;
+
+            if (completeAcceptance && !reviewRepo.existsByRequestIdAndDeletedAtIsNull(entity.getId())) {
+                throw new ValidationFailedException("Vui lòng chấm điểm và để lại phản hồi trước khi hoàn tất yêu cầu.",
+                        Map.of("review", "Đánh giá sao và nhận xét là bắt buộc."));
+            }
 
             if (!cancelOwnRequest && !publishDraft && !approveCost && !completeAcceptance) {
                 throw new InvalidStateTransitionException(currentStatus, targetStatus);
@@ -582,10 +588,34 @@ public class RepairRequestService implements RepairRequestUseCase {
                     .map(this::toQuotationResponse)
                     .toList();
         } else if (isTechnician) {
-            // RC-39: Thợ chỉ nhìn thấy báo giá của chính mình (bảo mật giá cạnh tranh)
-            quotations = quotationRepo.findByRequestIdAndTechnicianId(requestId, userId)
-                    .map(this::toQuotationResponse)
-                    .stream().toList();
+            // Thợ xem công khai giá của tất cả các báo giá, nhưng đối thủ bị ẩn danh
+            List<QuotationJpaEntity> allQuotes = quotationRepo.findByRequestIdOrderByCreatedAtDesc(requestId);
+            List<QuotationResponse> result = new ArrayList<>();
+            int anonIndex = 1;
+            for (QuotationJpaEntity q : allQuotes) {
+                if (q.getTechnicianId().equals(userId)) {
+                    QuotationResponse mine = toQuotationResponse(q);
+                    mine.setIsMine(true);
+                    result.add(mine);
+                } else {
+                    BigDecimal total = (q.getPriceLaborVnd() != null ? q.getPriceLaborVnd() : BigDecimal.ZERO)
+                            .add(q.getPriceMaterialsVnd() != null ? q.getPriceMaterialsVnd() : BigDecimal.ZERO);
+                    result.add(QuotationResponse.builder()
+                            .id(q.getId())
+                            .requestId(q.getRequestId())
+                            .technicianId(null)
+                            .technicianName("Thợ ẩn danh #" + anonIndex++)
+                            .priceLaborVnd(q.getPriceLaborVnd())
+                            .priceMaterialsVnd(q.getPriceMaterialsVnd())
+                            .totalPrice(total)
+                            .solution(q.getSolution())
+                            .status(q.getStatus())
+                            .createdAt(q.getCreatedAt())
+                            .isMine(false)
+                            .build());
+                }
+            }
+            quotations = result;
         }
 
         List<WorkProgressResponse> progress = progressRepo.findByRequestIdOrderByCreatedAtAsc(requestId).stream()

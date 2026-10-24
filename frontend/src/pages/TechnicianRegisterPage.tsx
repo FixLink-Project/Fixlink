@@ -29,7 +29,6 @@ const EMPTY = {
   address: '',
   specialization: '',
   citizenId: '',
-  yearsExperience: '',
   bio: ''
 };
 
@@ -65,12 +64,6 @@ function validate(form: typeof EMPTY): Record<string, string> {
   }
   if (form.citizenId.trim() && !/^[0-9]{9,12}$/.test(form.citizenId.trim())) {
     errors.citizenId = 'Số CCCD gồm từ 9 đến 12 chữ số.';
-  }
-  if (form.yearsExperience.trim()) {
-    const years = Number(form.yearsExperience);
-    if (!Number.isInteger(years) || years < 0 || years > 60) {
-      errors.yearsExperience = 'Số năm kinh nghiệm là một số từ 0 đến 60.';
-    }
   }
 
   return errors;
@@ -114,8 +107,7 @@ export default function TechnicianRegisterPage() {
         address: form.address.trim(),
         specialization: form.specialization,
         citizenId: form.citizenId.trim() || null,
-        bio: form.bio.trim() || null,
-        yearsExperience: form.yearsExperience.trim() ? Number(form.yearsExperience) : null
+        bio: form.bio.trim() || null
       });
 
       setSuccess(true);
@@ -300,7 +292,7 @@ export default function TechnicianRegisterPage() {
             )}
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div>
             <TextField
               label="Số CCCD (không bắt buộc)"
               name="citizenId"
@@ -308,20 +300,8 @@ export default function TechnicianRegisterPage() {
               placeholder="079123456789"
               value={form.citizenId}
               error={errors.citizenId}
-              hint="Giúp admin xác minh hồ sơ nhanh hơn."
+              hint="Giúp admin xác minh hồ sơ nhanh hơn. Kinh nghiệm & tay nghề sẽ được phỏng vấn trực tiếp."
               onChange={(e) => update('citizenId', e.target.value)}
-            />
-            <TextField
-              label="Số năm kinh nghiệm"
-              name="yearsExperience"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              max={60}
-              placeholder="3"
-              value={form.yearsExperience}
-              error={errors.yearsExperience}
-              onChange={(e) => update('yearsExperience', e.target.value)}
             />
           </div>
 

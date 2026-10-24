@@ -6,11 +6,13 @@ interface CardProps {
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  id?: string;
 }
 
-export default function Card({ title, description, actions, children, className = '' }: CardProps) {
+export default function Card({ title, description, actions, children, className = '', id }: CardProps) {
   return (
     <section
+      id={id}
       className={`overflow-hidden rounded-2xl border border-line bg-surface-card shadow-sm transition-all duration-200 hover:shadow-md ${className}`}
     >
       {(title || actions) && (

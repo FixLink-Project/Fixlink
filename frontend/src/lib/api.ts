@@ -5,6 +5,7 @@ import type {
   Appointment,
   CancelAppointmentPayload,
   CreateAppointmentPayload,
+  Quotation,
   RescheduleAppointmentPayload,
   ServiceArea,
   ServiceCategory
@@ -120,6 +121,31 @@ export function updateRequestStatus(
   newAgreedPrice?: number
 ): Promise<ApiResponse<any>> {
   return api.patch(`/repair-requests/${requestId}/status`, { status, note, newAgreedPrice });
+}
+
+export interface CreateQuotationPayload {
+  solution: string;
+  priceLaborVnd: number;
+  priceMaterialsVnd: number;
+  inspectionTime?: string;
+  estimatedFinish?: string;
+  note?: string;
+}
+
+export function createQuotation(requestId: number, data: CreateQuotationPayload): Promise<ApiResponse<Quotation>> {
+  return api.post<Quotation>(`/repair-requests/${requestId}/quotations`, data);
+}
+
+export function updateQuotation(requestId: number, quotationId: number, data: CreateQuotationPayload): Promise<ApiResponse<Quotation>> {
+  return api.put<Quotation>(`/repair-requests/${requestId}/quotations/${quotationId}`, data);
+}
+
+export function withdrawQuotation(requestId: number, quotationId: number): Promise<ApiResponse<void>> {
+  return api.delete<void>(`/repair-requests/${requestId}/quotations/${quotationId}`);
+}
+
+export function acceptQuotation(requestId: number, quotationId: number): Promise<ApiResponse<AcceptQuotationResult>> {
+  return api.post<AcceptQuotationResult>(`/repair-requests/${requestId}/quotations/${quotationId}/accept`);
 }
 
 /**
