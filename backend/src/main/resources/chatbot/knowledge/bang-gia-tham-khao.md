@@ -9,9 +9,9 @@ confidence: verified
 
 ## 1. Cách hiểu giá trên FixLink
 - Giá dưới đây là **giá tham khảo khởi điểm** của từng gói dịch vụ trong hệ thống, giúp khách đặt ngân sách hợp lý.
-- Giá thực tế của một đơn là **ngân sách cố định do khách tự đặt** khi đăng yêu cầu. Thợ nhận việc là đồng ý làm với mức giá đó.
+- Khách đặt **ngân sách dự kiến** khi đăng yêu cầu để thợ tham khảo; giá thực tế là **báo giá của thợ mà khách chọn** (tiền công + vật tư).
 - Linh kiện thay thế hoặc hư hỏng phát sinh (nếu có) được thợ đề xuất qua bước **duyệt chi phí phát sinh**; khách đồng ý thì giá chốt mới được cập nhật.
-- Ngân sách quá thấp so với tính chất công việc có thể khiến đơn lâu có thợ nhận.
+- Ngân sách quá thấp so với tính chất công việc có thể khiến ít thợ gửi báo giá.
 - Giá có thể được quản trị viên cập nhật; Trợ lý tra cứu giá mới nhất bằng dữ liệu hệ thống khi khách hỏi.
 
 ## 2. Sửa Chữa Điện Lạnh (`DIEN_LANH`)

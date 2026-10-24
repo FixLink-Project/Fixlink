@@ -21,7 +21,7 @@ public class ChatCardFactory {
     private static final int MAX_CARDS = 4;
 
     static final List<String> REQUEST_STEPS = List.of(
-            "Đăng đơn", "Có thợ nhận", "Khảo sát", "Sửa chữa", "Chờ nghiệm thu", "Hoàn thành");
+            "Nhận báo giá", "Đã chọn thợ", "Khảo sát", "Sửa chữa", "Chờ nghiệm thu", "Hoàn thành");
 
     private final ObjectMapper objectMapper;
 
@@ -84,6 +84,11 @@ public class ChatCardFactory {
                     }
                 }
                 case "prepare_repair_request" -> cards.add(draftCard(node));
+                case "get_request_quotations" -> {
+                    if (node.path("totalQuotations").asInt(0) > 0) {
+                        cards.add(quotationsCard(node));
+                    }
+                }
                 default -> {
                     // các tool khác không cần thẻ
                 }
@@ -109,7 +114,7 @@ public class ChatCardFactory {
             addField(fields, "Tiền cọc (30%)", r.path("depositText").asText(""));
         }
         if (r.has("applyDeadline")) {
-            addField(fields, "Hạn nhận việc", r.path("applyDeadline").asText(""));
+            addField(fields, "Hạn nhận báo giá", r.path("applyDeadline").asText(""));
         }
         if (detailed) {
             // Ưu tiên lịch hẹn còn hiệu lực (chưa hủy/chưa hoàn thành); không có thì lấy lịch gần nhất
@@ -209,13 +214,13 @@ public class ChatCardFactory {
     private ChatCard depositCard(JsonNode node) {
         List<Field> fields = new ArrayList<>();
         addField(fields, "Giá chốt", node.path("amountText").asText(""));
-        addField(fields, "Cọc khi thợ nhận việc (30%)", node.path("depositText").asText(""));
+        addField(fields, "Cọc khi chọn thợ (30%)", node.path("depositText").asText(""));
         addField(fields, "Thanh toán khi nghiệm thu (70%)", node.path("remainingText").asText(""));
         return ChatCard.builder()
                 .type("deposit")
                 .title("Tạm tính tiền cọc")
                 .fields(fields)
-                .note("Tiền cọc được giữ ở tài khoản trung gian và chỉ giải ngân cho thợ khi bạn bấm Nghiệm thu.")
+                .note("Tiền cọc được giữ ở tài khoản trung gian và chỉ giải ngân cho thợ khi bạn đánh giá và nghiệm thu.")
                 .build();
     }
 
@@ -254,7 +259,7 @@ public class ChatCardFactory {
         addField(fields, "Danh mục", j.path("categoryName").asText(""));
         addField(fields, "Khu vực", j.path("areaName").asText(""));
         addField(fields, "Ngân sách", j.path("budgetText").asText(""));
-        addField(fields, "Hạn nhận việc", j.path("applyDeadline").asText(""));
+        addField(fields, "Hạn báo giá", j.path("applyDeadline").asText(""));
         return ChatCard.builder()
                 .type("job")
                 .title(j.path("title").asText("Việc đang mở"))
@@ -262,7 +267,38 @@ public class ChatCardFactory {
                 .badgeTone("info")
                 .fields(fields)
                 .url(j.path("detailUrl").asText("/tho"))
-                .urlLabel("Xem và nhận việc")
+                .urlLabel("Xem và gửi báo giá")
+                .build();
+    }
+
+    private ChatCard quotationsCard(JsonNode node) {
+        List<Field> fields = new ArrayList<>();
+        for (JsonNode q : node.path("quotations")) {
+            if (fields.size() >= 6) {
+                break;
+            }
+            StringBuilder label = new StringBuilder(q.path("technicianName").asText("Thợ"));
+            if (q.path("isMine").asBoolean(false)) {
+                label.append(" (bạn)");
+            }
+            if (q.hasNonNull("avgRating")) {
+                label.append(" · ★").append(q.path("avgRating").asText());
+            }
+            if (q.hasNonNull("completedJobs")) {
+                label.append(" · ").append(q.path("completedJobs").asInt()).append(" việc");
+            }
+            addField(fields, label.toString(), q.path("totalPriceText").asText("") + " · " + q.path("statusLabel").asText(""));
+        }
+        boolean technician = "TECHNICIAN".equals(node.path("viewerRole").asText());
+        return ChatCard.builder()
+                .type("quotes")
+                .title(technician ? "Sàn báo giá (đối thủ ẩn danh)" : "So sánh báo giá")
+                .subtitle(node.path("pendingQuotations").asInt(0) + " báo giá đang chờ"
+                        + (node.hasNonNull("lowestPendingPriceText") ? " · thấp nhất " + node.path("lowestPendingPriceText").asText() : ""))
+                .fields(fields)
+                .note(technician ? null : "Bạn tự chọn thợ trong chi tiết đơn – nên cân nhắc cả giá, phương án và điểm đánh giá.")
+                .url(node.path("detailUrl").asText(null))
+                .urlLabel(technician ? "Mở chi tiết để báo giá" : "Xem chi tiết và chọn thợ")
                 .build();
     }
 

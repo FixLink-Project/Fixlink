@@ -129,10 +129,10 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
 
     /** Tool dành riêng cho người đã đăng nhập; gửi ít tool hơn giúp giảm token mỗi request. */
     private static final Set<String> CUSTOMER_TOOLS = Set.of(
-            "get_my_repair_requests", "get_repair_request_status", "get_my_appointments");
+            "get_my_repair_requests", "get_repair_request_status", "get_my_appointments", "get_request_quotations");
     private static final Set<String> TECHNICIAN_TOOLS = Set.of(
             "get_my_repair_requests", "get_repair_request_status", "get_my_appointments",
-            "get_my_technician_status", "find_matching_jobs");
+            "get_my_technician_status", "find_matching_jobs", "get_request_quotations");
 
     private List<Map<String, Object>> toolsForRole(String role) {
         String r = role != null ? role.toUpperCase(Locale.ROOT) : "GUEST";
@@ -419,7 +419,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         area.ifPresent(code -> summary.append(NL).append("- **Khu vực:** ").append(SymptomClassifier.areaLabel(code)));
         budget.ifPresent(b -> summary.append(NL).append("- **Ngân sách:** ").append(vnd(b))
                 .append(" (cọc 30% = ").append(vnd((long) Math.ceil(b * 0.3)))
-                .append(" khi thợ nhận việc, phần còn lại khi bạn bấm Nghiệm thu)"));
+                .append(" khi bạn chọn thợ, phần còn lại khi bạn đánh giá và nghiệm thu)"));
         summary.append(NL).append(NL).append("Bấm **").append(RepairRequestDraftLink.ACTION_LABEL)
                 .append("** để mở form đã điền sẵn, kiểm tra lại, bổ sung địa chỉ cụ thể");
         if (area.isEmpty()) {
@@ -647,7 +647,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             return List.of(
                     "Máy lạnh chảy nước chọn mục nào?",
                     "Cần chuẩn bị ảnh chụp thế nào?",
-                    "Thời gian thợ nhận việc là bao lâu?"
+                    "Bao lâu thì có thợ gửi báo giá?"
             );
         } else if (r.contains("yeu-cau-cua-toi")) {
             return List.of(
@@ -659,14 +659,14 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             if ("TECHNICIAN".equals(uRole)) {
                 return List.of(
                         "Hồ sơ thợ của tôi đã được duyệt chưa?",
-                        "Lỗi JOB_ALREADY_TAKEN là gì?",
+                        "Cách gửi báo giá cạnh tranh?",
                         "Làm sao để nhận nhiều việc hơn?"
                 );
             }
             return List.of(
                     "Đăng ký làm thợ cần giấy tờ gì?",
                     "Quy trình duyệt KYC thợ thế nào?",
-                    "Thợ nhận việc theo nguyên tắc nào?"
+                    "Thợ nhận việc qua báo giá thế nào?"
             );
         } else if (r.contains("login") || r.contains("dang-nhap")) {
             return List.of(

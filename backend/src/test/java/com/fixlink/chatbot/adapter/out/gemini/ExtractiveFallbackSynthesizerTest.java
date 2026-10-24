@@ -51,7 +51,7 @@ class ExtractiveFallbackSynthesizerTest {
     @DisplayName("Tình huống thực tế khi hết hạn mức AI: đổi thợ, đòi tiền mặt, thiết bị viết tắt, báo hỏng chung chung")
     void shouldHandleRealWorldScenariosOffline() {
         assertThat(synthesizer.synthesize("tôi muốn đổi thợ khác được không", "").reply())
-                .contains("không có tính năng chọn, chỉ định hay đổi thợ");
+                .contains("bạn tự chọn thợ").contains("không có tính năng đổi thợ sau khi đã chọn");
         assertThat(synthesizer.synthesize("thợ đòi thêm 500k tiền mặt", "").reply())
                 .contains("không trả tiền mặt");
         assertThat(synthesizer.synthesize("tl nhà mình hư rồi", "").reply())

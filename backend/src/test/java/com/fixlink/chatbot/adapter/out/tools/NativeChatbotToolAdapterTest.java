@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fixlink.application.port.in.AppointmentUseCase;
 import com.fixlink.application.port.in.MasterDataUseCase;
+import com.fixlink.application.port.in.QuotationUseCase;
 import com.fixlink.application.port.in.RepairRequestUseCase;
 import com.fixlink.application.port.in.TechnicianUseCase;
 import com.fixlink.chatbot.adapter.out.rag.InMemoryRagIndex;
@@ -47,16 +48,17 @@ class NativeChatbotToolAdapterTest {
                 technicianUseCase,
                 appointmentUseCase,
                 supportTicketUseCase,
+                mock(QuotationUseCase.class),
                 ragIndex,
                 objectMapper
         );
     }
 
     @Test
-    @DisplayName("Cung cấp đầy đủ định nghĩa 14 công cụ chuẩn Gemini API")
+    @DisplayName("Cung cấp đầy đủ định nghĩa 15 công cụ chuẩn Gemini API")
     void shouldProvideAllToolDeclarations() {
         List<Map<String, Object>> tools = toolAdapter.getToolDeclarations();
-        assertThat(tools).hasSize(14);
+        assertThat(tools).hasSize(15);
 
         List<String> toolNames = tools.stream()
                 .map(t -> (String) t.get("name"))
@@ -76,7 +78,8 @@ class NativeChatbotToolAdapterTest {
                 "list_services",
                 "calculate_deposit",
                 "find_matching_jobs",
-                "prepare_repair_request"
+                "prepare_repair_request",
+                "get_request_quotations"
         );
     }
 

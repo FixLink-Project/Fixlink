@@ -8,18 +8,18 @@ confidence: verified
 # Chính sách đặt cọc và thanh toán trung gian
 
 ## 1. Giá dịch vụ được chốt như thế nào?
-- Khách hàng tự đặt **ngân sách cố định** (bắt buộc, lớn hơn 0 đồng) khi đăng yêu cầu sửa chữa.
-- Khi một thợ bấm **"Nhận việc"**, giá chốt (agreed price) của đơn **bằng đúng ngân sách khách đã đặt**. Thợ không tự nhập giá khác và không có bước trả giá.
+- Khách hàng đặt **ngân sách dự kiến** (bắt buộc, lớn hơn 0 đồng) khi đăng yêu cầu để thợ tham khảo.
+- Các thợ gửi **báo giá** (tiền công + vật tư). Khi khách bấm **"Chọn thợ này"**, giá chốt (agreed price) của đơn **bằng tổng báo giá được chọn**.
 - Nếu khi khảo sát thợ phát hiện hư hỏng phát sinh ngoài mô tả ban đầu, thợ gửi **đề xuất chi phí mới** (trạng thái `AWAITING_COST_APPROVAL`). Giá chốt chỉ thay đổi khi khách bấm **Đồng ý**.
 
 ## 2. Tỷ lệ đặt cọc: 30% – tất toán: 70%
-- Ngay khi thợ nhận việc, hệ thống ghi nhận **tiền cọc = 30% giá chốt** (làm tròn lên đến đồng), được giữ an toàn trong **tài khoản trung gian (escrow)** của FixLink.
+- Ngay khi khách chọn thợ, hệ thống ghi nhận **tiền cọc = 30% giá chốt** (làm tròn lên đến đồng), được giữ an toàn trong **tài khoản trung gian (escrow)** của FixLink.
 - **70% còn lại** được tất toán khi khách hàng bấm **Nghiệm thu**.
 - Khi khách duyệt chi phí phát sinh, giá chốt mới được cập nhật và **tiền cọc được tính lại bằng 30% giá mới**.
 - Ví dụ minh họa:
-  - Ngân sách 300.000 đ → cọc 90.000 đ, tất toán 210.000 đ.
-  - Ngân sách 500.000 đ → cọc 150.000 đ, tất toán 350.000 đ.
-  - Ngân sách 1.000.000 đ → cọc 300.000 đ, tất toán 700.000 đ.
+  - Giá chốt 300.000 đ → cọc 90.000 đ, tất toán 210.000 đ.
+  - Giá chốt 500.000 đ → cọc 150.000 đ, tất toán 350.000 đ.
+  - Giá chốt 1.000.000 đ → cọc 300.000 đ, tất toán 700.000 đ.
   - Đơn 500.000 đ, khách duyệt phát sinh lên 800.000 đ → cọc mới 240.000 đ, tất toán 560.000 đ.
 
 ### Tiền mua linh kiện thay thế có tính vào tiền đặt cọc không?

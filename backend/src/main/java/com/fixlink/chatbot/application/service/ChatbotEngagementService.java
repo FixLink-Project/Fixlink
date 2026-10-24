@@ -105,14 +105,14 @@ public class ChatbotEngagementService implements ChatbotEngagementUseCase {
                     "👋 Bạn đang tạo yêu cầu sửa chữa. Mô tả cho mình **thiết bị** và **hiện tượng** (ví dụ: \"máy lạnh chỉ thổi gió, "
                             + "không mát\"), mình sẽ gợi ý đúng danh mục, giá tham khảo và cách đặt ngân sách hợp lý.",
                     List.of("Máy lạnh không mát chọn mục nào?", "Nên đặt ngân sách bao nhiêu?", "Cần chụp ảnh thế nào?",
-                            "Bao lâu thì có thợ nhận?"),
+                            "Bao lâu thì có thợ gửi báo giá?"),
                     List.of(), List.of());
         }
         if ("TECHNICIAN".equals(uRole)) {
             return new WelcomeResponse(
                     "👋 Chào bạn! Mình hỗ trợ thợ FixLink: kiểm tra hồ sơ KYC, tìm việc phù hợp, quy trình khảo sát – báo phát sinh – nghiệm thu.",
                     List.of("Hồ sơ của tôi đã được duyệt chưa?", "Có việc nào phù hợp với tôi?", "Lịch hẹn của tôi",
-                            "Lỗi JOB_ALREADY_TAKEN là gì?"),
+                            "Cách gửi báo giá cạnh tranh?"),
                     List.of(), List.of());
         }
         if ("CUSTOMER".equals(uRole)) {
@@ -146,19 +146,33 @@ public class ChatbotEngagementService implements ChatbotEngagementUseCase {
         String message = "👋 Mình thấy bạn đang xem đơn **" + node.path("requestCode").asText("") + "**: hiện ở trạng thái **"
                 + node.path("statusLabel").asText(status) + "**.\n\n**Bước tiếp theo:** " + node.path("nextStep").asText("");
         List<String> suggestions = switch (status) {
-            case "OPEN", "DRAFT", "PENDING" -> List.of("Bao lâu thì có thợ nhận?", "Tôi muốn sửa nội dung đơn",
+            case "OPEN", "DRAFT", "PENDING" -> List.of("Đơn này đã có những báo giá nào?", "Nên chọn thợ nào?",
                     "Hủy đơn này có mất phí không?", "Nên tăng ngân sách không?");
             case "ASSIGNED" -> List.of("Lịch hẹn của đơn này thế nào?", "Thợ chưa liên hệ thì sao?",
                     "Tiền cọc của đơn này là bao nhiêu?", "Tôi muốn đổi thợ");
             case "INSPECTING", "AWAITING_COST_APPROVAL" -> List.of("Có nên đồng ý chi phí phát sinh?",
                     "Không đồng ý phát sinh thì sao?", "Thợ đòi trả tiền mặt thì sao?");
             case "IN_PROGRESS" -> List.of("Sửa xong thì làm gì tiếp?", "Đang sửa có hủy được không?");
-            case "AWAITING_ACCEPTANCE" -> List.of("Nghiệm thu thế nào?", "Thiết bị vẫn còn lỗi thì sao?",
+            case "AWAITING_ACCEPTANCE" -> List.of("Đánh giá và nghiệm thu thế nào?", "Thiết bị vẫn còn lỗi thì sao?",
                     "Sau nghiệm thu có bảo hành không?");
             case "COMPLETED" -> List.of("Sửa xong lại hỏng thì sao?", "Đăng yêu cầu mới", "Gặp nhân viên hỗ trợ");
             default -> List.of("Đăng yêu cầu mới", "Gặp nhân viên hỗ trợ");
         };
-        return new WelcomeResponse(message, suggestions, List.of(card), List.of());
+        List<ChatCard> cards = new ArrayList<>(List.of(card));
+        if ("OPEN".equals(status) || "BIDDING_OPEN".equals(status)) {
+            // Đơn đang nhận báo giá: hiện luôn bảng so sánh báo giá như thẻ đơn hàng của các sàn TMĐT
+            var quotes = toolPort.executeTool("get_request_quotations", Map.of("request_id", requestId), userId, role, null);
+            JsonNode q = read(quotes.content());
+            if (!quotes.isError() && q != null) {
+                int total = q.path("totalQuotations").asInt(0);
+                message += total == 0
+                        ? "\n\nHiện **chưa có thợ nào gửi báo giá**."
+                        : "\n\nĐơn đã có **" + total + "** báo giá – xem bảng so sánh bên dưới rồi chọn thợ phù hợp nhé.";
+                cards.addAll(cardFactory.fromToolTraces(
+                        List.of(new ToolCallRecorder.ToolTrace("get_request_quotations", quotes.content(), false))));
+            }
+        }
+        return new WelcomeResponse(message, suggestions, cards, List.of());
     }
 
     private WelcomeResponse technicianWelcome(Long userId) {
@@ -170,12 +184,12 @@ public class ChatbotEngagementService implements ChatbotEngagementUseCase {
         String status = node.path("verificationStatus").asText();
         String message = switch (status) {
             case "APPROVED" -> "👋 Chào " + node.path("fullName").asText("bạn") + "! Hồ sơ của bạn **đã được xác minh** – "
-                    + "bạn có thể nhận việc đúng chuyên môn và khu vực. Hỏi mình \"có việc nào phù hợp\" để xem nhanh nhé.";
+                    + "bạn có thể gửi báo giá cho việc đúng chuyên môn và khu vực. Hỏi mình \"có việc nào phù hợp\" để xem nhanh nhé.";
             case "REJECTED" -> "👋 Hồ sơ KYC của bạn **đang bị từ chối**. Xem lý do bên dưới và cập nhật giấy tờ tại trang hồ sơ thợ.";
-            default -> "👋 Hồ sơ của bạn **đang chờ Admin duyệt** – trong thời gian này bạn chưa nhận việc được.";
+            default -> "👋 Hồ sơ của bạn **đang chờ Admin duyệt** – trong thời gian này bạn chưa gửi báo giá được.";
         };
         List<String> suggestions = "APPROVED".equals(status)
-                ? List.of("Có việc nào phù hợp với tôi?", "Lịch hẹn của tôi", "Làm sao nhận được nhiều việc hơn?")
+                ? List.of("Có việc nào phù hợp với tôi?", "Lịch hẹn của tôi", "Làm sao để được khách chọn nhiều hơn?")
                 : List.of("Hồ sơ KYC cần những gì?", "Bao lâu thì được duyệt?", "Gặp nhân viên hỗ trợ");
         return new WelcomeResponse(message, suggestions, List.of(cardFactory.fromToolTraces(
                 List.of(new ToolCallRecorder.ToolTrace("get_my_technician_status", result.content(), false))).get(0)),
@@ -212,7 +226,7 @@ public class ChatbotEngagementService implements ChatbotEngagementUseCase {
         return new WelcomeResponse(
                 "🔔 Bạn có **" + needAction.size() + "** đơn đang **chờ bạn thao tác** (duyệt chi phí phát sinh hoặc nghiệm thu). "
                         + "Mở đơn bên dưới để xử lý nhé.",
-                List.of("Có nên đồng ý chi phí phát sinh?", "Nghiệm thu thế nào?", "Thiết bị vẫn còn lỗi thì sao?"),
+                List.of("Có nên đồng ý chi phí phát sinh?", "Đánh giá và nghiệm thu thế nào?", "Thiết bị vẫn còn lỗi thì sao?"),
                 cards, List.of());
     }
 

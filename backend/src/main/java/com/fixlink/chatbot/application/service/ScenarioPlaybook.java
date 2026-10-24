@@ -65,7 +65,7 @@ public class ScenarioPlaybook {
                     "lam hu them", "lam vo", "lam tray", "thai do", "tho hon", "tho vo le", "khong hai long", "khieu nai", "to cao",
                     "boi thuong", "den bu", "chat luong kem", "lam an gian doi", "tho an cap", "mat do"),
                     "Khiếu nại chất lượng/thái độ/hư hỏng tài sản. 1 câu đồng cảm, tóm tắt đúng vấn đề. Nếu đơn chưa nghiệm thu: "
-                            + "khuyên KHÔNG bấm Nghiệm thu khi chưa hài lòng (tiền vẫn giữ trung gian). Hỏi mã đơn, mô tả sự việc, ảnh/video bằng chứng. "
+                            + "khuyên CHƯA hoàn tất nghiệm thu khi chưa hài lòng (tiền vẫn giữ trung gian; bước nghiệm thu có chấm sao và nhận xét bắt buộc). Hỏi mã đơn, mô tả sự việc, ảnh/video bằng chứng. "
                             + "Đề nghị tạo phiếu hỗ trợ (Critical nếu gian lận/mất tài sản/tranh chấp tiền, High nếu hư hỏng/thái độ). "
                             + "Bảo hành: hệ thống kích hoạt bảo hành khi nghiệm thu nhưng thời hạn bảo hành chưa công bố. KHÔNG hứa bồi thường, sửa lại miễn phí hay mức đền bù."),
 
@@ -78,27 +78,36 @@ public class ScenarioPlaybook {
 
             new Scenario("change_technician", List.of("doi tho", "chon tho", "tho khac", "khong muon tho nay", "chi dinh tho", "tho quen",
                     "tho nu", "tho gioi nhat", "tho uy tin nhat", "xem danh gia tho", "xem ho so tho"),
-                    "Muốn chọn/đổi thợ. FixLink theo nguyên tắc ai nhận trước được trước nên KHÔNG có tính năng chọn, chỉ định hay đổi thợ. "
-                            + "Mọi thợ nhận việc đều đã được duyệt KYC và đúng chuyên môn, khu vực. Phương án: trao đổi với thợ; nếu không muốn tiếp tục "
+                    "Muốn chọn/đổi thợ. Khách CHỌN thợ trong các báo giá nhận được (nút 'Chọn thợ này' khi đơn OPEN; đã đăng nhập thì gọi get_request_quotations để so sánh "
+                            + "giá, phương án, điểm đánh giá, số việc đã làm — không chọn thay khách). KHÔNG đổi được thợ sau khi đã chọn, không chỉ định trước thợ chưa báo giá. Đã chọn rồi mà muốn đổi: trao đổi với thợ; nếu không muốn tiếp tục "
                             + "và đơn chưa ở Đang sửa chữa thì hủy đơn (nhập lý do) rồi đăng đơn mới; hoặc tạo phiếu hỗ trợ để CSKH xem xét."),
+
+            new Scenario("compare_quotes", List.of("bao gia", "may bao gia", "nhung bao gia", "so sanh bao gia", "nen chon tho nao",
+                    "chon tho nao", "tho nao re", "tho nao tot", "chon bao gia", "chot tho", "gui bao gia", "tra gia", "rut bao gia",
+                    "chua co bao gia", "chua ai bao gia"),
+                    "Báo giá/chọn thợ. Khách đã đăng nhập hỏi về đơn cụ thể → gọi get_request_quotations (dùng ID trong đường dẫn trang nếu có) "
+                            + "rồi so sánh khách quan: giá công + vật tư, phương án, điểm đánh giá, số việc đã làm; nêu ưu/nhược, KHÔNG chọn thay khách, "
+                            + "không khẳng định thợ nào chắc chắn tốt hơn. Nhắc: bấm 'Chọn thợ này' trong chi tiết đơn, báo giá khác sẽ tự bị từ chối, "
+                            + "không đổi thợ được sau khi chọn. Chưa có báo giá: đơn nhận báo giá tối đa 3 ngày; mô tả rõ, ảnh đầy đủ, ngân sách hợp lý giúp có báo giá sớm. "
+                            + "Với THỢ: gửi báo giá trong chi tiết yêu cầu (tiền công bắt buộc), sửa/rút khi còn chờ duyệt, giá đối thủ hiển thị ẩn danh."),
 
             new Scenario("reschedule", List.of("doi lich", "doi gio", "doi ngay", "hen lai", "doi lich hen", "huy lich", "huy hen",
                     "ban viec", "khong co nha", "vang nha", "ve que"),
-                    "Đổi/hủy lịch hẹn. Lịch hẹn chỉ có sau khi đơn đã có thợ nhận; dời lịch được nhiều lần (thời gian mới phải từ hiện tại trở đi); "
+                    "Đổi/hủy lịch hẹn. Lịch hẹn chỉ có sau khi khách đã chọn thợ (thợ phải đặt lịch hẹn trên hệ thống trước khi bắt đầu khảo sát); dời lịch được nhiều lần (thời gian mới phải từ hiện tại trở đi); "
                             + "hủy lịch hẹn phải nhập lý do và KHÔNG tự hủy yêu cầu sửa chữa. Thao tác trong trang chi tiết đơn (/yeu-cau-cua-toi/{id} với khách, "
                             + "/tho/yeu-cau/{id} với thợ). Đã đăng nhập thì gọi get_my_appointments để nêu đúng lịch hiện tại. Chatbot không tự dời lịch."),
 
             new Scenario("urgent", List.of("can gap", "rat gap", "gap lam", "sua gap", "dang gap", "gap gap", "khan cap", "ngay bay gio", "den lien", "sua lien", "lam lien", "30 phut", "trong ngay", "toi nay",
                     "nua dem", "sang som", "can ngay", "bao lau thi den", "bao lau co tho", "may gio tho den", "co mat sau"),
-                    "Khách cần gấp/hỏi bao lâu thợ đến. FixLink KHÔNG cam kết thời gian thợ có mặt chung cho mọi đơn: thợ phù hợp nhận việc theo "
-                            + "nguyên tắc ai nhận trước được trước, đơn mở tối đa 3 ngày; thời gian cụ thể do khách và thợ thống nhất qua lịch hẹn. "
+                    "Khách cần gấp/hỏi bao lâu thợ đến. FixLink KHÔNG cam kết thời gian thợ có mặt chung cho mọi đơn: thợ phù hợp gửi báo giá "
+                            + "và khách chọn thợ, đơn nhận báo giá tối đa 3 ngày; thời gian cụ thể do khách và thợ thống nhất qua lịch hẹn. "
                             + "Chỉ riêng gói 'Mở khóa cấp tốc 24/7' có mô tả thợ khóa có mặt sau 15–30 phút. Gợi ý tăng khả năng có thợ sớm: "
                             + "ghi rõ 'cần gấp' và khung giờ mong muốn trong mô tả, chọn đúng danh mục và khu vực, đính kèm ảnh, đặt ngân sách hợp lý."),
 
             new Scenario("refund_payment", List.of("hoan tien", "tra lai tien", "bi tru tien", "tru tien 2 lan", "mat tien", "chua nhan tien",
                     "thanh toan bang gi", "thanh toan the nao", "momo", "zalopay", "vnpay", "the ngan hang", "tra gop", "hoa don", "vat",
                     "xuat hoa don", "tien coc ve dau", "lay lai coc"),
-                    "Thanh toán/hoàn tiền/hóa đơn. Được nói: cọc 30% giữ trung gian khi thợ nhận việc, 70% còn lại khi khách nghiệm thu, giải ngân cho thợ "
+                    "Thanh toán/hoàn tiền/hóa đơn. Được nói: cọc 30% giá chốt giữ trung gian khi khách chọn thợ, 70% còn lại khi khách nghiệm thu, giải ngân cho thợ "
                             + "khi nghiệm thu. CHƯA công bố: phương thức/cổng thanh toán cụ thể (ví điện tử, thẻ, trả góp), tỷ lệ hoàn cọc khi hủy, hóa đơn VAT. "
                             + "Không xác nhận khách có bị trừ tiền hay chưa (chatbot không xem được giao dịch). Hướng xử lý: hỏi mã đơn, thời điểm, số tiền "
                             + "rồi đề nghị tạo phiếu hỗ trợ Critical để bộ phận kế toán kiểm tra."),
@@ -121,7 +130,7 @@ public class ScenarioPlaybook {
             new Scenario("price", List.of("bao nhieu tien", "bao nhieu", "gia bao nhieu", "gia ca", "gia sua", "gia ve sinh", "bao gia", "gia tham khao", "gia the nao", "chi phi", "phi", "re khong", "dat khong", "bang gia", "mat bao nhieu",
                     "het bao nhieu", "tien cong"),
                     "Hỏi giá. Gọi list_services (lọc category_code nếu biết thiết bị) để lấy giá tham khảo thật. Giải thích: đó là giá tham khảo khởi điểm; "
-                            + "giá thực tế = ngân sách cố định khách tự đặt khi đăng yêu cầu, linh kiện/hư hỏng thêm qua bước duyệt chi phí phát sinh. "
+                            + "giá thực tế = báo giá của thợ mà khách chọn (khách chỉ đặt ngân sách dự kiến để thợ tham khảo), linh kiện/hư hỏng thêm qua bước duyệt chi phí phát sinh. "
                             + "Chưa rõ thiết bị → hỏi lại thiết bị và hiện tượng. Thiết bị không có gói → nói không có giá tham khảo, KHÔNG tự ước lượng con số. "
                             + "Nếu khách nêu ngân sách cụ thể → có thể gọi calculate_deposit."),
 
@@ -140,7 +149,7 @@ public class ScenarioPlaybook {
             new Scenario("compare_competitor", List.of("so voi", "khac gi", "hon gi", "tai sao chon", "vi sao chon", "co uy tin khong",
                     "co lua dao khong", "dang tin", "an toan khong", "dien may xanh", "ung dung khac", "ben khac"),
                     "So sánh/hỏi độ tin cậy. Không chê bai đơn vị khác, không bịa số liệu (số thợ, số đơn, đánh giá). Nêu điểm mạnh có thật của FixLink: "
-                            + "thợ xác minh KYC; giá do khách tự đặt, không đấu giá; cọc giữ trung gian, chỉ giải ngân khi khách nghiệm thu; phát sinh phải được khách duyệt; "
+                            + "thợ xác minh KYC; thợ báo giá công khai, khách so sánh điểm đánh giá thật và tự chọn thợ; cọc giữ trung gian, chỉ giải ngân khi khách nghiệm thu; phát sinh phải được khách duyệt; "
                             + "có phiếu hỗ trợ để khiếu nại."),
 
             new Scenario("diy_repair", List.of("tu sua", "huong dan sua", "cach sua", "tu lam", "thao ra", "nap ga tai nha", "tu thay",
@@ -152,11 +161,11 @@ public class ScenarioPlaybook {
             new Scenario("technician_ops", List.of("lam sao nhan nhieu viec", "tang thu nhap", "hoa hong", "chiet khau", "rut tien", "vi tho",
                     "khach huy don", "khach khong co nha", "khach bung", "khach khong tra tien", "khach doi giam gia", "danh gia thap",
                     "bi tu choi kyc", "ho so bi tu choi", "chua duoc duyet", "khong thay viec"),
-                    "Câu hỏi nghiệp vụ của THỢ. Được nói: chỉ nhận việc khi KYC APPROVED và khớp chuyên môn + khu vực; ai nhận trước được trước; "
+                    "Câu hỏi nghiệp vụ của THỢ. Được nói: chỉ gửi báo giá khi KYC APPROVED, khớp chuyên môn + khu vực, đơn OPEN còn hạn; mỗi đơn một báo giá, sửa/rút khi còn chờ duyệt, thấy giá đối thủ ẩn danh; khách chọn thì các báo giá khác bị từ chối; được chọn phải đặt lịch hẹn trước khi khảo sát; "
                             + "tiền công giải ngân vào ví khi khách nghiệm thu; phát sinh phải gửi đề xuất cho khách duyệt; khách vắng nhà → liên hệ khách, dời lịch "
                             + "hoặc hủy lịch hẹn kèm lý do, cần thì tạo phiếu hỗ trợ. CHƯA công bố: tỷ lệ hoa hồng, cách rút tiền từ ví. "
                             + "Thợ đã đăng nhập → gọi get_my_technician_status / find_matching_jobs để trả lời bằng dữ liệu thật. "
-                            + "Muốn có nhiều việc hơn: đăng ký đúng chuyên môn, mở rộng khu vực hoạt động, bật Trực tuyến, nhận việc nhanh."),
+                            + "Muốn được chọn nhiều hơn: báo giá hợp lý, ghi rõ phương án, giữ điểm đánh giá tốt, đăng ký đúng chuyên môn và mở rộng khu vực hoạt động."),
 
             new Scenario("human_handoff", List.of("gap nhan vien", "nguoi that", "noi chuyen voi nguoi", "tong dai vien", "cskh", "admin",
                     "quan ly", "goi dien", "lien he truc tiep", "hotline", "so dien thoai fixlink", "email fixlink"),

@@ -65,7 +65,7 @@ class ResilientGeminiChatAdapterTest {
                 "CUSTOMER",
                 "/",
                 null,
-                "### Mô hình hoạt động (Nguồn: gioi-thieu-fixlink.md)\nThợ nào bấm Nhận việc trước tiên sẽ nhận công việc."
+                "### Mô hình hoạt động (Nguồn: gioi-thieu-fixlink.md)\nCác thợ gửi báo giá, khách so sánh và chọn thợ."
         );
 
         assertThat(result).isNotNull();

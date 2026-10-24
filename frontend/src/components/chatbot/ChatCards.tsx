@@ -17,6 +17,7 @@ const TYPE_ICONS: Record<string, string> = {
   technician: '🪪',
   job: '🛠️',
   draft: '📝',
+  quotes: '⚖️',
 };
 
 /** Thanh tiến độ của đơn sửa chữa, giống thẻ theo dõi đơn hàng trên các sàn thương mại điện tử. */

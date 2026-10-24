@@ -2,9 +2,11 @@ package com.fixlink.chatbot.adapter.out.tools;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fixlink.adapter.in.web.dto.response.AppointmentResponse;
+import com.fixlink.adapter.in.web.dto.response.QuotationResponse;
 import com.fixlink.adapter.in.web.dto.response.RepairRequestResponse;
 import com.fixlink.application.port.in.AppointmentUseCase;
 import com.fixlink.application.port.in.MasterDataUseCase;
+import com.fixlink.application.port.in.QuotationUseCase;
 import com.fixlink.application.port.in.RepairRequestUseCase;
 import com.fixlink.application.port.in.RepairRequestUseCase.RepairRequestDetail;
 import com.fixlink.application.port.in.RepairRequestUseCase.RepairRequestPageResult;
@@ -53,7 +55,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
 
     private static final Logger LOG = LoggerFactory.getLogger(NativeChatbotToolAdapter.class);
 
-    /** Tỷ lệ cọc khi thợ nhận việc — khớp {@code QuotationService.DEPOSIT_RATE}. */
+    /** Tỷ lệ cọc khi khách chọn thợ — khớp {@code QuotationService.DEPOSIT_RATE}. */
     private static final BigDecimal DEPOSIT_RATE = new BigDecimal("0.30");
     private static final Pattern REQUEST_CODE_PATTERN = Pattern.compile("REQ-\\d{8}-[A-Z0-9]{6}", Pattern.CASE_INSENSITIVE);
     private static final DateTimeFormatter VN_DATE_TIME = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
@@ -64,6 +66,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
     private final TechnicianUseCase technicianUseCase;
     private final AppointmentUseCase appointmentUseCase;
     private final SupportTicketUseCase supportTicketUseCase;
+    private final QuotationUseCase quotationUseCase;
     private final InMemoryRagIndex ragIndex;
     private final ObjectMapper objectMapper;
 
@@ -73,6 +76,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
             TechnicianUseCase technicianUseCase,
             AppointmentUseCase appointmentUseCase,
             SupportTicketUseCase supportTicketUseCase,
+            QuotationUseCase quotationUseCase,
             InMemoryRagIndex ragIndex,
             ObjectMapper objectMapper
     ) {
@@ -81,6 +85,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
         this.technicianUseCase = technicianUseCase;
         this.appointmentUseCase = appointmentUseCase;
         this.supportTicketUseCase = supportTicketUseCase;
+        this.quotationUseCase = quotationUseCase;
         this.ragIndex = ragIndex;
         this.objectMapper = objectMapper;
     }
@@ -136,7 +141,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                 Map.of("status", prop("STRING",
                         "Lọc theo trạng thái (OPEN, ASSIGNED, INSPECTING, AWAITING_COST_APPROVAL, IN_PROGRESS, "
                                 + "AWAITING_ACCEPTANCE, COMPLETED, CANCELLED, DRAFT) hoặc nhóm tab "
-                                + "(AWAITING_QUOTE = chờ thợ nhận, IN_PROGRESS = đang thực hiện). Bỏ trống để lấy tất cả.")),
+                                + "(AWAITING_QUOTE = đang nhận báo giá, IN_PROGRESS = đang thực hiện). Bỏ trống để lấy tất cả.")),
                 List.of()));
 
         Map<String, Object> statusProps = new LinkedHashMap<>();
@@ -147,6 +152,15 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                         + "lịch hẹn, bước tiếp theo). Cần request_id HOẶC request_code.",
                 statusProps, List.of()));
 
+        Map<String, Object> quoteProps = new LinkedHashMap<>();
+        quoteProps.put("request_id", prop("INTEGER", "ID số của yêu cầu (số ở cuối đường dẫn /yeu-cau-cua-toi/{id} hoặc /tho/yeu-cau/{id})"));
+        quoteProps.put("request_code", prop("STRING", "Mã yêu cầu dạng REQ-YYYYMMDD-XXXXXX"));
+        tools.add(tool("get_request_quotations",
+                "Xem các báo giá của một yêu cầu: với KHÁCH là danh sách thợ đã báo giá (tên, điểm đánh giá, số việc đã làm, "
+                        + "giá công + vật tư, phương án, trạng thái) để so sánh; với THỢ là báo giá của mình và giá của đối thủ "
+                        + "(ẩn danh). Chỉ để so sánh — không chọn thợ hay gửi báo giá thay người dùng.",
+                quoteProps, List.of()));
+
         tools.add(tool("get_my_technician_status",
                 "Kiểm tra hồ sơ thợ đang đăng nhập: trạng thái duyệt KYC (PENDING/APPROVED/REJECTED) và lý do từ chối, "
                         + "online/offline, số việc đã hoàn thành, điểm đánh giá.",
@@ -154,7 +168,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
 
         tools.add(tool("find_matching_jobs",
                 "Dành cho THỢ đã đăng nhập: liệt kê các yêu cầu đang mở (OPEN, còn hạn) khớp chuyên môn và khu vực "
-                        + "của thợ để thợ vào bảng việc bấm Nhận việc.",
+                        + "của thợ để thợ vào trang chi tiết gửi báo giá.",
                 Map.of("keyword", prop("STRING", "Từ khóa lọc theo tiêu đề/mô tả (tùy chọn)")),
                 List.of()));
 
@@ -229,6 +243,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                 case "get_repair_request_status" -> handleGetRepairRequestStatus(args, currentUserId, currentRole);
                 case "get_my_technician_status" -> handleGetMyTechnicianStatus(currentUserId, currentRole);
                 case "find_matching_jobs" -> handleFindMatchingJobs(args, currentUserId, currentRole);
+                case "get_request_quotations" -> handleGetRequestQuotations(args, currentUserId, currentRole);
                 case "get_my_appointments" -> handleGetMyAppointments(currentUserId, currentRole);
                 case "create_support_ticket" -> handleCreateSupportTicket(args, currentUserId, guestContact);
                 case "read_support_ticket" -> handleReadSupportTicket(args, currentUserId, currentRole, guestContact);
@@ -292,7 +307,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
         return ok(Map.of(
                 "totalServices", items.size(),
                 "services", items,
-                "note", "Giá là GIÁ THAM KHẢO khởi điểm của gói dịch vụ. Giá thực tế do khách tự đặt (ngân sách cố định) "
+                "note", "Giá là GIÁ THAM KHẢO khởi điểm của gói dịch vụ. Khách đặt ngân sách dự kiến, giá thực tế là báo giá của thợ mà khách chọn "
                         + "khi đăng yêu cầu; nếu thợ khảo sát phát hiện lỗi phát sinh thì thợ đề xuất chi phí mới để khách duyệt."
         ));
     }
@@ -365,7 +380,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
             stillNeeded.add(0, "khu vực (quận)");
         }
         if (budget == null) {
-            stillNeeded.add("ngân sách cố định (bắt buộc, > 0)");
+            stillNeeded.add("ngân sách dự kiến (bắt buộc, > 0)");
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -405,8 +420,8 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                 "depositText", formatVnd(deposit),
                 "remainingRate", "70%",
                 "remainingText", formatVnd(remaining),
-                "rule", "Tiền cọc = 30% giá đã chốt (làm tròn lên), được giữ trung gian khi thợ nhận việc; "
-                        + "70% còn lại tất toán khi khách bấm Nghiệm thu. Nếu khách duyệt chi phí phát sinh, cọc được tính lại theo giá mới."
+                "rule", "Tiền cọc = 30% giá đã chốt (làm tròn lên), được giữ trung gian khi khách chọn thợ; "
+                        + "70% còn lại tất toán khi khách đánh giá và nghiệm thu. Nếu khách duyệt chi phí phát sinh, cọc được tính lại theo giá mới."
         ));
     }
 
@@ -504,7 +519,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
             result.put("message", role == Role.CUSTOMER
                     ? "Bạn chưa có yêu cầu sửa chữa nào" + (statusArg != null ? " ở trạng thái này" : "")
                             + ". Có thể đăng yêu cầu mới tại /dang-yeu-cau."
-                    : "Bạn chưa nhận việc nào" + (statusArg != null ? " ở trạng thái này" : "")
+                    : "Bạn chưa được khách chọn cho việc nào" + (statusArg != null ? " ở trạng thái này" : "")
                             + ". Xem việc phù hợp tại bảng việc /tho.");
         }
         return ok(result);
@@ -594,7 +609,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
             item.put("depositText", formatVnd(r.getDepositAmount()));
         }
         if (viewerRole == Role.CUSTOMER) {
-            item.put("technicianName", d.technicianName() != null ? d.technicianName() : "Chưa có thợ nhận");
+            item.put("technicianName", d.technicianName() != null ? d.technicianName() : "Chưa chọn thợ");
         } else {
             item.put("customerName", nvl(d.customerName()));
         }
@@ -633,12 +648,100 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("totalMatching", page.getTotalElements());
         result.put("items", items);
-        result.put("note", "Việc theo nguyên tắc ai nhận trước được trước. Thợ tự bấm 'Nhận việc' trên bảng việc /tho; "
-                + "chatbot không nhận việc hộ.");
+        result.put("note", "Thợ mở chi tiết yêu cầu để gửi báo giá (công + vật tư); khách so sánh các báo giá và chọn thợ. "
+                + "Chatbot không gửi báo giá hộ.");
         return ok(result);
     }
 
     // ---------------------------------------------------------------- thợ
+
+    private ToolExecutionResult handleGetRequestQuotations(Map<String, Object> args, Long currentUserId, String currentRole) {
+        Role role = parseRole(currentRole);
+        if (currentUserId == null || (role != Role.CUSTOMER && role != Role.TECHNICIAN)) {
+            return requireLogin("Bạn cần đăng nhập để xem báo giá của yêu cầu sửa chữa.");
+        }
+        Long requestId = parseLong(args.get("request_id"));
+        String requestCode = str(args.get("request_code"));
+        if (requestId == null && requestCode != null) {
+            Matcher m = REQUEST_CODE_PATTERN.matcher(requestCode);
+            requestId = findRequestIdByCode(m.find() ? m.group().toUpperCase(Locale.ROOT)
+                    : requestCode.trim().toUpperCase(Locale.ROOT), currentUserId, role);
+        }
+        if (requestId == null) {
+            return error("Cần ID yêu cầu (số) hoặc mã yêu cầu dạng REQ-YYYYMMDD-XXXXXX.");
+        }
+
+        List<QuotationResponse> quotes;
+        try {
+            quotes = quotationUseCase.getQuotationsForRequest(requestId, currentUserId, role.name());
+        } catch (Exception ex) {
+            return error("Không xem được báo giá của yêu cầu này (chỉ chủ đơn hoặc thợ phù hợp mới xem được).");
+        }
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        BigDecimal lowest = null;
+        long pending = 0;
+        for (QuotationResponse q : quotes) {
+            BigDecimal total = q.getTotalPrice() != null ? q.getTotalPrice()
+                    : nz(q.getPriceLaborVnd()).add(nz(q.getPriceMaterialsVnd()));
+            String status = q.getStatus() != null ? q.getStatus().name() : "";
+            if ("PENDING".equals(status)) {
+                pending++;
+                if (lowest == null || total.compareTo(lowest) < 0) {
+                    lowest = total;
+                }
+            }
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("technicianName", nvl(q.getTechnicianName()));
+            if (Boolean.TRUE.equals(q.getIsMine())) {
+                item.put("isMine", true);
+            }
+            if (q.getAvgRating() != null) {
+                item.put("avgRating", q.getAvgRating().toPlainString());
+            }
+            if (q.getCompletedJobs() != null) {
+                item.put("completedJobs", q.getCompletedJobs());
+            }
+            item.put("totalPriceText", formatVnd(total));
+            item.put("laborText", formatVnd(q.getPriceLaborVnd()));
+            if (isPositive(q.getPriceMaterialsVnd())) {
+                item.put("materialsText", formatVnd(q.getPriceMaterialsVnd()));
+            }
+            if (q.getSolution() != null && !q.getSolution().isBlank()) {
+                item.put("solution", truncate(q.getSolution(), 200));
+            }
+            item.put("status", status);
+            item.put("statusLabel", switch (status) {
+                case "PENDING" -> "Chờ khách chọn";
+                case "ACCEPTED" -> "Đã được chọn";
+                case "REJECTED" -> "Không được chọn";
+                case "WITHDRAWN" -> "Thợ đã rút";
+                default -> status;
+            });
+            items.add(item);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("requestId", requestId);
+        result.put("viewerRole", role.name());
+        result.put("totalQuotations", items.size());
+        result.put("pendingQuotations", pending);
+        if (lowest != null) {
+            result.put("lowestPendingPriceText", formatVnd(lowest));
+        }
+        result.put("quotations", items);
+        result.put("detailUrl", (role == Role.TECHNICIAN ? "/tho/yeu-cau/" : "/yeu-cau-cua-toi/") + requestId);
+        result.put("note", role == Role.CUSTOMER
+                ? (items.isEmpty() ? "Chưa có thợ nào gửi báo giá. Đơn nhận báo giá tối đa 3 ngày."
+                        : "Khách tự chọn trong trang chi tiết đơn bằng nút 'Chọn thợ này'; không bắt buộc chọn giá thấp nhất — "
+                        + "nên cân nhắc cả phương án, điểm đánh giá và số việc đã làm. Chatbot không chọn thay khách.")
+                : "Giá của thợ khác được hiển thị ẩn danh. Khi báo giá còn chờ duyệt bạn có thể sửa hoặc rút trong trang chi tiết.");
+        return ok(result);
+    }
+
+    private static BigDecimal nz(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
+    }
 
     private ToolExecutionResult handleGetMyTechnicianStatus(Long currentUserId, String currentRole) {
         if (currentUserId == null || parseRole(currentRole) != Role.TECHNICIAN) {
@@ -655,9 +758,9 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
         result.put("fullName", nvl(profile.getFullName()));
         result.put("verificationStatus", verification);
         result.put("verificationLabel", switch (verification) {
-            case "APPROVED" -> "Đã xác minh — được nhận việc";
+            case "APPROVED" -> "Đã xác minh — được gửi báo giá";
             case "REJECTED" -> "Bị từ chối — cần cập nhật hồ sơ theo lý do";
-            default -> "Đang chờ Admin duyệt — chưa được nhận việc";
+            default -> "Đang chờ Admin duyệt — chưa được gửi báo giá";
         });
         if (profile.getRejectionReason() != null && !profile.getRejectionReason().isBlank()) {
             result.put("rejectionReason", profile.getRejectionReason());
@@ -693,7 +796,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
         result.put("totalAppointments", list.size());
         result.put("appointments", items);
         if (items.isEmpty()) {
-            result.put("message", "Bạn chưa có lịch hẹn nào. Lịch hẹn được tạo sau khi thợ đã nhận việc.");
+            result.put("message", "Bạn chưa có lịch hẹn nào. Lịch hẹn được tạo sau khi khách đã chọn thợ.");
         }
         return ok(result);
     }
@@ -834,7 +937,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
             case PENDING -> "Chờ duyệt";
             case DRAFT -> "Bản nháp";
             case OPEN, BIDDING_OPEN, MATCHED_AWAITING_DEPOSIT -> "Đang tìm thợ";
-            case ASSIGNED -> "Đã có thợ nhận";
+            case ASSIGNED -> "Đã chọn thợ";
             case INSPECTING -> "Thợ đang khảo sát";
             case AWAITING_COST_APPROVAL -> "Chờ khách duyệt chi phí phát sinh";
             case IN_PROGRESS -> "Đang sửa chữa";
@@ -851,13 +954,13 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
         }
         return switch (status) {
             case DRAFT -> tech ? "Đơn đang là bản nháp của khách." : "Đơn đang là bản nháp: mở đơn và bấm 'Đăng yêu cầu' để thợ nhìn thấy.";
-            case PENDING -> "Đơn đang chờ hệ thống duyệt trước khi mở cho thợ nhận.";
+            case PENDING -> "Đơn đang chờ hệ thống duyệt trước khi mở nhận báo giá.";
             case OPEN, BIDDING_OPEN, MATCHED_AWAITING_DEPOSIT -> tech
-                    ? "Đơn đang mở: thợ đúng chuyên môn và khu vực có thể bấm 'Nhận việc' (ai nhận trước được trước)."
-                    : "Đang chờ thợ phù hợp bấm 'Nhận việc' (tối đa 3 ngày, quá hạn đơn tự hủy). Bạn vẫn có thể sửa hoặc hủy đơn khi chưa có thợ nhận.";
+                    ? "Đơn đang nhận báo giá: thợ đúng chuyên môn và khu vực gửi báo giá (sửa/rút khi còn chờ duyệt); khách sẽ so sánh và chọn thợ."
+                    : "Đơn đang nhận báo giá (tối đa 3 ngày, quá hạn đơn tự hủy). Vào chi tiết đơn để so sánh các báo giá và bấm 'Chọn thợ này'. Chỉ sửa được nội dung đơn khi chưa có báo giá nào.";
             case ASSIGNED -> tech
-                    ? "Liên hệ khách, tạo lịch hẹn rồi đến nơi và chuyển trạng thái sang 'Đang khảo sát'."
-                    : "Thợ đã nhận việc và sẽ liên hệ hẹn lịch đến khảo sát. Bạn có thể xem/dời lịch hẹn trong chi tiết đơn.";
+                    ? "Bạn đã được khách chọn: đặt lịch hẹn khảo sát trên hệ thống trước, rồi đến nơi và chuyển sang 'Đang khảo sát'."
+                    : "Bạn đã chọn thợ. Thợ sẽ đặt lịch hẹn khảo sát trên hệ thống; bạn có thể xem/dời lịch hẹn trong chi tiết đơn.";
             case INSPECTING -> tech
                     ? "Khảo sát xong: bắt đầu sửa theo ngân sách đã chốt, hoặc gửi đề xuất chi phí phát sinh để khách duyệt."
                     : "Thợ đang khảo sát. Nếu có lỗi phát sinh, thợ sẽ gửi chi phí mới để bạn duyệt trước khi sửa.";
@@ -868,8 +971,8 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                     ? "Hoàn tất sửa chữa, chạy thử rồi báo hoàn thành để khách nghiệm thu."
                     : "Thợ đang sửa chữa. Đơn ở trạng thái này không thể hủy.";
             case AWAITING_ACCEPTANCE -> tech
-                    ? "Chờ khách kiểm tra và bấm Nghiệm thu."
-                    : "Kiểm tra, vận hành thử thiết bị rồi bấm 'Nghiệm thu' để hoàn tất và giải ngân cho thợ.";
+                    ? "Chờ khách kiểm tra, chấm sao và nghiệm thu."
+                    : "Kiểm tra, vận hành thử thiết bị, chấm 1–5 sao và viết nhận xét (bắt buộc) rồi hoàn tất nghiệm thu để giải ngân cho thợ.";
             case COMPLETED -> "Đơn đã hoàn tất, thanh toán đã được giải ngân cho thợ.";
             case CANCELLED -> "Đơn đã hủy, không thể thao tác tiếp. Có thể đăng yêu cầu mới tại /dang-yeu-cau.";
         };

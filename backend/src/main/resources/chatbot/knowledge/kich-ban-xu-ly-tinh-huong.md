@@ -30,8 +30,9 @@ Nguyên tắc chung: trả lời đúng quy định đang có, không hứa đi�
 - **Không trả tiền mặt/chuyển khoản riêng ngoài hệ thống.** Bị ép trả ngoài → phiếu hỗ trợ **Critical**.
 
 ## 5. Muốn chọn hoặc đổi thợ
-- FixLink theo nguyên tắc **ai nhận trước được trước**, **không có tính năng chọn, chỉ định hay đổi thợ**.
-- Mọi thợ nhận việc đều đã được duyệt KYC và đúng chuyên môn, khu vực.
+- **Chọn thợ:** khách tự chọn trong các báo giá đã nhận (so sánh giá, phương án, điểm đánh giá, số việc đã làm) bằng nút **"Chọn thợ này"** khi đơn đang `OPEN`. Không thể chỉ định trước một thợ cụ thể khi chưa có báo giá của thợ đó.
+- **Đổi thợ sau khi đã chọn:** hệ thống **không có tính năng đổi thợ** cho đơn đã `ASSIGNED`.
+- Mọi thợ báo giá đều đã được duyệt KYC và đúng chuyên môn, khu vực.
 - Không muốn tiếp tục với thợ hiện tại: nếu đơn chưa ở Đang sửa chữa thì hủy đơn (nhập lý do) và đăng đơn mới, hoặc tạo phiếu hỗ trợ.
 
 ## 6. Cần sửa gấp
@@ -44,7 +45,7 @@ Nguyên tắc chung: trả lời đúng quy định đang có, không hứa đi�
 - Thợ đến nơi mà khách vắng: liên hệ khách, dời lịch hoặc hủy lịch hẹn kèm lý do; cần thì tạo phiếu hỗ trợ.
 
 ## 8. Thanh toán, hoàn tiền, hóa đơn
-- Được xác nhận: cọc 30% giữ trung gian khi thợ nhận việc, 70% còn lại khi khách nghiệm thu, tiền được giải ngân cho thợ khi nghiệm thu.
+- Được xác nhận: cọc 30% giá chốt giữ trung gian khi khách chọn thợ, 70% còn lại khi khách nghiệm thu, tiền được giải ngân cho thợ khi nghiệm thu.
 - **Chưa công bố**: cổng/phương thức thanh toán cụ thể (ví điện tử, thẻ, trả góp), tỷ lệ hoàn cọc khi hủy, hóa đơn VAT.
 - Trợ lý không xem được giao dịch ngân hàng. Nghi bị trừ tiền sai → tạo phiếu hỗ trợ **Critical** kèm mã đơn, thời điểm, số tiền.
 
@@ -71,7 +72,7 @@ Nguyên tắc chung: trả lời đúng quy định đang có, không hứa đi�
 
 ## 14. Câu hỏi của thợ về thu nhập
 - Tiền công giải ngân vào ví khi khách nghiệm thu. **Tỷ lệ hoa hồng và cách rút tiền từ ví chưa công bố.**
-- Muốn có nhiều việc hơn: đăng ký đúng chuyên môn, mở rộng khu vực hoạt động, bật Trực tuyến và nhận việc nhanh (ai nhận trước được trước).
+- Muốn được chọn nhiều hơn: đăng ký đúng chuyên môn, mở rộng khu vực hoạt động, báo giá hợp lý và rõ phương án, giữ điểm đánh giá tốt.
 
 ## 15. Khách muốn tự sửa
 - Trợ lý chỉ hướng dẫn bước kiểm tra an toàn (nguồn điện, phích cắm, chế độ cài đặt, vệ sinh lưới lọc máy lạnh, van nước).

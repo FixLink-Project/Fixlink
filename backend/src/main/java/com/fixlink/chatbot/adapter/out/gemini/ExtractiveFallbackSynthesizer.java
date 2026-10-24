@@ -5,7 +5,6 @@ import com.fixlink.chatbot.domain.service.SymptomClassifier;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -84,7 +83,7 @@ public class ExtractiveFallbackSynthesizer {
 
             new Intent(List.of("doi tho", "chon tho", "tho khac", "khong muon tho nay", "chi dinh tho", "xem danh gia tho"),
                     """
-                    FixLink hoạt động theo nguyên tắc **ai nhận trước được trước**, nên **không có tính năng chọn, chỉ định hay đổi thợ**. Mọi thợ nhận việc đều đã được duyệt KYC và đúng chuyên môn, khu vực.
+                    Trên FixLink, **bạn tự chọn thợ** trong các báo giá nhận được (so sánh giá, phương án, điểm đánh giá, số việc đã làm) bằng nút **"Chọn thợ này"** khi đơn đang mở. Tuy nhiên **không có tính năng đổi thợ sau khi đã chọn**, và không chỉ định trước được thợ chưa báo giá.
 
                     Nếu không muốn tiếp tục với thợ hiện tại:
                     1. Trao đổi trực tiếp với thợ trước.
@@ -123,8 +122,8 @@ public class ExtractiveFallbackSynthesizer {
             new Intent(List.of("dat coc", "tien coc", "coc bao nhieu", "coc", "thanh toan", "giai ngan", "trung gian", "escrow"),
                     """
                     **Chính sách cọc và thanh toán của FixLink:**
-                    1. Khi thợ bấm *Nhận việc*, giá chốt = ngân sách bạn đã đặt; **tiền cọc = 30%** giá chốt (làm tròn lên) được giữ ở tài khoản trung gian.
-                    2. **70% còn lại** được tất toán khi bạn kiểm tra thiết bị và bấm **Nghiệm thu**; lúc đó hệ thống mới giải ngân cho thợ.
+                    1. Khi bạn bấm *Chọn thợ này*, giá chốt = báo giá bạn chọn (công + vật tư); **tiền cọc = 30%** giá chốt (làm tròn lên) được giữ ở tài khoản trung gian.
+                    2. **70% còn lại** được tất toán khi bạn kiểm tra thiết bị, **chấm sao + nhận xét** và hoàn tất **Nghiệm thu**; lúc đó hệ thống mới giải ngân cho thợ.
                     3. Nếu bạn duyệt chi phí phát sinh, giá chốt và tiền cọc được tính lại theo giá mới.
                     4. Không giao tiền mặt ngoài hệ thống.
 
@@ -134,9 +133,9 @@ public class ExtractiveFallbackSynthesizer {
             new Intent(List.of("huy don", "huy yeu cau", "huy viec", "muon huy", "cancel"),
                     """
                     **Quy định hủy yêu cầu sửa chữa:**
-                    - Bạn **được hủy** khi đơn đang ở: Bản nháp, Đang tìm thợ (OPEN), Đã có thợ nhận (ASSIGNED), Đang khảo sát (INSPECTING), Chờ duyệt chi phí phát sinh.
+                    - Bạn **được hủy** khi đơn đang ở: Bản nháp, Đang nhận báo giá (OPEN), Đã chọn thợ (ASSIGNED), Đang khảo sát (INSPECTING), Chờ duyệt chi phí phát sinh.
                     - **Không thể hủy** khi đơn đã ở: Đang sửa chữa (IN_PROGRESS), Chờ nghiệm thu, Đã hoàn thành hoặc Đã hủy.
-                    - Khi hủy cần nhập lý do. Đơn OPEN quá **3 ngày** không có thợ nhận sẽ tự động hủy.
+                    - Khi hủy cần nhập lý do. Đơn OPEN quá **3 ngày** chưa chọn được thợ sẽ tự động hủy. Hủy đơn thì các báo giá đang chờ bị từ chối.
                     - Tranh chấp về tiền cọc khi hủy được Admin thẩm định qua phiếu hỗ trợ.
 
                     Cách hủy: vào **Yêu cầu của tôi** → mở đơn → bấm *Hủy yêu cầu*.""",
@@ -164,11 +163,11 @@ public class ExtractiveFallbackSynthesizer {
             new Intent(List.of("dang ky lam tho", "dang ky tho", "lam tho", "tro thanh tho", "tuyen tho", "kyc", "xac minh"),
                     """
                     **Đăng ký làm thợ FixLink:**
-                    1. Vào /dang-ky-tho, điền họ tên, SĐT, email, mật khẩu, số CCCD, địa chỉ, chuyên môn, số năm kinh nghiệm.
+                    1. Vào /dang-ky-tho, điền họ tên, SĐT, email, mật khẩu, số CCCD, địa chỉ, chuyên môn, giới thiệu bản thân.
                     2. Tải ảnh **mặt trước và mặt sau CCCD** rõ nét, không cắt góc.
                     3. Hồ sơ ở trạng thái **chờ duyệt (PENDING)**; Admin kiểm tra giấy tờ rồi duyệt (**APPROVED**) hoặc từ chối kèm lý do (**REJECTED**).
-                    4. Chỉ thợ đã được duyệt mới xem bảng việc và bấm *Nhận việc*; thợ chỉ nhận được việc **đúng chuyên môn và khu vực** đã đăng ký.""",
-                    List.of("Thợ nhận việc theo nguyên tắc nào?", "Lỗi JOB_ALREADY_TAKEN là gì?"), List.of(LINK_TECH_REG, LINK_TECH_PROFILE), false),
+                    4. Chỉ thợ đã được duyệt mới **gửi báo giá** cho việc **đúng chuyên môn và khu vực** đã đăng ký; khách so sánh các báo giá và chọn thợ.""",
+                    List.of("Thợ gửi báo giá thế nào?", "Khách chọn thợ dựa vào đâu?"), List.of(LINK_TECH_REG, LINK_TECH_PROFILE), false),
 
             new Intent(List.of("dang yeu cau", "tao yeu cau", "dat tho", "goi tho", "tim tho", "dat lich sua"),
                     """
@@ -176,8 +175,8 @@ public class ExtractiveFallbackSynthesizer {
                     1. Đăng nhập tài khoản khách hàng, vào **Đăng yêu cầu** (/dang-yeu-cau).
                     2. Chọn danh mục (Điện lạnh, Điện nước, Điện gia dụng, Khóa & Cửa cuốn), nhập tiêu đề (4–200 ký tự) và mô tả sự cố.
                     3. Tải ảnh/video hiện trường (tối đa **6 tệp**).
-                    4. Chọn khu vực, nhập địa chỉ và **ngân sách cố định** (bắt buộc, lớn hơn 0).
-                    5. Bấm *Đăng yêu cầu* (hoặc lưu nháp). Đơn mở cho thợ trong **3 ngày**; thợ phù hợp nào bấm *Nhận việc* trước sẽ nhận đơn.""",
+                    4. Chọn khu vực, nhập địa chỉ và **ngân sách dự kiến** (bắt buộc, lớn hơn 0) để thợ tham khảo.
+                    5. Bấm *Đăng yêu cầu* (hoặc lưu nháp). Trong **3 ngày**, các thợ phù hợp gửi báo giá; bạn so sánh và bấm *Chọn thợ này*.""",
                     List.of("Tiền cọc tính thế nào?", "Máy lạnh chảy nước chọn mục nào?"), List.of(LINK_POST), false),
 
             new Intent(List.of("khu vuc", "quan nao", "o dau", "dia ban", "phuc vu o", "ha noi", "da nang", "tinh thanh"),
@@ -196,15 +195,15 @@ public class ExtractiveFallbackSynthesizer {
                     - Sửa bếp từ: 200.000 đ · Sửa lò vi sóng: 180.000 đ
                     - Mở khóa cấp tốc: 150.000 đ · Sửa cửa cuốn: 350.000 đ
 
-                    Trên FixLink, **bạn tự đặt ngân sách cố định** khi đăng yêu cầu; nếu thợ khảo sát phát hiện lỗi phát sinh, thợ phải gửi chi phí mới để bạn duyệt trước khi sửa.""",
+                    Bạn đặt **ngân sách dự kiến** khi đăng yêu cầu, các thợ gửi **báo giá** và bạn chọn báo giá phù hợp; nếu thợ khảo sát phát hiện lỗi phát sinh, thợ phải gửi chi phí mới để bạn duyệt trước khi sửa.""",
                     List.of("Tiền cọc tính thế nào?", "Cách đăng yêu cầu"), List.of(LINK_POST), false),
 
             new Intent(List.of("dau gia", "bao gia", "dau thau", "nhan viec", "ai nhan truoc", "job already taken"),
                     """
-                    FixLink **không đấu giá hay so sánh báo giá**. Mô hình là **"ai nhận trước được trước"**:
-                    - Khách đăng yêu cầu kèm **ngân sách cố định**.
-                    - Thợ đã duyệt KYC, đúng chuyên môn và khu vực, bấm *Nhận việc* trước sẽ nhận đơn (đơn chuyển sang ASSIGNED).
-                    - Thợ bấm chậm hơn sẽ nhận lỗi **JOB_ALREADY_TAKEN** – việc đã có người nhận, hãy chọn việc khác.""",
+                    FixLink dùng mô hình **thợ báo giá cạnh tranh – khách chọn thợ**:
+                    - Khách đăng yêu cầu kèm **ngân sách dự kiến**; đơn nhận báo giá trong **3 ngày**.
+                    - Thợ đã duyệt KYC, đúng chuyên môn và khu vực, gửi **báo giá** (công + vật tư); được sửa hoặc rút khi còn chờ duyệt, thấy giá đối thủ ở dạng **ẩn danh**.
+                    - Khách so sánh giá, phương án, điểm đánh giá rồi bấm **Chọn thợ này**; báo giá đó thành giá chốt, các báo giá khác tự động bị từ chối.""",
                     List.of("Đăng ký làm thợ cần gì?", "Cách đăng yêu cầu"), List.of(), false),
 
             new Intent(List.of("dang ky tai khoan", "tao tai khoan", "dang ky", "mat khau"),
@@ -222,7 +221,7 @@ public class ExtractiveFallbackSynthesizer {
                     3. **Điện gia dụng** – bếp từ, lò vi sóng, máy hút mùi, nồi chiên, quạt.
                     4. **Khóa & Cửa cuốn** – mở khóa cấp tốc, sửa cửa cuốn.
 
-                    Khách đặt ngân sách cố định, thợ phù hợp nhận việc trước được trước, tiền cọc giữ trung gian và chỉ giải ngân khi khách nghiệm thu.""",
+                    Thợ phù hợp gửi báo giá cạnh tranh, khách so sánh và chọn thợ, tiền cọc giữ trung gian và chỉ giải ngân khi khách đánh giá và nghiệm thu.""",
                     List.of("Cách đăng yêu cầu", "Tiền cọc tính thế nào?", "Đăng ký làm thợ"), List.of(LINK_POST), false)
     );
 
@@ -256,10 +255,10 @@ public class ExtractiveFallbackSynthesizer {
             return new ChatOrchestrationResult(
                     "Sự cố bạn mô tả thuộc danh mục **" + match.name() + "**.\n\n"
                             + "**Giá tham khảo khởi điểm:** " + REFERENCE_PRICES.getOrDefault(match.code(), "") + "\n\n"
-                            + "Trên FixLink bạn tự đặt **ngân sách cố định** khi đăng yêu cầu; nếu thợ khảo sát phát hiện lỗi phát sinh, "
+                            + "Trên FixLink bạn đặt **ngân sách dự kiến**, các thợ gửi báo giá và bạn chọn thợ phù hợp; nếu thợ khảo sát phát hiện lỗi phát sinh, "
                             + "thợ phải gửi chi phí mới để bạn duyệt trước khi sửa. Bạn cho mình biết thêm **quận** và **khung giờ mong muốn** "
                             + "để mình hướng dẫn đăng yêu cầu nhé.",
-                    List.of("Tiền cọc tính thế nào?", "Bao lâu thì có thợ nhận?", "Cách đăng yêu cầu"),
+                    List.of("Tiền cọc tính thế nào?", "Chọn thợ thế nào?", "Cách đăng yêu cầu"),
                     List.of(LINK_POST), false, null, MODEL_INTENT);
         }
         if (BROKEN_HINT.matcher(" " + query + " ").find()) {
