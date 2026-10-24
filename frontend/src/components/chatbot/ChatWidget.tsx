@@ -15,6 +15,10 @@ export default function ChatWidget() {
     sendMessage,
     sendFeedback,
     resetSession,
+    requestHandoff,
+    showCsat,
+    csatScore,
+    submitCsat,
   } = useChatbot();
 
   const [hasInteracted, setHasInteracted] = useState(false);
@@ -86,6 +90,10 @@ export default function ChatWidget() {
         onSendMessage={sendMessage}
         onFeedback={sendFeedback}
         onResetSession={resetSession}
+        onRequestHandoff={requestHandoff}
+        showCsat={showCsat}
+        csatScore={csatScore}
+        onSubmitCsat={submitCsat}
       />
     </>
   );

@@ -2,8 +2,10 @@ package com.fixlink.chatbot.adapter.in.web;
 
 import com.fixlink.adapter.in.web.dto.response.ApiResponse;
 import com.fixlink.chatbot.adapter.in.web.dto.ChatFeedbackRequest;
+import com.fixlink.chatbot.adapter.in.web.dto.HandoffRequest;
 import com.fixlink.chatbot.adapter.in.web.dto.ChatMessageRequest;
 import com.fixlink.chatbot.adapter.in.web.dto.ChatMessageResponse;
+import com.fixlink.chatbot.application.port.in.ChatbotEngagementUseCase;
 import com.fixlink.chatbot.application.port.in.ChatbotUseCase;
 import com.fixlink.chatbot.application.port.in.ChatbotUseCase.ChatCommand;
 import com.fixlink.infrastructure.security.UserPrincipal;
@@ -30,12 +32,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class ChatbotController {
 
     private final ChatbotUseCase chatbotUseCase;
+    private final ChatbotEngagementUseCase engagementUseCase;
 
     @Value("${spring.profiles.active:default}")
     private String activeProfile;
 
-    public ChatbotController(ChatbotUseCase chatbotUseCase) {
+    public ChatbotController(ChatbotUseCase chatbotUseCase, ChatbotEngagementUseCase engagementUseCase) {
         this.chatbotUseCase = chatbotUseCase;
+        this.engagementUseCase = engagementUseCase;
     }
 
     @PostMapping("/messages")
@@ -73,6 +77,8 @@ public class ChatbotController {
                 .ticketId(result.ticketId())
                 .sessionId(result.sessionId())
                 .modelUsed(showModel ? result.modelUsed() : null)
+                .cards(result.cards())
+                .offerHandoff(result.offerHandoff())
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success("Phản hồi chatbot thành công", response));
@@ -87,6 +93,33 @@ public class ChatbotController {
         String role = principal != null ? principal.getRole().name() : "GUEST";
         List<String> suggestions = chatbotUseCase.getSuggestions(route, role);
         return ResponseEntity.ok(ApiResponse.success("Lấy gợi ý thành công", suggestions));
+    }
+
+    @GetMapping("/welcome")
+    @Operation(summary = "Lời chào theo ngữ cảnh trang",
+            description = "Lời chào chủ động theo trang đang xem và vai trò (ví dụ đang xem chi tiết đơn thì hiện ngay trạng thái đơn), không tốn lượt gọi AI.")
+    public ResponseEntity<ApiResponse<ChatbotEngagementUseCase.WelcomeResponse>> getWelcome(
+            @RequestParam(required = false, defaultValue = "/") String route,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        Long userId = principal != null ? principal.getId() : null;
+        String role = principal != null ? principal.getRole().name() : "GUEST";
+        return ResponseEntity.ok(ApiResponse.success("Lấy lời chào thành công",
+                engagementUseCase.getWelcome(route, userId, role)));
+    }
+
+    @PostMapping("/handoff")
+    @Operation(summary = "Gặp nhân viên CSKH",
+            description = "Tạo phiếu hỗ trợ từ form trong khung chat, tự đính kèm lịch sử hội thoại và suy ra mức ưu tiên.")
+    public ResponseEntity<ApiResponse<ChatbotEngagementUseCase.HandoffResult>> requestHandoff(
+            @Valid @RequestBody HandoffRequest request,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        Long userId = principal != null ? principal.getId() : null;
+        String role = principal != null ? principal.getRole().name() : "GUEST";
+        var result = engagementUseCase.requestHandoff(new ChatbotEngagementUseCase.HandoffCommand(
+                request.getSessionId(), userId, role, request.getName(), request.getContact(), request.getIssue()));
+        return ResponseEntity.ok(ApiResponse.success("Đã chuyển yêu cầu tới nhân viên CSKH", result));
     }
 
     @PostMapping("/feedback")

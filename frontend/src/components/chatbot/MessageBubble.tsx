@@ -1,14 +1,16 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { ChatMessageUI } from '../../lib/useChatbot';
+import ChatCards from './ChatCards';
 
 interface MessageBubbleProps {
   message: ChatMessageUI;
   onFeedback: (messageId: string, rating: 'UP' | 'DOWN', comment?: string) => void;
   onSuggestionClick?: (text: string) => void;
+  onRequestHandoff?: () => void;
 }
 
-export default function MessageBubble({ message, onFeedback }: MessageBubbleProps) {
+export default function MessageBubble({ message, onFeedback, onRequestHandoff }: MessageBubbleProps) {
   const isUser = message.sender === 'user';
   const [showSources, setShowSources] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState<'UP' | 'DOWN' | null>(message.feedback || null);
@@ -190,6 +192,8 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
         <div className="rounded-2xl rounded-tl-xs bg-white border border-slate-200/90 text-slate-800 px-4 py-3 text-sm shadow-2xs space-y-1.5 break-words">
           {renderFormattedText(message.text)}
 
+          {message.cards && message.cards.length > 0 && <ChatCards cards={message.cards} />}
+
           {/* Ticket notification card */}
           {message.ticketId && (
             <div className="mt-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center justify-between">
@@ -218,6 +222,22 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
                   <span>→</span>
                 </Link>
               ))}
+            </div>
+          )}
+
+          {/* Lời mời gặp nhân viên (bot bí, khách bức xúc, câu trả lời chưa hữu ích) */}
+          {message.offerHandoff && !message.ticketId && onRequestHandoff && (
+            <div className="mt-2.5 p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-between gap-2">
+              <span className="text-[11px] text-indigo-900 leading-snug">
+                Bạn muốn nhân viên CSKH hỗ trợ trực tiếp? Họ sẽ nhận kèm nội dung cuộc trò chuyện này.
+              </span>
+              <button
+                type="button"
+                onClick={onRequestHandoff}
+                className="flex-shrink-0 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-semibold transition-colors"
+              >
+                👤 Gặp nhân viên
+              </button>
             </div>
           )}
 

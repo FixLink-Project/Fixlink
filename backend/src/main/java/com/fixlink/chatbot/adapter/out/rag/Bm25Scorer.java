@@ -1,12 +1,13 @@
 package com.fixlink.chatbot.adapter.out.rag;
 
-import java.util.Arrays;
+import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class Bm25Scorer {
 
@@ -21,23 +22,35 @@ public class Bm25Scorer {
     );
 
     public static Set<String> tokenize(String text) {
-        if (text == null || text.isBlank()) {
-            return Set.of();
-        }
-        return Arrays.stream(text.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+"))
-                .map(String::trim)
-                .filter(term -> term.length() >= 2 && !STOPWORDS.contains(term))
-                .collect(Collectors.toSet());
+        return new HashSet<>(tokenizeList(text));
     }
 
+    /**
+     * Tách token gồm âm tiết đơn và bigram hai âm tiết liền nhau. Tiếng Việt viết tách âm tiết nên
+     * từ ghép như "đặt cọc", "linh kiện", "mật khẩu" chỉ được nhận ra khi xét cặp âm tiết.
+     */
     public static List<String> tokenizeList(String text) {
         if (text == null || text.isBlank()) {
             return List.of();
         }
-        return Arrays.stream(text.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+"))
-                .map(String::trim)
-                .filter(term -> term.length() >= 2 && !STOPWORDS.contains(term))
-                .toList();
+        String[] syllables = Normalizer.normalize(text, Normalizer.Form.NFC)
+                .toLowerCase(Locale.ROOT)
+                .split("[^\\p{L}\\p{N}]+");
+        List<String> tokens = new ArrayList<>();
+        for (int i = 0; i < syllables.length; i++) {
+            String current = syllables[i];
+            if (isContentWord(current)) {
+                tokens.add(current);
+                if (i + 1 < syllables.length && isContentWord(syllables[i + 1])) {
+                    tokens.add(current + "_" + syllables[i + 1]);
+                }
+            }
+        }
+        return tokens;
+    }
+
+    private static boolean isContentWord(String term) {
+        return term.length() >= 2 && !STOPWORDS.contains(term);
     }
 
     public static double computeScore(
