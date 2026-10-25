@@ -1048,8 +1048,8 @@
                     const [result] = await uploadImagesToFirebase([file], { folder: FIREBASE_STORAGE_FOLDER });
                     item.url = result.url;
                     item.uploading = false;
-                    item.statusText = result.provider === 'firebase-storage'
-                        ? `Đã upload • ${result.sizeLabel}`
+                    item.statusText = (result.provider === 'cloudinary' || result.provider === 'firebase-storage')
+                        ? `Đã upload Cloudinary • ${result.sizeLabel}`
                         : `Demo (Data URL) • ${result.sizeLabel}`;
                 } catch (error) {
                     item.uploading = false;

@@ -912,12 +912,12 @@
             };
 
             if (!window.FixLinkStorage) {
-                setStatus('⚠ Module Firebase Storage chưa sẵn sàng, ảnh sẽ được lưu cục bộ', '#fbbf24');
+                setStatus('⚠ Module Cloudinary Storage chưa sẵn sàng, ảnh sẽ được lưu cục bộ', '#fbbf24');
                 return;
             }
 
             try {
-                setStatus('⏳ Đang tải ảnh lên Firebase Storage...', '#93c5fd');
+                setStatus('⏳ Đang tải ảnh lên Cloudinary...', '#93c5fd');
                 const result = await window.FixLinkStorage.uploadImageToFirebase(file, {
                     folder: window.FixLinkStorage.FIREBASE_KYC_FOLDER
                 });
@@ -928,12 +928,12 @@
                     uploadedBackUrl = result.url;
                 }
 
-                setStatus(result.provider === 'firebase-storage'
-                    ? `✓ Đã upload lên Firebase Storage (${result.sizeLabel})`
+                setStatus((result.provider === 'cloudinary' || result.provider === 'firebase-storage')
+                    ? `✓ Đã upload lên Cloudinary (${result.sizeLabel})`
                     : `✓ Chế độ demo: ảnh nén cục bộ (${result.sizeLabel})`, '#34d399');
             } catch (error) {
                 setStatus(`⚠ Upload thất bại: ${error.message}`, '#f87171');
-                console.error('Upload ảnh CCCD lên Firebase Storage thất bại', error);
+                console.error('Upload ảnh CCCD lên Cloudinary thất bại', error);
             }
         }
 
@@ -1181,10 +1181,10 @@
             setupFormTabs();
 
             if (!isFirebaseConfigured()) {
-                console.warn('[FixLink] Firebase Storage chưa được cấu hình -> ảnh CCCD sẽ được nén cục bộ (chế độ demo). Xem docs/firebase-storage-setup.md');
+                console.warn('[FixLink] Cloudinary chưa được cấu hình -> ảnh CCCD sẽ được nén cục bộ (chế độ demo).');
                 const frontStatus = document.getElementById('frontUploadStatus');
                 if (frontStatus) {
-                    frontStatus.textContent = 'Firebase Storage chưa cấu hình (chế độ demo)';
+                    frontStatus.textContent = 'Cloudinary chưa cấu hình (chế độ demo)';
                     frontStatus.style.color = '#fbbf24';
                 }
             }

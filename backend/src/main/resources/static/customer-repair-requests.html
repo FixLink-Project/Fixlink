@@ -837,8 +837,8 @@
                     item.url = result.url;
                     item.uploading = false;
                     item.progress = 100;
-                    item.statusText = result.provider === 'firebase-storage'
-                        ? `${file.name} • đã upload lên Firebase Storage`
+                    item.statusText = (result.provider === 'cloudinary' || result.provider === 'firebase-storage')
+                        ? `${file.name} • đã upload lên Cloudinary`
                         : `${file.name} • demo (Data URL) • ${result.sizeLabel}`;
                 } catch (error) {
                     item.uploading = false;
@@ -1059,8 +1059,8 @@
             el('storageFolderLabel').textContent = FIREBASE_STORAGE_FOLDER;
 
             if (!isFirebaseConfigured()) {
-                showAlert('firebaseNotice', '⚠️ Firebase Storage chưa được cấu hình trong js/firebase-config.js. '
-                    + 'Ảnh sẽ được nén thành Data URL ở chế độ demo — xem docs/firebase-storage-setup.md.');
+                showAlert('firebaseNotice', '⚠️ Cloudinary chưa được cấu hình trong js/firebase-config.js. '
+                    + 'Ảnh sẽ được nén thành Data URL ở chế độ demo.');
             }
 
             try {

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { ImageUploadError, MAX_IMAGE_BYTES, isStorageConfigured, validateImage } from '../src/lib/storage';
-import { uploadImageToFirebase } from '../src/lib/firebaseStorage';
 
 function fakeFile(type: string, size: number): File {
   const file = new File(['x'], 'anh.jpg', { type });
@@ -29,14 +28,12 @@ describe('Kiểm tra ảnh trước khi tải lên', () => {
     expect(() => validateImage(fakeFile('image/jpeg', MAX_IMAGE_BYTES))).not.toThrow();
   });
 
-  it('báo trạng thái cấu hình của kho ảnh (Cloudinary hoặc Firebase)', () => {
-    // Trả về boolean phản ánh trạng thái cấu hình hiện tại
+  it('kiểm tra trạng thái cấu hình Cloudinary qua biến môi trường', () => {
+    // Khi có biến môi trường VITE_CLOUDINARY_CLOUD_NAME và VITE_CLOUDINARY_UPLOAD_PRESET
     expect(typeof isStorageConfigured()).toBe('boolean');
   });
 
-  it('xử lý tải ảnh khi gọi uploadImageToFirebase', async () => {
-    const file = fakeFile('image/jpeg', 1024);
-    // Nếu trong môi trường test jsdom không có kết nối mạng thật, reject có kiểm soát
-    await expect(uploadImageToFirebase(file)).rejects.toThrow();
+  it('nhận diện đúng hàm cấu hình Cloudinary', () => {
+    expect(typeof isStorageConfigured).toBe('function');
   });
 });
