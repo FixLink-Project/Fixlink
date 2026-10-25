@@ -10,18 +10,18 @@ import type {
   ServiceArea,
   ServiceCategory
 } from './types';
+import { clearSession, getSession, saveSession } from './session';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
-const TOKEN_KEY = 'fixlink.accessToken';
-
+/** Token của phiên trong tab hiện tại (mỗi tab giữ phiên riêng, xem session.ts). */
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return getSession().accessToken;
 }
 
 export function setToken(token: string | null): void {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  if (token) saveSession({ accessToken: token });
+  else clearSession();
 }
 
 /** Lỗi nghiệp vụ do backend trả về, giữ nguyên errorCode để giao diện xử lý riêng. */
@@ -68,11 +68,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<ApiResp
     // một số API cần auth (vd danh mục) và nhận 401 — không được đá họ về /login,
     // để trang tự xử lý/ hiển thị dữ liệu thay thế. Bỏ qua chính request login.
     const isLoginCall = path.startsWith('/auth/login');
-    if (response.status === 401 && !isLoginCall && token) {
+    // Chỉ xử lý khi token bị từ chối vẫn là phiên hiện tại của tab: request cũ
+    // trả về muộn sau khi tab đã đăng nhập tài khoản khác thì bỏ qua.
+    if (response.status === 401 && !isLoginCall && token && getToken() === token) {
+      // Thợ đăng nhập lại ở trang dành cho thợ, các vai trò khác ở trang chung.
+      const loginPath = getSession().user?.role === 'TECHNICIAN' ? '/dang-nhap-tho' : '/dang-nhap';
       setToken(null);
       const p = typeof window !== 'undefined' ? window.location.pathname : '';
       if (p && !p.startsWith('/login') && !p.startsWith('/dang-nhap') && p !== '/') {
-        window.location.assign('/dang-nhap?phien=het-han');
+        window.location.assign(`${loginPath}?phien=het-han`);
       }
     }
     throw new ApiError(

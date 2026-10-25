@@ -1,9 +1,13 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import { api, setToken } from './api';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { api } from './api';
+import {
+  SESSION_CLEARED_EVENT,
+  clearSession,
+  getSession,
+  installNewTabHandoff,
+  saveSession
+} from './session';
 import type { AuthResult, AuthUser, Role } from './types';
-
-const USER_KEY = 'fixlink.user';
-const REFRESH_KEY = 'fixlink.refreshToken';
 
 /** Trang mặc định của mỗi vai trò sau khi đăng nhập. */
 export const HOME_BY_ROLE: Record<Role, string> = {
@@ -12,15 +16,6 @@ export const HOME_BY_ROLE: Record<Role, string> = {
   STAFF: '/quan-tri',
   ADMIN: '/quan-tri'
 };
-
-function readStoredUser(): AuthUser | null {
-  try {
-    const raw = localStorage.getItem(USER_KEY);
-    return raw ? (JSON.parse(raw) as AuthUser) : null;
-  } catch {
-    return null;
-  }
-}
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -33,16 +28,27 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(readStoredUser);
+  // Phiên được giữ riêng theo tab, nên đăng nhập ở tab khác không làm đổi user ở đây.
+  const [user, setUser] = useState<AuthUser | null>(() => getSession().user);
 
-  const persist = useCallback((next: AuthUser | null) => {
-    setUser(next);
-    try {
-      if (next) localStorage.setItem(USER_KEY, JSON.stringify(next));
-      else localStorage.removeItem(USER_KEY);
-    } catch {
-      // Chế độ riêng tư có thể chặn localStorage; phiên vẫn dùng được trong tab hiện tại.
-    }
+  useEffect(() => {
+    // Phiên hết hạn (API trả 401) thì giao diện cũng phải về trạng thái chưa đăng nhập.
+    const onCleared = () => setUser(null);
+    window.addEventListener(SESSION_CLEARED_EVENT, onCleared);
+    const uninstall = installNewTabHandoff();
+    return () => {
+      window.removeEventListener(SESSION_CLEARED_EVENT, onCleared);
+      uninstall();
+    };
+  }, []);
+
+  const startSession = useCallback((result: AuthResult) => {
+    saveSession({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      user: result.user
+    });
+    setUser(result.user);
   }, []);
 
   const signIn = useCallback(
@@ -50,53 +56,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const body: Record<string, string> = { username, password };
       if (role) body.role = role;
       const res = await api.post<AuthResult>('/auth/login', body);
-      setToken(res.data.accessToken);
-      try {
-        localStorage.setItem(REFRESH_KEY, res.data.refreshToken);
-      } catch {
-        // Không lưu được refresh token thì phiên chỉ sống tới khi access token hết hạn.
-      }
-      persist(res.data.user);
+      startSession(res.data);
       return res.data.user;
     },
-    [persist]
+    [startSession]
   );
 
   const signOut = useCallback(() => {
     // Gọi thu hồi token ở máy chủ, nhưng không chặn người dùng nếu lỗi mạng.
+    // Token được gắn vào request ngay khi gọi, nên xoá phiên sau đó vẫn an toàn.
     api.post('/auth/logout').catch(() => undefined);
-    setToken(null);
-    try {
-      localStorage.removeItem(REFRESH_KEY);
-    } catch {
-      // Bỏ qua: phiên phía client đã bị xoá bên dưới.
-    }
-    persist(null);
-  }, [persist]);
-
-  const setSession = useCallback(
-    (result: AuthResult) => {
-      setToken(result.accessToken);
-      try {
-        localStorage.setItem(REFRESH_KEY, result.refreshToken);
-      } catch {
-        // private browsing
-      }
-      persist(result.user);
-    },
-    [persist]
-  );
+    clearSession();
+    setUser(null);
+  }, []);
 
   const updateUser = useCallback(
     (patch: Partial<AuthUser>) => {
       setUser((current) => {
         if (!current) return current;
         const next = { ...current, ...patch };
-        try {
-          localStorage.setItem(USER_KEY, JSON.stringify(next));
-        } catch {
-          // Không lưu được thì vẫn giữ trong bộ nhớ của tab.
-        }
+        saveSession({ user: next });
         return next;
       });
     },
@@ -104,8 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ user, signIn, signOut, updateUser, setSession }),
-    [user, signIn, signOut, updateUser, setSession]
+    () => ({ user, signIn, signOut, updateUser, setSession: startSession }),
+    [user, signIn, signOut, updateUser, startSession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
