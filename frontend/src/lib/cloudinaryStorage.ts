@@ -6,13 +6,15 @@
 export const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 export const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
 
+export function getCloudinaryConfig(): { cloudName: string; uploadPreset: string } {
+  const cloudName = (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || CLOUDINARY_CLOUD_NAME || '').trim();
+  const uploadPreset = (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || CLOUDINARY_UPLOAD_PRESET || '').trim();
+  return { cloudName, uploadPreset };
+}
+
 export function isCloudinaryConfigured(): boolean {
-  return Boolean(
-    CLOUDINARY_CLOUD_NAME &&
-    CLOUDINARY_CLOUD_NAME.trim() !== '' &&
-    CLOUDINARY_UPLOAD_PRESET &&
-    CLOUDINARY_UPLOAD_PRESET.trim() !== ''
-  );
+  const { cloudName, uploadPreset } = getCloudinaryConfig();
+  return Boolean(cloudName && uploadPreset);
 }
 
 export interface CloudinaryUploadResponse {
@@ -33,7 +35,8 @@ export async function uploadToCloudinary(
   folder = 'fixlink',
   onProgress?: (percent: number) => void
 ): Promise<string> {
-  if (!isCloudinaryConfigured()) {
+  const { cloudName, uploadPreset } = getCloudinaryConfig();
+  if (!cloudName || !uploadPreset) {
     throw new Error(
       'Cloudinary chưa được cấu hình. Vui lòng thêm VITE_CLOUDINARY_CLOUD_NAME và VITE_CLOUDINARY_UPLOAD_PRESET vào file frontend/.env'
     );
@@ -41,14 +44,16 @@ export async function uploadToCloudinary(
 
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  formData.append('upload_preset', uploadPreset);
   if (folder) {
     formData.append('folder', folder);
   }
 
   return new Promise<string>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`);
+    // Timeout 30s để tránh giao diện bị đứng/treo vô hạn khi mạng yếu
+    xhr.timeout = 30000;
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
 
     if (xhr.upload && typeof onProgress === 'function') {
       xhr.upload.onprogress = (event) => {
@@ -79,6 +84,14 @@ export async function uploadToCloudinary(
 
     xhr.onerror = () => {
       reject(new Error('Lỗi kết nối mạng khi tải ảnh lên Cloudinary. Kiểm tra kết nối mạng rồi thử lại.'));
+    };
+
+    xhr.ontimeout = () => {
+      reject(new Error('Quá thời gian tải ảnh lên Cloudinary (timeout 30s). Vui lòng thử lại hoặc giảm dung lượng ảnh.'));
+    };
+
+    xhr.onabort = () => {
+      reject(new Error('Quá trình tải ảnh bị hủy.'));
     };
 
     xhr.send(formData);

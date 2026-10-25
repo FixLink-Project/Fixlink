@@ -119,13 +119,27 @@ export async function uploadImageToFirebase(
   if (validationError) throw new Error(validationError);
 
   if (isCloudinaryConfigured()) {
-    const url = await uploadToCloudinary(file, folder, onProgress);
-    return {
-      url,
-      provider: 'cloudinary',
-      path: url,
-      sizeLabel: formatFileSize(file.size)
-    };
+    try {
+      const url = await uploadToCloudinary(file, folder, onProgress);
+      return {
+        url,
+        provider: 'cloudinary',
+        path: url,
+        sizeLabel: formatFileSize(file.size)
+      };
+    } catch (cloudErr: any) {
+      console.warn('[FixLink Storage] Cloudinary upload thất bại:', cloudErr);
+      // Nếu Firebase không có cấu hình thật, ném luôn lỗi Cloudinary rõ ràng
+      const hasFirebase = Boolean(
+        FIREBASE_CONFIG &&
+        FIREBASE_CONFIG.apiKey &&
+        FIREBASE_CONFIG.storageBucket &&
+        !FIREBASE_CONFIG.storageBucket.includes('your-project')
+      );
+      if (!hasFirebase) {
+        throw new Error(cloudErr?.message || 'Tải ảnh lên Cloudinary thất bại. Kiểm tra kết nối mạng.');
+      }
+    }
   }
 
   if (!isFirebaseConfigured()) {
@@ -136,6 +150,12 @@ export async function uploadImageToFirebase(
   if (!firebase) throw new Error('Không thể khởi tạo Firebase Storage.');
 
   const { storageModule, storage } = firebase;
+  // Giới hạn thời gian retry của Firebase SDK để tránh treo tiến trình 2 phút
+  if (storage) {
+    storage.maxUploadRetryTime = 15000;
+    storage.maxOperationRetryTime = 15000;
+  }
+
   const path = buildStoragePath(file, folder);
   const uploadTask = storageModule.uploadBytesResumable(storageModule.ref(storage, path), file, {
     contentType: file.type,
@@ -143,6 +163,19 @@ export async function uploadImageToFirebase(
   });
 
   const url = await new Promise<string>((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        try {
+          uploadTask.cancel();
+        } catch {
+          // ignore
+        }
+        reject(new Error('Quá thời gian tải ảnh (timeout 20s). Vui lòng thử lại.'));
+      }
+    }, 20000);
+
     uploadTask.on(
       'state_changed',
       (snapshot: any) => {
@@ -150,8 +183,16 @@ export async function uploadImageToFirebase(
           onProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100));
         }
       },
-      (error: any) => reject(new Error(`Upload thất bại: ${error.code || error.message}`)),
+      (error: any) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(new Error(`Upload thất bại: ${error.code || error.message}`));
+      },
       async () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         try {
           resolve(await storageModule.getDownloadURL(uploadTask.snapshot.ref));
         } catch (err) {
