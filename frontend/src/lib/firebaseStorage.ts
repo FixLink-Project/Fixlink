@@ -3,6 +3,7 @@ import {
   FIREBASE_STORAGE_FOLDER,
   FIREBASE_KYC_FOLDER
 } from './firebaseConfig';
+import { isCloudinaryConfigured, uploadToCloudinary } from './cloudinaryStorage';
 
 export { FIREBASE_STORAGE_FOLDER, FIREBASE_KYC_FOLDER };
 
@@ -16,12 +17,15 @@ const FIREBASE_STORAGE_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_
 let firebaseStoragePromise: Promise<any> | null = null;
 
 export function isFirebaseConfigured(): boolean {
-  return Boolean(
-    FIREBASE_CONFIG &&
-    FIREBASE_CONFIG.apiKey &&
-    FIREBASE_CONFIG.projectId &&
-    FIREBASE_CONFIG.storageBucket &&
-    FIREBASE_CONFIG.appId
+  return (
+    isCloudinaryConfigured() ||
+    Boolean(
+      FIREBASE_CONFIG &&
+      FIREBASE_CONFIG.apiKey &&
+      FIREBASE_CONFIG.projectId &&
+      FIREBASE_CONFIG.storageBucket &&
+      FIREBASE_CONFIG.appId
+    )
   );
 }
 
@@ -102,7 +106,7 @@ export function compressImageToDataUrl(file: File, { maxWidth = 1280, quality = 
 
 export interface UploadResult {
   url: string;
-  provider: 'firebase-storage' | 'local-preview';
+  provider: 'cloudinary' | 'firebase-storage' | 'local-preview';
   path: string | null;
   sizeLabel: string;
 }
@@ -114,8 +118,18 @@ export async function uploadImageToFirebase(
   const validationError = validateImageFile(file);
   if (validationError) throw new Error(validationError);
 
+  if (isCloudinaryConfigured()) {
+    const url = await uploadToCloudinary(file, folder, onProgress);
+    return {
+      url,
+      provider: 'cloudinary',
+      path: url,
+      sizeLabel: formatFileSize(file.size)
+    };
+  }
+
   if (!isFirebaseConfigured()) {
-    throw new Error('Firebase Storage chưa được cấu hình. Hãy điền các biến VITE_FIREBASE_* trong frontend/.env.');
+    throw new Error('Chưa cấu hình dịch vụ lưu trữ ảnh (Cloudinary hoặc Firebase). Hãy cập nhật frontend/.env.');
   }
 
   const firebase = await loadFirebaseStorage();

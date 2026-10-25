@@ -17,7 +17,7 @@
     <description>FixLink - Nền tảng kết nối khách hàng và kỹ thuật viên sửa chữa</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>17</java.version>
         <lombok.version>1.18.34</lombok.version>
         <jwt.version>0.12.6</jwt.version>
         <springdoc.version>2.6.0</springdoc.version>
