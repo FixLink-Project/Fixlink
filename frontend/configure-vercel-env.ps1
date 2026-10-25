@@ -52,12 +52,8 @@ function Invoke-VercelCli {
 }
 
 $requiredNames = @(
-  'VITE_FIREBASE_API_KEY',
-  'VITE_FIREBASE_AUTH_DOMAIN',
-  'VITE_FIREBASE_PROJECT_ID',
-  'VITE_FIREBASE_STORAGE_BUCKET',
-  'VITE_FIREBASE_MESSAGING_SENDER_ID',
-  'VITE_FIREBASE_APP_ID'
+  'VITE_CLOUDINARY_CLOUD_NAME',
+  'VITE_CLOUDINARY_UPLOAD_PRESET'
 )
 
 $values = @{}
@@ -104,7 +100,7 @@ try {
     Write-Host 'Deploying to Production...'
     Invoke-VercelCli -Arguments @('deploy', '--prod', '--yes') -Interactive | Out-Null
   } else {
-    Write-Host 'All Firebase variables are set. Run this script with -Deploy to deploy now, or redeploy from the Vercel dashboard.'
+    Write-Host 'All Cloudinary variables are set. Run this script with -Deploy to deploy now, or redeploy from the Vercel dashboard.'
   }
 } finally {
   Pop-Location
