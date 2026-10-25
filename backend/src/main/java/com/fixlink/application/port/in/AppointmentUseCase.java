@@ -18,6 +18,10 @@ public interface AppointmentUseCase {
 
     AppointmentResponse createAppointment(CreateAppointmentCommand command, Long actorId, String role);
 
+    AppointmentResponse approveAppointment(Long appointmentId, Long actorId, String role);
+
+    AppointmentResponse rejectAppointment(Long appointmentId, String reason, Long actorId, String role);
+
     AppointmentResponse rescheduleAppointment(Long appointmentId, RescheduleAppointmentCommand command, Long actorId, String role);
 
     AppointmentResponse completeAppointment(Long appointmentId, String note, Long actorId, String role);

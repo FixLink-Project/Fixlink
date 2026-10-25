@@ -3,7 +3,7 @@ import Alert from './Alert';
 import Button from './Button';
 import TextField from './TextField';
 import TextArea from './TextArea';
-import { ApiError, cancelAppointment, completeAppointment, rescheduleAppointment } from '../lib/api';
+import { ApiError, approveAppointment, cancelAppointment, completeAppointment, rejectAppointment, rescheduleAppointment } from '../lib/api';
 import type { Appointment } from '../lib/types';
 
 interface AppointmentCardProps {
@@ -36,10 +36,20 @@ export default function AppointmentCard({
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
-  const isTerminal = appt.status === 'COMPLETED' || appt.status === 'CANCELLED';
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
+  const isTerminal = appt.status === 'COMPLETED' || appt.status === 'CANCELLED' || appt.status === 'REJECTED';
 
   function getStatusBadge() {
     switch (appt.status) {
+      case 'PENDING_APPROVAL':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+            <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
+            Chờ xác nhận
+          </span>
+        );
       case 'CONFIRMED':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
@@ -61,6 +71,13 @@ export default function AppointmentCard({
             Đã hoàn thành
           </span>
         );
+      case 'REJECTED':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+            <span className="h-2 w-2 rounded-full bg-rose-500"></span>
+            Bị từ chối
+          </span>
+        );
       case 'CANCELLED':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
@@ -74,6 +91,36 @@ export default function AppointmentCard({
             {appt.statusLabel || appt.status}
           </span>
         );
+    }
+  }
+
+  async function handleApprove() {
+    setSubmitting(true);
+    setActionError(null);
+    try {
+      await approveAppointment(appt.id);
+      setActionSuccess('Đã xác nhận lịch hẹn!');
+      onUpdated?.();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Lỗi khi xác nhận lịch hẹn.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleReject(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setActionError(null);
+    try {
+      await rejectAppointment(appt.id, { cancelReason: rejectReason.trim() || 'Không phù hợp' });
+      setActionSuccess('Đã từ chối lịch hẹn.');
+      setShowRejectModal(false);
+      onUpdated?.();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Lỗi khi từ chối lịch hẹn.');
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -230,6 +277,37 @@ export default function AppointmentCard({
           <span className="text-xs text-slate-500 italic">
             🔒 Cuộc hẹn này đã ở trạng thái kết thúc ({appt.statusLabel || appt.status}), không thể thay đổi thêm.
           </span>
+        ) : appt.status === 'PENDING_APPROVAL' ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="primary"
+              className="min-h-[36px] px-3.5 py-1 text-xs"
+              loading={submitting}
+              onClick={handleApprove}
+            >
+              ✓ Xác nhận lịch hẹn
+            </Button>
+            <Button
+              variant="danger"
+              className="min-h-[36px] px-3.5 py-1 text-xs"
+              onClick={() => {
+                setActionError(null);
+                setShowRejectModal(true);
+              }}
+            >
+              ✕ Từ chối
+            </Button>
+            <Button
+              variant="secondary"
+              className="min-h-[36px] px-3.5 py-1 text-xs"
+              onClick={() => {
+                setActionError(null);
+                setShowCancelModal(true);
+              }}
+            >
+              Hủy
+            </Button>
+          </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
             {/* Đổi lịch hẹn */}
@@ -372,6 +450,49 @@ export default function AppointmentCard({
                 </Button>
                 <Button variant="primary" type="submit" loading={submitting}>
                   Xác nhận Hoàn thành
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Từ chối lịch hẹn (Reject) */}
+      {showRejectModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-rose-700 text-base">Từ chối lịch hẹn</h3>
+              <button
+                type="button"
+                onClick={() => setShowRejectModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {actionError && <Alert tone="error">{actionError}</Alert>}
+
+            <form onSubmit={handleReject} className="space-y-4">
+              <TextArea
+                label="Lý do từ chối (tùy chọn)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Ví dụ: Thời gian không phù hợp, đề xuất ngày khác..."
+                rows={3}
+              />
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => setShowRejectModal(false)}
+                >
+                  Bỏ qua
+                </Button>
+                <Button variant="danger" type="submit" loading={submitting}>
+                  Xác nhận Từ chối
                 </Button>
               </div>
             </form>

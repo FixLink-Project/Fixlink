@@ -1,10 +1,15 @@
 import type {
   AcceptQuotationResult,
+  AdditionalCost,
   ApiErrorBody,
   ApiResponse,
   Appointment,
+  Bill,
   CancelAppointmentPayload,
   CreateAppointmentPayload,
+  Payment,
+  PaymentResult,
+  PriceQuote,
   RescheduleAppointmentPayload,
   ServiceArea,
   ServiceCategory
@@ -175,7 +180,73 @@ export function completeAppointment(id: number, note?: string): Promise<ApiRespo
   return api.patch<Appointment>(`/appointments/${id}/complete${query}`);
 }
 
+export function approveAppointment(id: number): Promise<ApiResponse<Appointment>> {
+  return api.patch<Appointment>(`/appointments/${id}/approve`);
+}
+
+export function rejectAppointment(id: number, payload: CancelAppointmentPayload): Promise<ApiResponse<Appointment>> {
+  return api.patch<Appointment>(`/appointments/${id}/reject`, payload);
+}
+
 export function cancelAppointment(id: number, payload: CancelAppointmentPayload): Promise<ApiResponse<Appointment>> {
   return api.patch<Appointment>(`/appointments/${id}/cancel`, payload);
+}
+
+// ── Payment QR + Price Quote + Additional Cost + Billing ──
+
+export function createDepositPayment(requestId: number): Promise<ApiResponse<PaymentResult>> {
+  return api.post<PaymentResult>(`/payments/deposit/${requestId}`);
+}
+
+export function createFinalPayment(requestId: number): Promise<ApiResponse<PaymentResult>> {
+  return api.post<PaymentResult>(`/payments/final/${requestId}`);
+}
+
+export function confirmPayment(paymentId: number): Promise<ApiResponse<Bill>> {
+  return api.post<Bill>(`/payments/${paymentId}/confirm`);
+}
+
+export function fetchPayments(requestId: number): Promise<ApiResponse<Payment[]>> {
+  return api.get<Payment[]>(`/payments/request/${requestId}`);
+}
+
+export function fetchBills(requestId: number): Promise<ApiResponse<Bill[]>> {
+  return api.get<Bill[]>(`/payments/bills/request/${requestId}`);
+}
+
+export function fetchBill(billId: number): Promise<ApiResponse<Bill>> {
+  return api.get<Bill>(`/payments/bills/${billId}`);
+}
+
+export function submitPriceQuote(requestId: number, price: number, note?: string): Promise<ApiResponse<PriceQuote>> {
+  return api.post<PriceQuote>('/price-quotes', { requestId, price, note });
+}
+
+export function acceptPriceQuote(quoteId: number): Promise<ApiResponse<void>> {
+  return api.post<void>(`/price-quotes/${quoteId}/accept`);
+}
+
+export function fetchPriceQuotes(requestId: number): Promise<ApiResponse<PriceQuote[]>> {
+  return api.get<PriceQuote[]>(`/price-quotes/request/${requestId}`);
+}
+
+export function addAdditionalCost(requestId: number, description: string, amount: number): Promise<ApiResponse<AdditionalCost>> {
+  return api.post<AdditionalCost>('/additional-costs', { requestId, description, amount });
+}
+
+export function approveAdditionalCost(costId: number): Promise<ApiResponse<AdditionalCost>> {
+  return api.post<AdditionalCost>(`/additional-costs/${costId}/approve`);
+}
+
+export function rejectAdditionalCost(costId: number): Promise<ApiResponse<AdditionalCost>> {
+  return api.post<AdditionalCost>(`/additional-costs/${costId}/reject`);
+}
+
+export function fetchAdditionalCosts(requestId: number): Promise<ApiResponse<AdditionalCost[]>> {
+  return api.get<AdditionalCost[]>(`/additional-costs/request/${requestId}`);
+}
+
+export function getBillHtmlUrl(billId: number): string {
+  return `${API_BASE_URL}/payments/bills/${billId}/html`;
 }
 

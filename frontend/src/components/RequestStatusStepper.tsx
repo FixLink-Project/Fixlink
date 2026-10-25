@@ -30,7 +30,7 @@ const LIFECYCLE_STEPS: StepDefinition[] = [
     label: 'Đã nhận việc',
     subLabel: 'Thợ chốt giá',
     icon: '🤝',
-    statuses: ['ASSIGNED', 'MATCHED_AWAITING_DEPOSIT']
+    statuses: ['ASSIGNED', 'DEPOSIT_PAID', 'MATCHED_AWAITING_DEPOSIT']
   },
   {
     key: 'INSPECTING',

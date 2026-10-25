@@ -6,7 +6,9 @@ package com.fixlink.domain.model;
  * <p>Enum domain thuần, không phụ thuộc Spring/JPA/Lombok.
  */
 public enum AppointmentStatus {
+    PENDING_APPROVAL("Chờ xác nhận", false),
     CONFIRMED("Đã xác nhận", false),
+    REJECTED("Bị từ chối", true),
     RESCHEDULED("Đã dời lịch", false),
     COMPLETED("Đã hoàn thành", true),
     CANCELLED("Đã hủy", true);
@@ -27,9 +29,6 @@ public enum AppointmentStatus {
         return terminal;
     }
 
-    /**
-     * Kiểm tra tính hợp lệ của việc chuyển trạng thái trong máy trạng thái (State Machine).
-     */
     public boolean canTransitionTo(AppointmentStatus nextStatus) {
         if (this.terminal) {
             return false;
@@ -38,6 +37,7 @@ public enum AppointmentStatus {
             return false;
         }
         return switch (this) {
+            case PENDING_APPROVAL -> nextStatus == CONFIRMED || nextStatus == REJECTED || nextStatus == CANCELLED;
             case CONFIRMED -> nextStatus == RESCHEDULED || nextStatus == COMPLETED || nextStatus == CANCELLED;
             case RESCHEDULED -> nextStatus == RESCHEDULED || nextStatus == COMPLETED || nextStatus == CANCELLED;
             default -> false;

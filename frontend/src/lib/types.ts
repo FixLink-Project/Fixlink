@@ -76,6 +76,7 @@ export type RequestStatus =
   | 'BIDDING_OPEN'
   | 'MATCHED_AWAITING_DEPOSIT'
   | 'ASSIGNED'
+  | 'DEPOSIT_PAID'
   | 'INSPECTING'
   | 'AWAITING_COST_APPROVAL'
   | 'IN_PROGRESS'
@@ -184,7 +185,7 @@ export interface AcceptQuotationResult {
 
 // ── Jira RC-48: Appointment Status Lifecycle ──
 
-export type AppointmentStatus = 'CONFIRMED' | 'RESCHEDULED' | 'COMPLETED' | 'CANCELLED';
+export type AppointmentStatus = 'PENDING_APPROVAL' | 'CONFIRMED' | 'REJECTED' | 'RESCHEDULED' | 'COMPLETED' | 'CANCELLED';
 
 export interface Appointment {
   id: number;
@@ -230,5 +231,80 @@ export interface RescheduleAppointmentPayload {
 
 export interface CancelAppointmentPayload {
   cancelReason: string;
+}
+
+// ── Payment QR + Price Quote + Additional Cost + Billing ──
+
+export type PaymentType = 'DEPOSIT' | 'FINAL';
+export type PaymentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'EXPIRED';
+export type BillType = 'DEPOSIT' | 'FINAL';
+export type PriceQuoteStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+export type CostStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface BankInfo {
+  bankId: string;
+  accountNo: string;
+  accountName: string;
+  bankName: string;
+}
+
+export interface PaymentResult {
+  paymentId: number;
+  qrUrl: string;
+  amount: number;
+  transferContent: string;
+  bankInfo: BankInfo;
+}
+
+export interface Payment {
+  id: number;
+  requestId: number;
+  paymentType: PaymentType;
+  amount: number;
+  status: PaymentStatus;
+  transferContent: string;
+  qrUrl: string;
+  createdAt: string;
+  confirmedAt: string | null;
+}
+
+export interface Bill {
+  id: number;
+  billNumber: string;
+  paymentId: number;
+  billType: BillType;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  technicianName: string;
+  technicianPhone: string;
+  serviceCategory: string;
+  serviceDescription: string;
+  requestId: number;
+  quotedPrice: number;
+  depositAmount: number;
+  additionalCost: number;
+  totalAmount: number;
+  createdAt: string;
+}
+
+export interface PriceQuote {
+  id: number;
+  requestId: number;
+  technicianId: number;
+  quotedPrice: number;
+  note: string | null;
+  status: PriceQuoteStatus;
+  createdAt: string;
+}
+
+export interface AdditionalCost {
+  id: number;
+  requestId: number;
+  description: string;
+  amount: number;
+  status: CostStatus;
+  createdAt: string;
+  approvedAt: string | null;
 }
 

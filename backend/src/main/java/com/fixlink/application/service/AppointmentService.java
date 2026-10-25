@@ -93,7 +93,7 @@ public class AppointmentService implements AppointmentUseCase {
                 .scheduledDate(cmd.getScheduledDate())
                 .scheduledTime(cmd.getScheduledTime())
                 .address(address)
-                .status(AppointmentStatus.CONFIRMED)
+                .status(AppointmentStatus.PENDING_APPROVAL)
                 .notes(cmd.getNotes())
                 .build();
         entity.setCreatedBy(actorId);
@@ -103,6 +103,55 @@ public class AppointmentService implements AppointmentUseCase {
                 entity.getId(), apptType, request.getId(), customerId, technicianId);
 
         return toResponse(entity, request);
+    }
+
+    @Override
+    @Transactional
+    public AppointmentResponse approveAppointment(Long appointmentId, Long actorId, String role) {
+        AppointmentJpaEntity appointment = appointmentRepo.findById(appointmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lịch hẹn"));
+
+        if (appointment.getStatus() != AppointmentStatus.PENDING_APPROVAL) {
+            throw new DomainException("INVALID_OPERATION",
+                    "Lịch hẹn không ở trạng thái chờ xác nhận.", 400);
+        }
+
+        // Người tạo không thể tự duyệt — bên kia mới được duyệt
+        if (actorId.equals(appointment.getCreatedBy())) {
+            throw new DomainException("INVALID_OPERATION",
+                    "Bạn không thể tự xác nhận lịch hẹn do mình tạo. Bên còn lại cần xác nhận.", 403);
+        }
+
+        checkParticipantAccess(appointment, actorId, role);
+
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+        appointment.setUpdatedBy(actorId);
+        appointment = appointmentRepo.save(appointment);
+        log.info("Appointment #{} approved by actor #{}", appointment.getId(), actorId);
+
+        return toResponse(appointment);
+    }
+
+    @Override
+    @Transactional
+    public AppointmentResponse rejectAppointment(Long appointmentId, String reason, Long actorId, String role) {
+        AppointmentJpaEntity appointment = appointmentRepo.findById(appointmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lịch hẹn"));
+
+        if (appointment.getStatus() != AppointmentStatus.PENDING_APPROVAL) {
+            throw new DomainException("INVALID_OPERATION",
+                    "Lịch hẹn không ở trạng thái chờ xác nhận.", 400);
+        }
+
+        checkParticipantAccess(appointment, actorId, role);
+
+        appointment.setStatus(AppointmentStatus.REJECTED);
+        appointment.setCancelReason(reason != null ? reason.trim() : null);
+        appointment.setUpdatedBy(actorId);
+        appointment = appointmentRepo.save(appointment);
+        log.info("Appointment #{} rejected by actor #{}", appointment.getId(), actorId);
+
+        return toResponse(appointment);
     }
 
     @Override

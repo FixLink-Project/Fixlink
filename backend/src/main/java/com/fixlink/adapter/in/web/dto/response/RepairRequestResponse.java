@@ -125,6 +125,7 @@ public class RepairRequestResponse {
             case BIDDING_OPEN -> "Đang nhận báo giá";
             case MATCHED_AWAITING_DEPOSIT -> "Chờ khách cọc";
             case ASSIGNED -> "Đã nhận việc";
+            case DEPOSIT_PAID -> "Đã đặt cọc";
             case INSPECTING -> "Đang khảo sát";
             case AWAITING_COST_APPROVAL -> "Chờ duyệt phát sinh";
             case IN_PROGRESS -> "Đang sửa chữa";

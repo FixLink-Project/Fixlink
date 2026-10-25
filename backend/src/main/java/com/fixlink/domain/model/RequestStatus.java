@@ -33,7 +33,8 @@ public enum RequestStatus {
     @Deprecated
     MATCHED_AWAITING_DEPOSIT,
 
-    ASSIGNED,                   // Thợ đã nhận việc
+    ASSIGNED,                   // Thợ đã nhận việc (hoặc khách chọn báo giá)
+    DEPOSIT_PAID,               // Khách đã đặt cọc 30% qua QR
     INSPECTING,                 // Thợ đến khảo sát hiện trường & lập biên bản
     AWAITING_COST_APPROVAL,     // Phát hiện lỗi thêm, chờ khách duyệt chi phí phát sinh
     IN_PROGRESS,                // Thợ đang thực hiện sửa chữa
