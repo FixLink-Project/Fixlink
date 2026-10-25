@@ -7,6 +7,8 @@ import {
   type FirebaseStorage
 } from 'firebase/storage';
 
+import { isCloudinaryConfigured, uploadToCloudinary } from './cloudinaryStorage';
+
 /** Giới hạn kích thước một ảnh tải lên. */
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -25,11 +27,10 @@ const firebaseConfig = {
 };
 
 /**
- * Thiếu cấu hình thì tính năng tải ảnh tự tắt và giao diện chuyển sang cho dán
- * đường dẫn, thay vì vỡ giữa chừng khi người dùng đã chọn xong ảnh.
+ * Kiểm tra xem dịch vụ lưu trữ ảnh (Cloudinary hoặc Firebase Storage) đã được cấu hình chưa.
  */
 export function isStorageConfigured(): boolean {
-  return Boolean(firebaseConfig.apiKey && firebaseConfig.storageBucket);
+  return isCloudinaryConfigured() || Boolean(firebaseConfig.apiKey && firebaseConfig.storageBucket);
 }
 
 let app: FirebaseApp | null = null;
@@ -92,6 +93,14 @@ export async function uploadImage(
   onProgress?: (percent: number) => void
 ): Promise<string> {
   validateImage(file);
+
+  if (isCloudinaryConfigured()) {
+    try {
+      return await uploadToCloudinary(file, folder, onProgress);
+    } catch (err: any) {
+      throw new ImageUploadError(err?.message || 'Tải ảnh lên Cloudinary thất bại. Kiểm tra lại cấu hình.');
+    }
+  }
 
   const storageRef = ref(getStorageInstance(), `${folder}/${buildFileName(file)}`);
   const task = uploadBytesResumable(storageRef, file, { contentType: file.type });
