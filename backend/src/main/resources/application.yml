@@ -55,20 +55,42 @@ springdoc:
 # Cấu hình Chatbot CSKH & Tư vấn thông minh FixLink
 chatbot:
   enabled: ${CHATBOT_ENABLED:true}
+  # Nhà cung cấp LLM: groq (mặc định) | gemini
+  provider: ${CHATBOT_PROVIDER:groq}
+  groq:
+    api-key: ${GROQ_API_KEY:}
+    base-url: https://api.groq.com/openai/v1
+    # Chuỗi failover: model đầu tiên là model chính. Ghi đè bằng GROQ_MODELS (phân tách bằng dấu phẩy).
+    models: ${GROQ_MODELS:openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b}
+    timeout-seconds: 30
+    total-budget-seconds: 60
+    max-retries: 1
+    cooldown-seconds: 60
+    temperature: 0.4
+    # Groq tính cả max-output-tokens vào hạn mức token/phút nên giữ ở mức vừa đủ
+    max-output-tokens: 800
+    reasoning-effort: low
+    # Gói Groq miễn phí giới hạn vài nghìn token/phút nên chỉ nạp trích đoạn RAG liên quan vào prompt
+    full-knowledge: ${GROQ_FULL_KNOWLEDGE:false}
+    max-knowledge-chars: 1800
+    max-tool-result-chars: 2000
+    max-history-messages: 6
+    max-history-message-chars: 600
   gemini:
     api-key: ${GEMINI_API_KEY:}
     base-url: https://generativelanguage.googleapis.com/v1beta
-    models:
-      - gemini-3.8-flash
-      - gemini-3.6-flash
-      - gemini-3.5-flash-lite
-      - gemini-3-flash-preview
-      - gemini-3.1-flash-lite
-    timeout-seconds: 20
+    # Chuỗi failover: gemini-3.6-flash là model chính, các model nhẹ làm dự phòng.
+    # Có thể ghi đè bằng biến môi trường GEMINI_MODELS (phân tách bằng dấu phẩy).
+    models: ${GEMINI_MODELS:gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite}
+    timeout-seconds: 25
+    total-budget-seconds: 90
     max-retries: 1
     cooldown-seconds: 60
-    temperature: 0.3
-    max-output-tokens: 2048
+    # Gemini 3 khuyến nghị temperature = 1.0 (hạ thấp dễ gây lặp/giảm chất lượng)
+    temperature: 1.0
+    # Gồm cả token suy luận (thinking) của Gemini 3
+    max-output-tokens: 8192
+    thinking-level: ${GEMINI_THINKING_LEVEL:low}
   tools:
     mode: ${CHATBOT_TOOLS_MODE:native} # native | mcp
     mcp:
@@ -82,7 +104,7 @@ chatbot:
     window: 1
   limits:
     max-input-chars: 1000
-    max-tool-rounds: 4
+    max-tool-rounds: 5
     history-turns: 10
     guest-rate-per-10min: 20
 

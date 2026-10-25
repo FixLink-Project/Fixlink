@@ -18,6 +18,46 @@ export interface SourceReferenceItem {
   section: string;
 }
 
+export interface ChatCardField {
+  label: string;
+  value: string;
+}
+
+/** Thẻ thông tin trực quan dựng từ dữ liệu thật của hệ thống (đơn, lịch hẹn, bảng giá...). */
+export interface ChatCardItem {
+  type: 'request' | 'appointment' | 'price_list' | 'deposit' | 'technician' | 'job' | 'draft' | string;
+  title: string;
+  subtitle?: string;
+  badge?: string;
+  badgeTone?: 'info' | 'success' | 'warning' | 'danger' | 'neutral' | string;
+  fields?: ChatCardField[];
+  steps?: string[];
+  currentStep?: number;
+  note?: string;
+  url?: string;
+  urlLabel?: string;
+}
+
+export interface ChatbotWelcomeResponse {
+  message: string;
+  suggestions: string[];
+  cards: ChatCardItem[];
+  actions: ChatActionItem[];
+}
+
+export interface ChatbotHandoffPayload {
+  sessionId: string;
+  name?: string;
+  contact?: string;
+  issue: string;
+}
+
+export interface ChatbotHandoffResult {
+  ticketCode: string;
+  priority: string;
+  message: string;
+}
+
 export interface ChatbotMessageResponse {
   reply: string;
   suggestions: string[];
@@ -27,12 +67,14 @@ export interface ChatbotMessageResponse {
   ticketId?: string;
   sessionId: string;
   modelUsed: string;
+  cards?: ChatCardItem[];
+  offerHandoff?: boolean;
 }
 
 export interface ChatbotFeedbackPayload {
   sessionId: string;
   messageId: string;
-  rating: 'UP' | 'DOWN';
+  rating: 'UP' | 'DOWN' | `CSAT_${1 | 2 | 3 | 4 | 5}`;
   comment?: string;
 }
 
@@ -104,6 +146,18 @@ export const chatbotApi = {
     const encoded = encodeURIComponent(route || '/');
     return requestChatbot<string[]>(`/suggestions?route=${encoded}`, {
       method: 'GET',
+    });
+  },
+
+  getWelcome(route: string): Promise<ChatbotWelcomeResponse> {
+    const encoded = encodeURIComponent(route || '/');
+    return requestChatbot<ChatbotWelcomeResponse>(`/welcome?route=${encoded}`, { method: 'GET' });
+  },
+
+  requestHandoff(payload: ChatbotHandoffPayload): Promise<ChatbotHandoffResult> {
+    return requestChatbot<ChatbotHandoffResult>('/handoff', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   },
 

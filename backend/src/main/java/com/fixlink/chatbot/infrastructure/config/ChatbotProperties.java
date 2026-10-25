@@ -14,28 +14,84 @@ import org.springframework.context.annotation.Configuration;
 public class ChatbotProperties {
 
     private boolean enabled = true;
+    /** Nhà cung cấp LLM: groq | gemini. */
+    private String provider = "groq";
+    private GroqProperties groq = new GroqProperties();
     private GeminiProperties gemini = new GeminiProperties();
     private ToolsProperties tools = new ToolsProperties();
     private RagProperties rag = new RagProperties();
     private LimitsProperties limits = new LimitsProperties();
+
+    public boolean isGroqProvider() {
+        return !"gemini".equalsIgnoreCase(provider);
+    }
+
+    /**
+     * Gemini có ngữ cảnh rất lớn nên nạp nguyên kho tri thức vào prompt; Groq (gói miễn phí giới hạn
+     * vài nghìn token/phút) chỉ nạp các đoạn RAG liên quan.
+     */
+    public boolean usesFullKnowledgeInPrompt() {
+        return isGroqProvider() ? groq.isFullKnowledge() : true;
+    }
+
+    @Getter
+    @Setter
+    public static class GroqProperties {
+        private String apiKey = "";
+        /** Endpoint tương thích OpenAI của Groq. */
+        private String baseUrl = "https://api.groq.com/openai/v1";
+        /** Chuỗi failover: model đầu tiên là model chính. */
+        private List<String> models = new ArrayList<>(List.of(
+                "openai/gpt-oss-120b",
+                "qwen/qwen3.8-27b",
+                "openai/gpt-oss-20b"
+        ));
+        private int timeoutSeconds = 30;
+        private int totalBudgetSeconds = 60;
+        private int maxRetries = 1;
+        private int cooldownSeconds = 60;
+        private double temperature = 0.4;
+        private int maxOutputTokens = 800;
+        /** Mức suy luận cho model gpt-oss (low | medium | high); model khác bỏ qua. */
+        private String reasoningEffort = "low";
+        /** true = nạp nguyên kho tri thức vào prompt (cần gói Groq có hạn mức token/phút cao). */
+        private boolean fullKnowledge = false;
+        /** Số ký tự tối đa của đoạn tri thức RAG đưa vào prompt. */
+        private int maxKnowledgeChars = 1800;
+        /** Số ký tự tối đa của kết quả một lần gọi tool gửi lại cho model. */
+        private int maxToolResultChars = 2000;
+        /** Số tin nhắn lịch sử gần nhất gửi kèm mỗi request. */
+        private int maxHistoryMessages = 6;
+        /** Rút gọn mỗi tin nhắn lịch sử dài hơn số ký tự này. */
+        private int maxHistoryMessageChars = 600;
+    }
 
     @Getter
     @Setter
     public static class GeminiProperties {
         private String apiKey = "";
         private String baseUrl = "https://generativelanguage.googleapis.com/v1beta";
+        /** Chuỗi failover: gemini-3.6-flash là model chính, các model nhẹ/ổn định làm dự phòng. */
         private List<String> models = new ArrayList<>(List.of(
-                "gemini-3.8-flash",
                 "gemini-3.6-flash",
+                "gemini-3.5-flash",
                 "gemini-3.5-flash-lite",
-                "gemini-3-flash-preview",
                 "gemini-3.1-flash-lite"
         ));
-        private int timeoutSeconds = 20;
+        /** Timeout cho mỗi HTTP request tới Gemini. */
+        private int timeoutSeconds = 25;
+        /** Tổng thời gian tối đa cho một câu hỏi (mọi model + mọi vòng tool) trước khi dùng fallback. */
+        private int totalBudgetSeconds = 90;
+        /** Số lần thử lại cùng model khi gặp lỗi tạm thời (503/500/429 theo phút). */
         private int maxRetries = 1;
+        /** Thời gian tạm ngưng model sau khi chạm quota (HTTP 429). */
         private int cooldownSeconds = 60;
-        private double temperature = 0.3;
-        private int maxOutputTokens = 2048;
+        /** Gemini 3 khuyến nghị giữ temperature = 1.0; hạ thấp có thể gây lặp/giảm chất lượng suy luận. */
+        private double temperature = 1.0;
+        /** Gồm cả token suy luận (thinking) của Gemini 3 nên cần đủ rộng để JSON không bị cắt. */
+        private int maxOutputTokens = 8192;
+        /** Mức suy luận của Gemini 3 (minimal | low | medium | high). Để trống để dùng mặc định của model. */
+        private String thinkingLevel = "low";
     }
 
     @Getter
@@ -65,7 +121,7 @@ public class ChatbotProperties {
     @Setter
     public static class LimitsProperties {
         private int maxInputChars = 1000;
-        private int maxToolRounds = 4;
+        private int maxToolRounds = 5;
         private int historyTurns = 10;
         private int guestRatePer10min = 20;
     }

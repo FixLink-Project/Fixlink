@@ -42,8 +42,9 @@ Hiện tại, FixLink cung cấp dịch vụ trên địa bàn **TP. Hồ Chí M
 - Quận Gò Vấp (`GO_VAP`)
 - Quận Phú Nhuận (`PHU_NHUAN`)
 
-## 4. Mô hình hoạt động: Ai nhận trước được trước (First-Come-First-Served)
-- Khách hàng đăng yêu cầu kèm mô tả chi tiết, ảnh hiện trường, địa chỉ và **mức giá/ngân sách cố định**.
-- Khi yêu cầu ở trạng thái `OPEN`, các thợ phù hợp về chuyên môn và khu vực sẽ nhìn thấy yêu cầu.
-- Thợ nào bấm **"Nhận việc"** trước tiên sẽ là người nhận công việc. Cơ chế sử dụng khóa bi quan (Pessimistic Locking) ở máy chủ để đảm bảo tính công bằng tuyệt đối.
-- **Lưu ý quan trọng:** FixLink **không áp dụng mô hình đấu giá ngược** hay báo giá cạnh tranh. Giá dịch vụ được ấn định rõ ràng ngay từ đầu giúp tiết kiệm thời gian cho cả khách hàng và thợ.
+## 4. Mô hình hoạt động: Thợ báo giá cạnh tranh – Khách chọn thợ
+- Khách hàng đăng yêu cầu kèm mô tả chi tiết, ảnh hiện trường, địa chỉ và **ngân sách dự kiến** (để thợ tham khảo).
+- Khi yêu cầu ở trạng thái `OPEN` (tối đa 3 ngày), các thợ **đã duyệt KYC, đúng chuyên môn và khu vực** sẽ nhìn thấy yêu cầu và **gửi báo giá** (tiền công + vật tư).
+- Thợ có thể **sửa (trả giá lại) hoặc rút** báo giá khi báo giá còn chờ khách duyệt. Trên "sàn báo giá công khai", thợ thấy mức giá của các thợ khác nhưng **danh tính đối thủ được ẩn danh**.
+- Khách hàng xem tất cả báo giá (tên thợ, điểm đánh giá, số việc đã làm, giá, phương án) rồi bấm **"Chọn thợ này"**. Báo giá được chọn trở thành **giá chốt**, các báo giá còn lại tự động bị từ chối.
+- Ưu điểm: khách được so sánh và chủ động chọn thợ phù hợp về giá và uy tín; thợ cạnh tranh công khai, minh bạch.

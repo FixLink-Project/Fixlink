@@ -1,6 +1,7 @@
 package com.fixlink.chatbot.application.port.in;
 
 import com.fixlink.chatbot.domain.model.ChatAction;
+import com.fixlink.chatbot.domain.model.ChatCard;
 import com.fixlink.chatbot.domain.model.SourceReference;
 import java.util.List;
 
@@ -32,6 +33,9 @@ public interface ChatbotUseCase {
             boolean needsHuman,
             String ticketId,
             String sessionId,
-            String modelUsed
+            String modelUsed,
+            List<ChatCard> cards,
+            /* true khi nên chủ động mời khách gặp nhân viên (bot bí nhiều lần, khách bức xúc, hỏi lặp lại) */
+            boolean offerHandoff
     ) { }
 }

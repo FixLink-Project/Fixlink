@@ -44,11 +44,11 @@ class InMemoryRagIndexTest {
     }
 
     @Test
-    @DisplayName("Truy xuất ngữ nghĩa về quy trình nhận việc nhanh First-Come-First-Served")
-    void shouldRetrieveFcfsPolicy() {
-        InMemoryRagIndex.RetrievalResult result = ragIndex.retrieve("FixLink có đấu giá không hay nhận việc nhanh nhất?", "customer");
+    @DisplayName("Truy xuất mô hình báo giá cạnh tranh – khách chọn thợ")
+    void shouldRetrieveQuotationModel() {
+        InMemoryRagIndex.RetrievalResult result = ragIndex.retrieve("Thợ gửi báo giá thế nào và khách chọn thợ ra sao?", "customer");
         assertThat(result.mergedContent()).isNotEmpty();
-        assertThat(result.mergedContent().toLowerCase()).containsAnyOf("first-come-first-served", "nhanh nhất", "không đấu giá");
+        assertThat(result.mergedContent().toLowerCase()).containsAnyOf("chọn thợ này", "báo giá");
     }
 
     @Test

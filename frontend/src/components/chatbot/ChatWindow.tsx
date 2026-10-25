@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useAuth } from '../../lib/auth';
 import type { ChatMessageUI } from '../../lib/useChatbot';
+import HandoffPanel from './HandoffPanel';
 import MessageBubble from './MessageBubble';
 import SuggestionChips from './SuggestionChips';
 import TypingIndicator from './TypingIndicator';
@@ -16,7 +17,19 @@ interface ChatWindowProps {
   onSendMessage: (text: string) => void;
   onFeedback: (messageId: string, rating: 'UP' | 'DOWN', comment?: string) => void;
   onResetSession: () => void;
+  onRequestHandoff: (form: { name?: string; contact?: string; issue: string }) => Promise<string | null>;
+  showCsat: boolean;
+  csatScore: number | null;
+  onSubmitCsat: (score: 1 | 2 | 3 | 4 | 5) => void;
 }
+
+const CSAT_OPTIONS: { score: 1 | 2 | 3 | 4 | 5; emoji: string; label: string }[] = [
+  { score: 1, emoji: '😠', label: 'Rất không hài lòng' },
+  { score: 2, emoji: '🙁', label: 'Không hài lòng' },
+  { score: 3, emoji: '😐', label: 'Bình thường' },
+  { score: 4, emoji: '🙂', label: 'Hài lòng' },
+  { score: 5, emoji: '😍', label: 'Rất hài lòng' },
+];
 
 export default function ChatWindow({
   isOpen,
@@ -29,10 +42,15 @@ export default function ChatWindow({
   onSendMessage,
   onFeedback,
   onResetSession,
+  onRequestHandoff,
+  showCsat,
+  csatScore,
+  onSubmitCsat,
 }: ChatWindowProps) {
   const { user } = useAuth();
   const [inputText, setInputText] = useState('');
   const [showContactPrompt, setShowContactPrompt] = useState(false);
+  const [showHandoff, setShowHandoff] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -89,6 +107,14 @@ export default function ChatWindow({
         </div>
 
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            title="Gặp nhân viên CSKH"
+            onClick={() => setShowHandoff(true)}
+            className="px-2 py-1 hover:bg-white/15 rounded-lg text-white/90 hover:text-white transition-colors text-[11px] font-semibold border border-white/25"
+          >
+            👤 Nhân viên
+          </button>
           <button
             type="button"
             title="Làm mới cuộc trò chuyện"
@@ -164,6 +190,7 @@ export default function ChatWindow({
             message={msg}
             onFeedback={onFeedback}
             onSuggestionClick={(s) => onSendMessage(s)}
+            onRequestHandoff={() => setShowHandoff(true)}
           />
         ))}
 
@@ -178,6 +205,35 @@ export default function ChatWindow({
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Khảo sát hài lòng (CSAT) sau vài lượt hỗ trợ */}
+      {showCsat && (
+        <div className="px-3 py-2 bg-amber-50/70 border-t border-amber-100 flex items-center justify-between gap-2">
+          <span className="text-[11px] text-amber-900 font-medium">Bạn hài lòng với hỗ trợ hôm nay?</span>
+          <div className="flex items-center gap-0.5">
+            {CSAT_OPTIONS.map((o) => (
+              <button
+                key={o.score}
+                type="button"
+                title={o.label}
+                aria-label={o.label}
+                onClick={() => onSubmitCsat(o.score)}
+                className="text-lg leading-none p-0.5 rounded hover:scale-125 hover:bg-amber-100 transition-transform"
+              >
+                {o.emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {csatScore !== null && csatScore <= 2 && (
+        <div className="px-3 py-1.5 bg-indigo-50 border-t border-indigo-100 text-[11px] text-indigo-900 flex items-center justify-between">
+          <span>Rất tiếc vì trải nghiệm chưa tốt. Để nhân viên hỗ trợ bạn trực tiếp nhé?</span>
+          <button type="button" onClick={() => setShowHandoff(true)} className="font-semibold underline ml-2 flex-shrink-0">
+            Gặp nhân viên
+          </button>
+        </div>
+      )}
 
       {/* Dynamic Suggestions Carousel */}
       <div className="px-3 bg-white border-t border-slate-100">
@@ -228,6 +284,16 @@ export default function ChatWindow({
           <span>Nhấn Enter để gửi</span>
         </div>
       </form>
+
+      {showHandoff && (
+        <HandoffPanel
+          isGuest={!user}
+          defaultContact={guestContact}
+          defaultIssue={[...messages].reverse().find((m) => m.sender === 'user')?.text ?? ''}
+          onSubmit={onRequestHandoff}
+          onClose={() => setShowHandoff(false)}
+        />
+      )}
     </div>
   );
 }
