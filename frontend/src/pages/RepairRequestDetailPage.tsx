@@ -47,6 +47,7 @@ export default function RepairRequestDetailPage() {
   const [switchingQuoteId, setSwitchingQuoteId] = useState<number | null>(null);
   const [showSwitchConfirmModal, setShowSwitchConfirmModal] = useState<Quotation | null>(null);
   const [showSwitchModal, setShowSwitchModal] = useState(false);
+  const [switchReason, setSwitchReason] = useState<string>('Chi phí phát sinh thợ đưa ra quá cao hoặc vượt quá ngân sách');
 
   // Xem đánh giá thợ (Technician Reviews Modal)
   const [reviewTech, setReviewTech] = useState<{ id: number; name: string; rating?: number | null } | null>(null);
@@ -520,7 +521,7 @@ export default function RepairRequestDetailPage() {
                 <div className="text-xs text-slate-500 italic">
                   * Nếu đồng ý, thợ sẽ tiến hành thay thế và sửa chữa theo chi phí mới.
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="primary"
                     loading={updatingLifecycle}
@@ -531,11 +532,21 @@ export default function RepairRequestDetailPage() {
                   </Button>
                   <Button
                     variant="secondary"
+                    onClick={() => {
+                      setSwitchReason('Chi phí phát sinh thợ đưa ra quá cao hoặc vượt quá ngân sách');
+                      setShowSwitchModal(true);
+                    }}
+                    className="text-xs py-2 px-4 text-amber-900 border-amber-300 bg-amber-50 hover:bg-amber-100 font-medium shadow-xs"
+                  >
+                    🔄 Từ chối giá & Đổi thợ khác
+                  </Button>
+                  <Button
+                    variant="secondary"
                     loading={updatingLifecycle}
                     onClick={() => handleCustomerAction('CANCELLED', 'Khách hàng không đồng ý chi phí phát sinh và hủy yêu cầu')}
                     className="text-xs py-2 px-4 text-rose-700 border-rose-300 bg-white hover:bg-rose-50"
                   >
-                    ❌ Không đồng ý (Hủy đơn)
+                    ❌ Hủy đơn
                   </Button>
                 </div>
               </div>
@@ -1312,12 +1323,44 @@ export default function RepairRequestDetailPage() {
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Nếu bạn cảm thấy kỹ thuật viên hiện tại làm việc không ổn hoặc trễ hẹn, bạn có thể chuyển giao công việc cho một trong các thợ khác đã gửi báo giá dưới đây, hoặc mở lại sàn để nhận thêm báo giá mới.
+              Nếu bạn cảm thấy kỹ thuật viên hiện tại làm việc không ổn, trễ hẹn hoặc chi phí phát sinh không hợp lý, bạn có thể chuyển giao công việc cho thợ dự phòng hoặc mở lại sàn để nhận thêm báo giá mới.
             </p>
 
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Vui lòng chọn lý do đổi kỹ thuật viên:
+              </label>
+              <select
+                value={switchReason}
+                onChange={(e) => setSwitchReason(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
+              >
+                <option value="Chi phí phát sinh thợ đưa ra quá cao hoặc vượt quá ngân sách">
+                  💸 Chi phí phát sinh thợ đưa ra quá cao / vượt quá ngân sách
+                </option>
+                <option value="Kỹ thuật viên trễ hẹn, câu giờ, làm việc rườm rà mất thời gian">
+                  ⏳ Kỹ thuật viên trễ hẹn, câu giờ, làm việc rườm rà mất thời gian
+                </option>
+                <option value="Thái độ phục vụ hoặc phương án kỹ thuật chưa an tâm">
+                  🛠️ Thái độ phục vụ hoặc phương án kỹ thuật chưa an tâm
+                </option>
+                <option value="Tôi muốn tìm thợ khác có tay nghề và mức giá phù hợp hơn">
+                  📝 Tôi muốn tìm thợ khác có tay nghề và mức giá phù hợp hơn
+                </option>
+              </select>
+            </div>
+
+            {/* PHƯƠNG ÁN 1: ĐỔI NHANH SANG THỢ DỰ PHÒNG */}
             {otherQuotes.length > 0 ? (
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-slate-800">Danh sách thợ đã gửi báo giá dự phòng ({otherQuotes.length}):</p>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-slate-900">
+                    Phương án 1: Đổi nhanh sang thợ dự phòng ({otherQuotes.length} thợ sẵn sàng)
+                  </p>
+                  <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    ⚡ Không mất thời gian chờ
+                  </span>
+                </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {otherQuotes.map((q) => (
                     <QuotationCard
@@ -1333,44 +1376,48 @@ export default function RepairRequestDetailPage() {
                     />
                   ))}
                 </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-xl">
-                  <p className="text-xs text-slate-600">
-                    Không muốn chọn các thợ trong danh sách này?
-                  </p>
-                  <Button
-                    variant="secondary"
-                    loading={updatingLifecycle}
-                    onClick={() => {
-                      setShowSwitchModal(false);
-                      handleCustomerAction('OPEN', 'Khách hàng đổi thợ và mở lại sàn nhận báo giá mới');
-                    }}
-                    className="text-xs py-1.5 px-3 border-blue-300 text-blue-700 hover:bg-blue-50 font-medium"
-                  >
-                    🚀 Mở lại sàn nhận báo giá mới
-                  </Button>
-                </div>
               </div>
             ) : (
-              <div className="py-8 text-center space-y-3 bg-slate-50 rounded-xl p-4 border border-slate-100">
-                <span className="text-3xl">📭</span>
-                <p className="text-xs font-bold text-slate-700">Chưa có thợ nào khác gửi báo giá dự phòng cho đơn này</p>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Bạn có thể mở lại yêu cầu sửa chữa về trạng thái ban đầu để các kỹ thuật viên khác trong khu vực có thể nộp báo giá cạnh tranh mới.
-                </p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 text-center text-xs text-slate-500">
+                Đơn hàng hiện chưa có thợ khác nộp báo giá dự phòng.
+              </div>
+            )}
+
+            {/* PHƯƠNG ÁN 2: HỦY THỢ HIỆN TẠI & MỞ LẠI SÀN ĐẤU GIÁ MỚI */}
+            <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-xs font-bold text-blue-950 uppercase tracking-wider">
+                    {otherQuotes.length > 0 ? 'Phương án 2: Mở lại sàn nhận báo giá mới' : 'Phương án duy nhất: Mở lại sàn nhận báo giá mới'}
+                  </h4>
+                  <p className="text-xs text-blue-800 mt-1 leading-relaxed">
+                    Hủy thợ hiện tại và đưa đơn hàng trở lại trạng thái OPEN để các kỹ thuật viên khác trong khu vực có thể nộp báo giá cạnh tranh mới.
+                  </p>
+                </div>
                 <Button
                   variant="primary"
                   loading={updatingLifecycle}
                   onClick={() => {
                     setShowSwitchModal(false);
-                    handleCustomerAction('OPEN', 'Khách hàng đổi thợ và mở lại sàn nhận báo giá mới');
+                    handleCustomerAction('OPEN', `Khách hàng đổi thợ. Lý do: ${switchReason}`);
                   }}
-                  className="text-xs py-2 px-4 shadow-sm"
+                  className="shrink-0 text-xs py-2 px-3.5 shadow-sm bg-blue-600 hover:bg-blue-700"
                 >
-                  🚀 Mở lại sàn nhận báo giá (Chuyển sang OPEN)
+                  🚀 Mở lại sàn nhận báo giá
                 </Button>
               </div>
-            )}
+            </div>
+
+            {/* BẢO CHỨNG TIỀN CỌC ESCROW */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                <span>🛡️</span>
+                <span>Bảo chứng tiền cọc FixLink Escrow:</span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Tiền cọc 30% của bạn (nếu đã thanh toán) đang được giữ an toàn trong ví bảo chứng. Thợ cũ chưa hoàn tất nghiệm thu nên <strong>tuyệt đối không được nhận khoản tiền này</strong>. Toàn bộ tiền cọc sẽ tự động được bảo lưu và cấn trừ cho thợ mới khi bạn chốt deal.
+              </p>
+            </div>
 
             <div className="flex justify-end pt-2 border-t border-slate-100">
               <Button variant="secondary" onClick={() => setShowSwitchModal(false)} className="text-xs py-1.5 px-4">

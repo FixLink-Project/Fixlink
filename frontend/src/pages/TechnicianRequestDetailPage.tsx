@@ -405,11 +405,30 @@ export default function TechnicianRequestDetailPage() {
           const latestAppt = activeAppointments[0];
 
           if (isAssignedToMe) {
+            const isSwitchedOrder = detail.workProgress?.some(
+              (wp) => wp.note?.includes('đổi sang thợ') || wp.note?.includes('Khách hàng đã đổi sang thợ')
+            );
+
             return (
               <Card
                 title="Bạn đã được giao việc này"
                 description="Theo dõi chi phí và cập nhật từng bước khảo sát, thi công, nghiệm thu."
               >
+                {isSwitchedOrder && (
+                  <div className="mb-4 rounded-xl border border-emerald-300 bg-emerald-50/90 p-4 shadow-xs">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-xl">🎉</span>
+                      <div>
+                        <p className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
+                          Đơn hàng đã được khách hàng chuyển giao cho bạn tiếp nhận
+                        </p>
+                        <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+                          Yêu cầu được chuyển từ kỹ thuật viên trước. Tiền cọc 30% ({formatCurrency(req.depositAmount > 0 ? req.depositAmount : Math.round((req.agreedPrice || 0) * 0.3))}) đã được bảo chứng an toàn trong hệ thống. Vui lòng chủ động bấm nút <strong>📅 Đổi / Thêm lịch hẹn</strong> bên dưới hoặc gọi cho khách hàng để sắp xếp thi công sớm nhất!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <dl className="divide-y divide-slate-100 text-sm">
                   <Row label="💰 Giá chốt hiện tại" value={formatCurrency(req.agreedPrice || req.budgetRef)} />
                   <Row label="💵 Tiền đặt cọc (30%)" value={formatCurrency(req.depositAmount > 0 ? req.depositAmount : Math.round((req.agreedPrice || req.budgetRef || 0) * 0.3))} />
@@ -1016,6 +1035,29 @@ export default function TechnicianRequestDetailPage() {
                     </Button>
                   </div>
                 )}
+              </div>
+            );
+          }
+
+          if (myQuote && myQuote.status === 'REJECTED') {
+            return (
+              <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-5 shadow-sm space-y-3">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">ℹ️</span>
+                  <div>
+                    <h3 className="font-display font-bold text-amber-950 text-base">
+                      Đơn hàng đã được chuyển giao cho kỹ thuật viên khác
+                    </h3>
+                    <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                      Khách hàng đã lựa chọn đổi sang kỹ thuật viên khác để tiếp tục xử lý công việc (do không thống nhất được chi phí phát sinh hoặc thay đổi kế hoạch).
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl bg-white border border-amber-200 p-3.5 text-xs text-slate-700 space-y-1.5 leading-relaxed">
+                  <p className="font-semibold text-slate-900">• Báo giá của bạn đã chính thức kết thúc tại đơn hàng này.</p>
+                  <p>• Nếu bạn đã tháo máy kiểm tra tại hiện trường, vui lòng hỗ trợ khách hàng lắp ráp lại nguyên trạng thiết bị.</p>
+                  <p>• Bạn có thể quay lại <strong>Sàn việc</strong> để tiếp tục nhận và nộp báo giá cho các đơn sửa chữa mới trong khu vực.</p>
+                </div>
               </div>
             );
           }
