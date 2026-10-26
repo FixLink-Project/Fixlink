@@ -17,14 +17,22 @@ confidence: verified
   - Tài khoản bị quản trị viên khóa do vi phạm quy chế hoặc có nghi vấn bảo mật. Vui lòng tạo phiếu hỗ trợ (Ticket) để nhân viên CSKH kiểm tra và hỗ trợ mở lại.
 
 ## 2. Sự cố của kỹ thuật viên (Thợ)
-- **Tại sao tôi bấm "Nhận việc" lại báo lỗi "Thợ chưa được xác minh danh tính" (403)?**
-  - Bạn chỉ có thể nhận việc khi hồ sơ KYC đã được Admin phê duyệt (`APPROVED`).
+- **Tại sao tôi gửi báo giá lại báo lỗi "Thợ chưa được xác minh danh tính" (403)?**
+  - Bạn chỉ gửi được báo giá khi hồ sơ KYC đã được Admin phê duyệt (`APPROVED`).
   - Vui lòng vào mục **Hồ sơ thợ** (`/tho/ho-so`), kiểm tra xem đã tải đủ 2 mặt CCCD và chọn đủ chuyên môn/khu vực chưa. Nếu trạng thái là `PENDING`, vui lòng đợi quản trị viên duyệt; nếu là `REJECTED`, hãy đọc kỹ lý do từ chối để bổ sung giấy tờ.
-- **Tại sao tôi bấm nhận việc bị báo lỗi 409 "JOB_ALREADY_TAKEN"?**
-  - Hệ thống FixLink vận hành theo cơ chế **ai nhận trước được việc trước**. Có một kỹ thuật viên khác đã bấm nhận việc trước bạn. Vui lòng quay lại danh sách việc và chọn yêu cầu khác.
+- **Tại sao báo giá của tôi không được chọn / bị chuyển sang "Từ chối"?**
+  - Khách hàng tự so sánh các báo giá và chọn một thợ; khi khách chọn thợ khác, các báo giá còn lại tự động chuyển sang `REJECTED`. Hãy tiếp tục báo giá các yêu cầu khác.
+- **Gửi báo giá báo "Yêu cầu không ở trạng thái nhận báo giá" hoặc "Đã hết hạn nhận báo giá"?**
+  - Đơn đã có thợ được chọn, đã hủy, hoặc đã quá hạn 3 ngày. Chỉ báo giá được đơn đang `OPEN` và còn hạn.
+- **Muốn đổi giá đã gửi?** Khi báo giá còn chờ khách duyệt, bạn sửa (trả giá lại) hoặc rút báo giá trong trang chi tiết yêu cầu.
 - **Tại sao tôi không thấy công việc nào mới trong bảng việc?**
-  - Kiểm tra xem bạn đã bật trạng thái **Trực tuyến (is_online)** chưa.
-  - Đảm bảo danh mục chuyên môn và các khu vực bạn đăng ký có khách hàng đang đăng yêu cầu.
+  - Bảng việc chỉ hiện yêu cầu đang `OPEN`, còn hạn 3 ngày, **khớp chuyên môn và khu vực** bạn đã đăng ký, và chỉ khi hồ sơ KYC đã `APPROVED`.
+  - Kiểm tra lại chuyên môn/khu vực trong hồ sơ `/tho/ho-so`; có thể hiện tại chưa có khách đăng yêu cầu phù hợp.
+  - Công tắc Trực tuyến chỉ thể hiện bạn sẵn sàng, không ảnh hưởng tới danh sách việc.
+- **Gửi báo giá báo "Chuyên môn/Khu vực của bạn không khớp"?**
+  - Yêu cầu thuộc danh mục hoặc khu vực bạn chưa đăng ký. Chỉ báo giá được việc đúng chuyên môn và khu vực.
+- **Đã được chọn nhưng không bấm được "Bắt đầu khảo sát"?**
+  - Bạn cần đặt lịch hẹn khảo sát với khách trên hệ thống trước; nút bắt đầu khảo sát chỉ mở sau khi đã có lịch hẹn.
 
 ## 3. Sự cố của khách hàng
 - **Tôi đã đăng yêu cầu nhưng chưa thấy thợ nào nhận?**

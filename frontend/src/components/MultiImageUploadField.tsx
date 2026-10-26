@@ -1,5 +1,5 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { uploadImageToFirebase, validateImageFile } from '../lib/firebaseStorage';
+import { uploadImageToCloudinary, validateImageFile } from '../lib/firebaseStorage';
 
 interface MultiImageUploadFieldProps {
   label: string;
@@ -51,7 +51,7 @@ export default function MultiImageUploadField({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const res = await uploadImageToFirebase(file, {
+        const res = await uploadImageToCloudinary(file, {
           onProgress: (p) => setProgress(Math.round(((i + p / 100) / files.length) * 100))
         });
         newUrls.push(res.url);

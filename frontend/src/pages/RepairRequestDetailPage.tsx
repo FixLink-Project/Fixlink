@@ -14,7 +14,7 @@ import RequestStatusStepper from '../components/RequestStatusStepper';
 import StatusChip from '../components/StatusChip';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
-import { ApiError, api, attachRequestMedia, createAppointment, createDepositPayment, createFinalPayment, fetchAdditionalCosts, fetchAppointmentsForRequest, formatCurrency, updateRequestStatus } from '../lib/api';
+import { ApiError, acceptQuotation, api, attachRequestMedia, createAppointment, createDepositPayment, createFinalPayment, fetchAdditionalCosts, fetchAppointmentsForRequest, formatCurrency, updateRequestStatus } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { AdditionalCost, Appointment, Bill, PaymentResult, Quotation, RepairRequestDetail } from '../lib/types';
 
@@ -38,6 +38,10 @@ export default function RepairRequestDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [showCancelForm, setShowCancelForm] = useState(false);
+
+  // Chọn báo giá của thợ
+  const [acceptingQuoteId, setAcceptingQuoteId] = useState<number | null>(null);
+  const [quoteActionError, setQuoteActionError] = useState<string | null>(null);
 
   // Appointments (RC-48)
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -163,6 +167,20 @@ export default function RepairRequestDetailPage() {
       setActionError(err instanceof ApiError ? err.message : 'Lỗi khi phát sóng bản nháp.');
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function handleAcceptQuotation(quotationId: number) {
+    if (!detail) return;
+    setAcceptingQuoteId(quotationId);
+    setQuoteActionError(null);
+    try {
+      await acceptQuotation(detail.request.id, quotationId);
+      await loadDetail();
+    } catch (err: any) {
+      setQuoteActionError(err instanceof ApiError ? err.message : 'Không thể chọn báo giá này.');
+    } finally {
+      setAcceptingQuoteId(null);
     }
   }
 
@@ -478,31 +496,61 @@ export default function RepairRequestDetailPage() {
           </div>
         </Card>
 
-        {/* Thợ đã nhận việc — mô hình "ai nhận trước được trước" */}
-        {detail.quotations.length > 0 && (
+        {/* Danh sách báo giá từ các thợ (Mô hình đấu thầu & chọn thợ) */}
+        {req.status === 'OPEN' && detail.quotations.length > 0 && (
           <Card
-            title="Thợ đã nhận việc"
-            description="Yêu cầu này đã có thợ nhận. Giá là mức khách đã ấn định, không thương lượng."
+            title={`Danh sách thợ báo giá & trả giá (${detail.quotations.length})`}
+            description="So sánh chi phí, phương án sửa chữa và kinh nghiệm của các thợ để chọn người phù hợp nhất."
           >
+            {quoteActionError && (
+              <div className="mb-4">
+                <Alert tone="error">{quoteActionError}</Alert>
+              </div>
+            )}
             <div className="grid gap-4 md:grid-cols-2">
               {detail.quotations.map((q) => (
+                <QuotationCard
+                  key={q.id}
+                  quotation={q}
+                  canAccept={req.status === 'OPEN'}
+                  isAccepting={acceptingQuoteId === q.id}
+                  onAccept={handleAcceptQuotation}
+                />
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Thợ kỹ thuật đã được chọn để thực hiện đơn */}
+        {req.status !== 'OPEN' && req.status !== 'DRAFT' && req.status !== 'CANCELLED' && detail.quotations.some((q) => q.status === 'ACCEPTED') && (
+          <Card
+            title="Thợ kỹ thuật thực hiện"
+            description="Báo giá và kỹ thuật viên đã được bạn lựa chọn thực hiện công việc."
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              {detail.quotations.filter((q) => q.status === 'ACCEPTED').map((q) => (
                 <QuotationCard key={q.id} quotation={q} />
               ))}
             </div>
           </Card>
         )}
 
+        {/* Đang chờ thợ gửi báo giá */}
         {detail.quotations.length === 0 && req.status === 'OPEN' && !isDraft && (
-          <Card title="Chờ thợ nhận việc">
-            <div className="py-6 text-center">
-              <span className="text-3xl">⏳</span>
-              <p className="mt-2 font-semibold text-slate-800">Đang chờ thợ nhận việc</p>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Yêu cầu đã được gửi tới các thợ phù hợp với giá{' '}
-                <strong>{formatCurrency(req.budgetRef)}</strong>. Thợ đầu tiên bấm nhận sẽ được giao việc
-                ngay, bạn không cần xác nhận thêm.
-                {req.applyDeadline && <> Thời hạn hiệu lực: {describeRemaining(req.applyDeadline)} trước khi yêu cầu tự hủy.</>}
+          <Card title="Chờ thợ gửi báo giá">
+            <div className="py-8 text-center max-w-md mx-auto">
+              <span className="text-4xl">⏳</span>
+              <p className="mt-3 font-bold text-slate-800 text-base">Đang phát sóng yêu cầu tới các thợ trong khu vực</p>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                Ngân sách dự kiến bạn đưa ra là{' '}
+                <strong className="text-brand">{formatCurrency(req.budgetRef)}</strong>. Khi các thợ gửi báo giá và phương án xử lý, danh sách báo giá sẽ lập tức hiển thị tại đây để bạn so sánh và chọn thợ.
               </p>
+              {req.applyDeadline && (
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-xs text-blue-700 font-medium">
+                  <span>⏱️</span>
+                  <span>Thời hạn nhận báo giá: {describeRemaining(req.applyDeadline)}</span>
+                </div>
+              )}
             </div>
           </Card>
         )}
@@ -857,15 +905,24 @@ function Row({ label, value, highlight = false }: { label: string; value: string
 }
 
 /**
- * Thẻ hiển thị thợ đã nhận việc. Không còn nút "Chọn thợ" vì mô hình mới không
- * có bước khách duyệt — thợ bấm nhận là xong.
+ * Thẻ hiển thị báo giá của từng thợ để khách hàng so sánh và chốt deal.
  */
-function QuotationCard({ quotation: q }: { quotation: Quotation }) {
+function QuotationCard({
+  quotation: q,
+  canAccept = false,
+  isAccepting = false,
+  onAccept
+}: {
+  quotation: Quotation;
+  canAccept?: boolean;
+  isAccepting?: boolean;
+  onAccept?: (id: number) => void;
+}) {
   const isAccepted = q.status === 'ACCEPTED';
 
   return (
     <div
-      className={`rounded-2xl border p-5 transition-all duration-200 ${
+      className={`rounded-2xl border p-5 transition-all duration-200 flex flex-col justify-between ${
         isAccepted
           ? 'border-brand bg-blue-50/60 shadow-sm ring-1 ring-brand'
           : q.status === 'REJECTED'
@@ -873,56 +930,70 @@ function QuotationCard({ quotation: q }: { quotation: Quotation }) {
             : 'border-slate-200 bg-white shadow-xs hover:border-brand/40 hover:shadow-card'
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 font-bold text-brand text-base">
-            {q.technicianName ? q.technicianName.charAt(0).toUpperCase() : 'T'}
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <p className="font-bold text-slate-900 text-sm">{q.technicianName ?? 'Thợ kỹ thuật'}</p>
-              <span className="text-blue-600 text-xs" title="Thợ đã xác minh eKYC">✓</span>
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 font-bold text-brand text-base">
+              {q.technicianName ? q.technicianName.charAt(0).toUpperCase() : 'T'}
             </div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-              {q.avgRating != null && (
-                <span className="font-semibold text-amber-600 flex items-center gap-0.5">
-                  ★ {q.avgRating.toFixed(1)}
-                </span>
-              )}
-              {q.completedJobs != null && <span>• {q.completedJobs} đơn</span>}
-              {q.yearsExperience != null && <span>• {q.yearsExperience} năm kn</span>}
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="font-bold text-slate-900 text-sm">{q.technicianName ?? 'Thợ kỹ thuật'}</p>
+                <span className="text-blue-600 text-xs" title="Thợ đã xác minh eKYC">✓</span>
+              </div>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                {q.avgRating != null && (
+                  <span className="font-semibold text-amber-600 flex items-center gap-0.5">
+                    ★ {q.avgRating.toFixed(1)}
+                  </span>
+                )}
+                {q.completedJobs != null && <span>• {q.completedJobs} đơn</span>}
+                {q.yearsExperience != null && <span>• {q.yearsExperience} năm kn</span>}
+              </div>
             </div>
           </div>
+          <StatusChip status={q.status} />
         </div>
-        <StatusChip status={q.status} />
+
+        <div className="mt-3.5 rounded-xl bg-slate-50 p-3 border border-slate-100">
+          <p className="text-xs font-semibold text-slate-500 mb-1">Phương án khắc phục:</p>
+          <p className="text-xs sm:text-sm text-slate-800 leading-relaxed">{q.solution}</p>
+        </div>
+
+        <div className="mt-3.5 space-y-1.5 text-xs sm:text-sm">
+          <div className="flex justify-between text-slate-600">
+            <span>Tiền công thợ</span>
+            <span className="font-medium text-slate-800">{formatCurrency(q.priceLaborVnd)}</span>
+          </div>
+          <div className="flex justify-between text-slate-600">
+            <span>Linh kiện & vật tư thay thế</span>
+            <span className="font-medium text-slate-800">{formatCurrency(q.priceMaterialsVnd)}</span>
+          </div>
+          <div className="flex justify-between border-t border-slate-200/80 pt-2 font-bold text-sm">
+            <span className="text-slate-900">Tổng chi phí</span>
+            <span className="text-base text-brand">{formatCurrency(q.totalPrice)}</span>
+          </div>
+        </div>
+
+        {q.note && (
+          <p className="mt-2.5 text-xs text-slate-500 italic">
+            Ghi chú: {q.note}
+          </p>
+        )}
       </div>
 
-      <div className="mt-3.5 rounded-xl bg-slate-50 p-3 border border-slate-100">
-        <p className="text-xs font-semibold text-slate-500 mb-1">Phương án khắc phục:</p>
-        <p className="text-xs sm:text-sm text-slate-800 leading-relaxed">{q.solution}</p>
-      </div>
-
-      <div className="mt-3.5 space-y-1.5 text-xs sm:text-sm">
-        <div className="flex justify-between text-slate-600">
-          <span>Tiền công thợ</span>
-          <span className="font-medium text-slate-800">{formatCurrency(q.priceLaborVnd)}</span>
+      {canAccept && q.status === 'PENDING' && (
+        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+          <Button
+            variant="primary"
+            loading={isAccepting}
+            onClick={() => onAccept?.(q.id)}
+            className="w-full sm:w-auto text-xs py-2 px-4 shadow-sm"
+          >
+            🤝 Chọn thợ này (Chốt deal)
+          </Button>
         </div>
-        <div className="flex justify-between text-slate-600">
-          <span>Linh kiện & vật tư thay thế</span>
-          <span className="font-medium text-slate-800">{formatCurrency(q.priceMaterialsVnd)}</span>
-        </div>
-        <div className="flex justify-between border-t border-slate-200/80 pt-2 font-bold text-sm">
-          <span className="text-slate-900">Tổng chi phí</span>
-          <span className="text-base text-brand">{formatCurrency(q.totalPrice)}</span>
-        </div>
-      </div>
-
-      {q.note && (
-        <p className="mt-2.5 text-xs text-slate-500 italic">
-          Ghi chú: {q.note}
-        </p>
       )}
-
     </div>
   );
 }

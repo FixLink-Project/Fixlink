@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchCategories } from '../lib/api';
+import { HOME_BY_ROLE, useAuth } from '../lib/auth';
 import type { ServiceCategory } from '../lib/types';
 
 // Danh sách các thiết bị & sự cố phổ biến
@@ -143,6 +144,7 @@ const VERIFIED_TECHNICIANS = [
 ];
 
 export default function HomePage() {
+  const { user } = useAuth();
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -199,21 +201,42 @@ export default function HomePage() {
 
           {/* Right Action Buttons */}
           <div className="flex items-center gap-3">
-            <Link
-              to="/login"
-              className="text-sm font-semibold text-slate-700 hover:text-brand transition-colors px-3 py-2"
-            >
-              Đăng nhập
-            </Link>
-            <Link
-              to="/dang-yeu-cau"
-              className="inline-flex items-center gap-2 rounded-xl bg-brand hover:bg-brand-strong text-white px-4 py-2 text-sm font-semibold shadow-sm hover:shadow-glow transition-all"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Đặt thợ ngay</span>
-            </Link>
+            {/* Đã đăng nhập thì hiện người dùng và lối về trang làm việc, không hiện nút "Đăng nhập". */}
+            {user ? (
+              <Link
+                to={HOME_BY_ROLE[user.role]}
+                aria-label={`Vào trang của tôi (${user.fullName?.trim() || user.username})`}
+                className="flex items-center gap-2.5 rounded-xl border border-slate-200/80 bg-slate-50 px-3 py-1.5 transition-colors hover:border-brand"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-light text-xs font-bold text-brand-strong">
+                  {user.fullName?.charAt(0) || user.username.charAt(0).toUpperCase()}
+                </span>
+                <span className="hidden text-left sm:block">
+                  <span className="block text-xs font-bold leading-tight text-ink">
+                    {user.fullName?.trim() || user.username}
+                  </span>
+                  <span className="block text-[11px] leading-tight text-ink-muted">Vào trang của tôi</span>
+                </span>
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                className="text-sm font-semibold text-slate-700 hover:text-brand transition-colors px-3 py-2"
+              >
+                Đăng nhập
+              </Link>
+            )}
+            {(!user || user.role === 'CUSTOMER') && (
+              <Link
+                to="/dang-yeu-cau"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand hover:bg-brand-strong text-white px-4 py-2 text-sm font-semibold shadow-sm hover:shadow-glow transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Đặt thợ ngay</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>

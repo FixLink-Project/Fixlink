@@ -588,10 +588,34 @@ public class RepairRequestService implements RepairRequestUseCase {
                     .map(this::toQuotationResponse)
                     .toList();
         } else if (isTechnician) {
-            // RC-39: Thợ chỉ nhìn thấy báo giá của chính mình (bảo mật giá cạnh tranh)
-            quotations = quotationRepo.findByRequestIdAndTechnicianId(requestId, userId)
-                    .map(this::toQuotationResponse)
-                    .stream().toList();
+            // Thợ xem công khai giá của tất cả các báo giá, nhưng đối thủ bị ẩn danh
+            List<QuotationJpaEntity> allQuotes = quotationRepo.findByRequestIdOrderByCreatedAtDesc(requestId);
+            List<QuotationResponse> result = new ArrayList<>();
+            int anonIndex = 1;
+            for (QuotationJpaEntity q : allQuotes) {
+                if (q.getTechnicianId().equals(userId)) {
+                    QuotationResponse mine = toQuotationResponse(q);
+                    mine.setIsMine(true);
+                    result.add(mine);
+                } else {
+                    BigDecimal total = (q.getPriceLaborVnd() != null ? q.getPriceLaborVnd() : BigDecimal.ZERO)
+                            .add(q.getPriceMaterialsVnd() != null ? q.getPriceMaterialsVnd() : BigDecimal.ZERO);
+                    result.add(QuotationResponse.builder()
+                            .id(q.getId())
+                            .requestId(q.getRequestId())
+                            .technicianId(null)
+                            .technicianName("Thợ ẩn danh #" + anonIndex++)
+                            .priceLaborVnd(q.getPriceLaborVnd())
+                            .priceMaterialsVnd(q.getPriceMaterialsVnd())
+                            .totalPrice(total)
+                            .solution(q.getSolution())
+                            .status(q.getStatus())
+                            .createdAt(q.getCreatedAt())
+                            .isMine(false)
+                            .build());
+                }
+            }
+            quotations = result;
         }
 
         List<WorkProgressResponse> progress = progressRepo.findByRequestIdOrderByCreatedAtAsc(requestId).stream()
