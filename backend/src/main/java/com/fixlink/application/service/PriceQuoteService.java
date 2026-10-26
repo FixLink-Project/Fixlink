@@ -34,6 +34,12 @@ public class PriceQuoteService {
                     "Yêu cầu không ở trạng thái mở để nhận báo giá.", 409);
         }
 
+        if (request.getBudgetRef() != null && request.getBudgetRef().compareTo(BigDecimal.ZERO) > 0
+                && price.compareTo(request.getBudgetRef()) > 0) {
+            throw new DomainException("PRICE_EXCEEDS_BUDGET",
+                    "Báo giá (" + price + " VNĐ) không được vượt quá trần ngân sách (" + request.getBudgetRef() + " VNĐ)", 400);
+        }
+
         quoteRepo.findByRequestIdAndTechnicianIdAndDeletedAtIsNull(requestId, technicianId)
                 .ifPresent(q -> {
                     throw new DomainException("QUOTE_ALREADY_EXISTS",

@@ -14,7 +14,7 @@ interface AppointmentCardProps {
 
 export default function AppointmentCard({
   appointment: appt,
-  currentUserRole: _currentUserRole,
+  currentUserRole,
   onUpdated
 }: AppointmentCardProps) {
   // Modal states
@@ -278,36 +278,54 @@ export default function AppointmentCard({
             🔒 Cuộc hẹn này đã ở trạng thái kết thúc ({appt.statusLabel || appt.status}), không thể thay đổi thêm.
           </span>
         ) : appt.status === 'PENDING_APPROVAL' ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="primary"
-              className="min-h-[36px] px-3.5 py-1 text-xs"
-              loading={submitting}
-              onClick={handleApprove}
-            >
-              ✓ Xác nhận lịch hẹn
-            </Button>
-            <Button
-              variant="danger"
-              className="min-h-[36px] px-3.5 py-1 text-xs"
-              onClick={() => {
-                setActionError(null);
-                setShowRejectModal(true);
-              }}
-            >
-              ✕ Từ chối
-            </Button>
-            <Button
-              variant="secondary"
-              className="min-h-[36px] px-3.5 py-1 text-xs"
-              onClick={() => {
-                setActionError(null);
-                setShowCancelModal(true);
-              }}
-            >
-              Hủy
-            </Button>
-          </div>
+          currentUserRole === 'CUSTOMER' || currentUserRole === 'ADMIN' ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="primary"
+                className="min-h-[36px] px-3.5 py-1 text-xs"
+                loading={submitting}
+                onClick={handleApprove}
+              >
+                ✓ Xác nhận lịch hẹn
+              </Button>
+              <Button
+                variant="danger"
+                className="min-h-[36px] px-3.5 py-1 text-xs"
+                onClick={() => {
+                  setActionError(null);
+                  setShowRejectModal(true);
+                }}
+              >
+                ✕ Từ chối
+              </Button>
+              <Button
+                variant="secondary"
+                className="min-h-[36px] px-3.5 py-1 text-xs"
+                onClick={() => {
+                  setActionError(null);
+                  setShowCancelModal(true);
+                }}
+              >
+                Hủy
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
+                <span>⏳</span> Đang chờ khách hàng xác nhận lịch hẹn
+              </span>
+              <Button
+                variant="secondary"
+                className="min-h-[36px] px-3.5 py-1 text-xs"
+                onClick={() => {
+                  setActionError(null);
+                  setShowCancelModal(true);
+                }}
+              >
+                Hủy lịch
+              </Button>
+            </div>
+          )
         ) : (
           <div className="flex flex-wrap items-center gap-2">
             {/* Đổi lịch hẹn */}
@@ -322,17 +340,19 @@ export default function AppointmentCard({
               🔄 Đổi lịch hẹn
             </Button>
 
-            {/* Hoàn thành cuộc hẹn */}
-            <Button
-              variant="primary"
-              className="min-h-[36px] px-3.5 py-1 text-xs"
-              onClick={() => {
-                setActionError(null);
-                setShowCompleteModal(true);
-              }}
-            >
-              ✓ Xác nhận hoàn thành
-            </Button>
+            {/* Hoàn thành cuộc hẹn: CHỈ THỢ VÀ ADMIN MỚI ĐƯỢC THỰC HIỆN */}
+            {(currentUserRole === 'TECHNICIAN' || currentUserRole === 'ADMIN') && (
+              <Button
+                variant="primary"
+                className="min-h-[36px] px-3.5 py-1 text-xs"
+                onClick={() => {
+                  setActionError(null);
+                  setShowCompleteModal(true);
+                }}
+              >
+                ✓ Xác nhận hoàn thành
+              </Button>
+            )}
 
             {/* Hủy cuộc hẹn */}
             <Button

@@ -21,7 +21,7 @@ import {
   withdrawQuotation
 } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import type { Appointment, Quotation, RepairRequestDetail } from '../lib/types';
+import { parseNumericUserId, type Appointment, type Quotation, type RepairRequestDetail } from '../lib/types';
 
 const TECHNICIAN_NAV = [
   { to: '/tho', label: 'Bảng điều khiển' },
@@ -86,7 +86,7 @@ export default function TechnicianRequestDetailPage() {
     setCreatingAppt(true);
     setCreateApptError(null);
     try {
-      const numericUserId = user?.id ? Number(user.id.replace('usr_', '')) : undefined;
+      const numericUserId = parseNumericUserId(user?.id) ?? undefined;
       await createAppointment({
         repairRequestId: detail.request.id,
         technicianId: numericUserId,
@@ -116,7 +116,7 @@ export default function TechnicianRequestDetailPage() {
   const [quoteSuccess, setQuoteSuccess] = useState<string | null>(null);
   const [withdrawingQuote, setWithdrawingQuote] = useState<boolean>(false);
 
-  const numericUserId = user?.id ? Number(user.id.replace('usr_', '')) : null;
+  const numericUserId = parseNumericUserId(user?.id);
 
   async function loadDetail(silent = false) {
     if (!silent) setLoading(true);
@@ -390,6 +390,38 @@ export default function TechnicianRequestDetailPage() {
                   {lifecycleError && (
                     <div className="mb-3">
                       <Alert tone="error">{lifecycleError}</Alert>
+                    </div>
+                  )}
+
+                  {req.status === 'ASSIGNED' && (
+                    <div className="rounded-xl bg-amber-50/90 border border-amber-300 p-4 space-y-2 mb-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-xl">⏳</span>
+                        <div>
+                          <p className="text-xs font-bold text-amber-950">
+                            Khách hàng chưa hoàn tất đặt cọc 30%
+                          </p>
+                          <p className="text-xs text-amber-900 mt-0.5 leading-relaxed">
+                            Yêu cầu đã được giao cho bạn. Bạn có thể chủ động liên hệ đặt lịch hẹn trước, nhưng vui lòng chỉ đến khảo sát sau khi khách hàng đã hoàn tất thanh toán cọc 30% ({formatCurrency(req.depositAmount > 0 ? req.depositAmount : Math.round(req.agreedPrice * 0.3))}) trên ứng dụng.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {req.status === 'DEPOSIT_PAID' && (
+                    <div className="rounded-xl bg-teal-50/90 border border-teal-300 p-4 space-y-2 mb-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-xl">✅</span>
+                        <div>
+                          <p className="text-xs font-bold text-teal-950">
+                            Khách hàng đã đặt cọc 30% thành công • Sẵn sàng khảo sát hiện trường
+                          </p>
+                          <p className="text-xs text-teal-900 mt-0.5 leading-relaxed">
+                            Khoản tiền cọc đã được hệ thống FixLink xác nhận. Bạn hãy lên lịch hẹn và đến hiện trường khảo sát thiết bị cho khách hàng.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -815,7 +847,7 @@ export default function TechnicianRequestDetailPage() {
 
         {/* Lịch hẹn làm việc / khảo sát (Chỉ hiển thị khi đã chốt thợ, ẩn hoàn toàn khi đang đấu giá) */}
         {(() => {
-          const numericUserId = user?.id ? Number(user.id.replace('usr_', '')) : null;
+          const numericUserId = parseNumericUserId(user?.id);
           const isAssignedToOther = detail.request.technicianId && numericUserId && detail.request.technicianId !== numericUserId;
           const isOpenForBidding = req.status === 'OPEN' || req.status === 'BIDDING_OPEN';
 

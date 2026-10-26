@@ -33,6 +33,12 @@ public interface QuotationUseCase {
 
     AcceptQuotationResponse accept(Long requestId, Long quotationId, Long customerId);
 
+    /**
+     * Khách hàng đổi sang thợ khác (từ báo giá đã nhận) khi đơn chưa thi công xong.
+     * Cho phép ở nhóm trạng thái: ASSIGNED, DEPOSIT_PAID, INSPECTING, AWAITING_COST_APPROVAL.
+     */
+    AcceptQuotationResponse switchTechnician(Long requestId, Long quotationId, Long customerId);
+
     @Data
     @Builder
     class CreateQuotationCommand {

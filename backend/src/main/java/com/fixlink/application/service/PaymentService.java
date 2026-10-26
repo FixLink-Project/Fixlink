@@ -15,6 +15,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -39,11 +40,13 @@ public class PaymentService {
                     "Yêu cầu phải ở trạng thái đã giao thợ để tạo đặt cọc.", 409);
         }
 
-        paymentRepo.findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.DEPOSIT)
-                .ifPresent(p -> {
-                    throw new DomainException("DEPOSIT_EXISTS",
-                            "Đã có khoản đặt cọc cho yêu cầu này.", 409);
-                });
+        Optional<PaymentJpaEntity> existingDeposit = paymentRepo
+                .findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.DEPOSIT);
+        if (existingDeposit.isPresent()) {
+            PaymentJpaEntity payment = existingDeposit.get();
+            return new PaymentResult(payment.getId(), payment.getQrUrl(), payment.getAmount(),
+                    payment.getTransferContent(), vietQRService.getBankInfo());
+        }
 
         BigDecimal agreedPrice = request.getAgreedPrice();
         if (agreedPrice == null || agreedPrice.signum() <= 0) {
@@ -91,11 +94,13 @@ public class PaymentService {
                     "Khoản đặt cọc chưa được xác nhận.", 409);
         }
 
-        paymentRepo.findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.FINAL)
-                .ifPresent(p -> {
-                    throw new DomainException("FINAL_PAYMENT_EXISTS",
-                            "Đã có khoản thanh toán tổng cho yêu cầu này.", 409);
-                });
+        Optional<PaymentJpaEntity> existingFinal = paymentRepo
+                .findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.FINAL);
+        if (existingFinal.isPresent()) {
+            PaymentJpaEntity payment = existingFinal.get();
+            return new PaymentResult(payment.getId(), payment.getQrUrl(), payment.getAmount(),
+                    payment.getTransferContent(), vietQRService.getBankInfo());
+        }
 
         BigDecimal additionalTotal = additionalCostService.getApprovedTotalByRequest(requestId);
         BigDecimal finalAmount = request.getAgreedPrice()

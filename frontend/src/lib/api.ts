@@ -157,6 +157,10 @@ export function acceptQuotation(requestId: number, quotationId: number): Promise
   return api.post<AcceptQuotationResult>(`/repair-requests/${requestId}/quotations/${quotationId}/accept`);
 }
 
+export function switchTechnician(requestId: number, quotationId: number): Promise<ApiResponse<AcceptQuotationResult>> {
+  return api.post<AcceptQuotationResult>(`/repair-requests/${requestId}/switch-technician/${quotationId}`);
+}
+
 /**
  * Thợ nhận việc (mô hình "ai nhận trước được trước").
  *

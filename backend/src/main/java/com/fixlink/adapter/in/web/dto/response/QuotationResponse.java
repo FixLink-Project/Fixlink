@@ -31,4 +31,5 @@ public class QuotationResponse {
     private QuotationStatus status;
     private LocalDateTime createdAt;
     private Boolean isMine;
+    private Boolean isSwitchable;
 }

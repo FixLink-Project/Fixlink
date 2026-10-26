@@ -12,6 +12,7 @@ import com.fixlink.application.port.in.AppointmentUseCase;
 import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.exception.ResourceNotFoundException;
 import com.fixlink.domain.model.AppointmentStatus;
+import com.fixlink.domain.model.RequestStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ public class AppointmentService implements AppointmentUseCase {
     private final SpringDataCustomerProfileRepository customerProfileRepo;
     private final SpringDataTechnicianProfileRepository techProfileRepo;
     private final SpringDataQuotationRepository quotationRepo;
+    private final PaymentService paymentService;
 
     @Override
     @Transactional
@@ -116,10 +118,15 @@ public class AppointmentService implements AppointmentUseCase {
                     "Lịch hẹn không ở trạng thái chờ xác nhận.", 400);
         }
 
-        // Người tạo không thể tự duyệt — bên kia mới được duyệt
-        if (actorId.equals(appointment.getCreatedBy())) {
-            throw new DomainException("INVALID_OPERATION",
-                    "Bạn không thể tự xác nhận lịch hẹn do mình tạo. Bên còn lại cần xác nhận.", 403);
+        // Rule: Chỉ khách hàng mới có quyền xác nhận lịch hẹn. Kỹ thuật viên không được xác nhận lịch hẹn.
+        if (!"CUSTOMER".equalsIgnoreCase(role) && !"ADMIN".equalsIgnoreCase(role)) {
+            throw new DomainException("ACCESS_DENIED",
+                    "Chỉ khách hàng mới có quyền xác nhận lịch hẹn. Kỹ thuật viên không được xác nhận lịch hẹn.", 403);
+        }
+
+        if (!"ADMIN".equalsIgnoreCase(role) && !actorId.equals(appointment.getCustomerId())) {
+            throw new DomainException("ACCESS_DENIED",
+                    "Chỉ khách hàng của đơn này mới có quyền xác nhận lịch hẹn.", 403);
         }
 
         checkParticipantAccess(appointment, actorId, role);
@@ -127,7 +134,16 @@ public class AppointmentService implements AppointmentUseCase {
         appointment.setStatus(AppointmentStatus.CONFIRMED);
         appointment.setUpdatedBy(actorId);
         appointment = appointmentRepo.save(appointment);
-        log.info("Appointment #{} approved by actor #{}", appointment.getId(), actorId);
+        log.info("Appointment #{} approved by customer #{}", appointment.getId(), actorId);
+
+        // Rule: Tự động tạo mã QR đặt cọc khi khách hàng đã xác nhận lịch hẹn
+        try {
+            paymentService.createDepositPayment(appointment.getRepairRequestId(), appointment.getCustomerId());
+            log.info("Auto-generated deposit payment for request #{} after appointment #{} approved",
+                    appointment.getRepairRequestId(), appointment.getId());
+        } catch (Exception e) {
+            log.info("Deposit payment auto-creation on appointment approval info: {}", e.getMessage());
+        }
 
         return toResponse(appointment);
     }
@@ -191,6 +207,17 @@ public class AppointmentService implements AppointmentUseCase {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lịch hẹn"));
 
         checkParticipantAccess(appointment, actorId, role);
+
+        // Rule: Chỉ có thợ (hoặc ADMIN) mới được nhấn hoàn thành công việc / lịch hẹn
+        if (!"TECHNICIAN".equalsIgnoreCase(role) && !"ADMIN".equalsIgnoreCase(role)) {
+            throw new DomainException("ACCESS_DENIED",
+                    "Chỉ có kỹ thuật viên mới được hoàn thành công việc / lịch hẹn.", 403);
+        }
+
+        if (!"ADMIN".equalsIgnoreCase(role) && !actorId.equals(appointment.getTechnicianId())) {
+            throw new DomainException("ACCESS_DENIED",
+                    "Chỉ kỹ thuật viên phụ trách mới có quyền hoàn thành công việc / lịch hẹn.", 403);
+        }
 
         if (!appointment.getStatus().canTransitionTo(AppointmentStatus.COMPLETED)) {
             throw new DomainException("INVALID_OPERATION",

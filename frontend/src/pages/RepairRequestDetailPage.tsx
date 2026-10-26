@@ -14,9 +14,9 @@ import RequestStatusStepper from '../components/RequestStatusStepper';
 import StatusChip from '../components/StatusChip';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
-import { ApiError, acceptQuotation, api, attachRequestMedia, createAppointment, createDepositPayment, createFinalPayment, fetchAdditionalCosts, fetchAppointmentsForRequest, formatCurrency, updateRequestStatus } from '../lib/api';
+import { ApiError, acceptQuotation, api, attachRequestMedia, confirmPayment, createAppointment, createDepositPayment, createFinalPayment, fetchAdditionalCosts, fetchAppointmentsForRequest, fetchPayments, formatCurrency, switchTechnician, updateRequestStatus } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import type { AdditionalCost, Appointment, Bill, PaymentResult, Quotation, RepairRequestDetail } from '../lib/types';
+import type { AdditionalCost, Appointment, Bill, Payment, PaymentResult, Quotation, RepairRequestDetail } from '../lib/types';
 
 const CUSTOMER_NAV = [
   { to: '/khach-hang', label: 'Bảng điều khiển' },
@@ -43,6 +43,10 @@ export default function RepairRequestDetailPage() {
   const [acceptingQuoteId, setAcceptingQuoteId] = useState<number | null>(null);
   const [quoteActionError, setQuoteActionError] = useState<string | null>(null);
 
+  // Đổi thợ (Switch Technician)
+  const [switchingQuoteId, setSwitchingQuoteId] = useState<number | null>(null);
+  const [showSwitchConfirmModal, setShowSwitchConfirmModal] = useState<Quotation | null>(null);
+
   // Appointments (RC-48)
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [showCreateApptModal, setShowCreateApptModal] = useState(false);
@@ -64,6 +68,12 @@ export default function RepairRequestDetailPage() {
   const [qrPayment, setQrPayment] = useState<PaymentResult | null>(null);
   const [creatingPayment, setCreatingPayment] = useState(false);
   const [approvedCostTotal, setApprovedCostTotal] = useState(0);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [autoDepositQR, setAutoDepositQR] = useState<PaymentResult | null>(null);
+  const [loadingDepositQR, setLoadingDepositQR] = useState(false);
+  const [autoFinalQR, setAutoFinalQR] = useState<PaymentResult | null>(null);
+  const [loadingFinalQR, setLoadingFinalQR] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
 
   // Kích hoạt bản nháp
   const [publishing, setPublishing] = useState(false);
@@ -129,6 +139,9 @@ export default function RepairRequestDetailPage() {
       .finally(() => setLoading(false));
 
     if (id) {
+      fetchPayments(Number(id))
+        .then((res) => setPayments(res.data || []))
+        .catch(() => setPayments([]));
       fetchAppointmentsForRequest(Number(id))
         .then((res) => setAppointments(res.data || []))
         .catch(() => setAppointments([]));
@@ -140,6 +153,47 @@ export default function RepairRequestDetailPage() {
           setApprovedCostTotal(total);
         })
         .catch(() => setApprovedCostTotal(0));
+    }
+  }
+
+  // Tự động tải/tạo mã QR đặt cọc khi đã có lịch hẹn CONFIRMED hoặc khi ở trạng thái AWAITING_ACCEPTANCE
+  const hasConfirmedAppointment = appointments.some((a) => a.status === 'CONFIRMED');
+  const depositPaidSoFar = detail?.request.depositAmount && detail.request.depositAmount > 0;
+
+  useEffect(() => {
+    if (!detail) return;
+    const currentReq = detail.request;
+
+    // Rule: Tự động tạo mã QR đặt cọc khi khách hàng đã xác nhận lịch hẹn
+    if (currentReq.status === 'ASSIGNED' && hasConfirmedAppointment && !depositPaidSoFar && !autoDepositQR && !loadingDepositQR) {
+      setLoadingDepositQR(true);
+      createDepositPayment(currentReq.id)
+        .then((res) => setAutoDepositQR(res.data))
+        .catch((err) => console.warn('Auto deposit QR notice:', err))
+        .finally(() => setLoadingDepositQR(false));
+    }
+
+    // Rule: Sau khi đã sửa chữa xong (AWAITING_ACCEPTANCE) sẽ có mã QR tự động để thanh toán
+    if (currentReq.status === 'AWAITING_ACCEPTANCE' && !autoFinalQR && !loadingFinalQR) {
+      setLoadingFinalQR(true);
+      createFinalPayment(currentReq.id)
+        .then((res) => setAutoFinalQR(res.data))
+        .catch((err) => console.warn('Auto final QR notice:', err))
+        .finally(() => setLoadingFinalQR(false));
+    }
+  }, [detail?.request.status, hasConfirmedAppointment, depositPaidSoFar, autoDepositQR, autoFinalQR, loadingDepositQR, loadingFinalQR]);
+
+  async function handleConfirmInlinePayment(paymentId: number) {
+    setConfirmingPayment(true);
+    setActionError(null);
+    try {
+      await confirmPayment(paymentId);
+      loadDetail();
+      setLifecycleMessage('Xác nhận thanh toán thành công!');
+    } catch (err: any) {
+      setActionError(err.message || 'Xác nhận thanh toán thất bại.');
+    } finally {
+      setConfirmingPayment(false);
     }
   }
 
@@ -181,6 +235,23 @@ export default function RepairRequestDetailPage() {
       setQuoteActionError(err instanceof ApiError ? err.message : 'Không thể chọn báo giá này.');
     } finally {
       setAcceptingQuoteId(null);
+    }
+  }
+
+  async function handleSwitchTechnician(quotationId: number) {
+    if (!detail) return;
+    setSwitchingQuoteId(quotationId);
+    setActionError(null);
+    setLifecycleMessage(null);
+    try {
+      const res = await switchTechnician(detail.request.id, quotationId);
+      setShowSwitchConfirmModal(null);
+      await loadDetail();
+      setLifecycleMessage(`Đã đổi sang thợ ${res.data.technicianName} thành công.`);
+    } catch (err: any) {
+      setActionError(err?.message || 'Có lỗi xảy ra khi đổi thợ.');
+    } finally {
+      setSwitchingQuoteId(null);
     }
   }
 
@@ -275,6 +346,12 @@ export default function RepairRequestDetailPage() {
   const canCancel = !['IN_PROGRESS', 'AWAITING_ACCEPTANCE', 'COMPLETED', 'CANCELLED'].includes(req.status);
   const isDraft = req.status === 'DRAFT';
 
+  // Nhóm trạng thái (Status Grouping Pattern)
+  const canInspect = req.status === 'ASSIGNED' || req.status === 'DEPOSIT_PAID';
+  const canSwitchTechnician = ['ASSIGNED', 'DEPOSIT_PAID', 'INSPECTING', 'AWAITING_COST_APPROVAL'].includes(req.status);
+  const otherQuotes = detail.quotations.filter((q) => q.technicianId !== req.technicianId && q.status !== 'ACCEPTED');
+  const currentSelectedQuote = detail.quotations.find((q) => q.status === 'ACCEPTED' || q.technicianId === req.technicianId);
+
   // Lấy danh sách ảnh tổng hợp (từ media hoặc mediaUrls)
   const displayPhotos: string[] = req.media && req.media.length > 0
     ? req.media.map(m => m.url)
@@ -319,6 +396,36 @@ export default function RepairRequestDetailPage() {
           onPublishDraft={handlePublishDraft}
           publishing={publishing}
         />
+
+        {/* BANNER HƯỚNG DẪN CỌC 30% ĐỂ MỞ TIẾN TRÌNH KHẢO SÁT */}
+        {req.status === 'ASSIGNED' && (
+          <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-4 shadow-sm flex items-start gap-3 animate-scale-in">
+            <span className="text-2xl">⏳</span>
+            <div>
+              <h3 className="font-display font-bold text-amber-950 text-sm">
+                Vui lòng thanh toán cọc 30% để mở nút bắt đầu khảo sát
+              </h3>
+              <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                Đơn hàng đã được bàn giao cho kỹ thuật viên <strong>{currentSelectedQuote?.technicianName || 'phụ trách'}</strong>. Sau khi hoàn tất đặt cọc 30% ({formatCurrency(req.depositAmount > 0 ? req.depositAmount : Math.round(req.agreedPrice * 0.3))}), thợ sẽ liên hệ đặt lịch và bắt đầu khảo sát hiện trường.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* BANNER THÔNG BÁO ĐÃ CỌC VÀ CHỜ THỢ KHẢO SÁT */}
+        {req.status === 'DEPOSIT_PAID' && (
+          <div className="rounded-2xl border-2 border-teal-300 bg-teal-50/90 p-4 shadow-sm flex items-start gap-3 animate-scale-in">
+            <span className="text-2xl">✅</span>
+            <div>
+              <h3 className="font-display font-bold text-teal-950 text-sm">
+                Đã thanh toán tiền cọc 30% thành công • Sẵn sàng khảo sát hiện trường
+              </h3>
+              <p className="text-xs text-teal-800 mt-1 leading-relaxed">
+                Khoản đặt cọc được FixLink bảo chứng an toàn. Kỹ thuật viên đã được kích hoạt quyền bắt đầu khảo sát và sẽ kiểm tra thiết bị theo lịch hẹn đã thống nhất.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* KHỐI 1: KHÁCH DUYỆT BÁO GIÁ PHÁT SINH KHI KHẢO SÁT */}
         {req.status === 'AWAITING_COST_APPROVAL' && (
@@ -373,43 +480,61 @@ export default function RepairRequestDetailPage() {
         )}
 
         {/* KHỐI 2: KHÁCH NGHIỆM THU THIẾT BỊ KHI SỬA XONG */}
-        {req.status === 'AWAITING_ACCEPTANCE' && (
-          <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/90 p-5 shadow-sm space-y-3.5 animate-scale-in">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">📋</span>
-              <div>
-                <h3 className="font-display font-bold text-emerald-950 text-base">
-                  Kỹ thuật viên đã hoàn thành sửa chữa & Mời bạn nghiệm thu
-                </h3>
-                <p className="text-xs text-emerald-800 mt-0.5">
-                  Thiết bị đã được lắp ráp hoàn chỉnh và chạy thử nghiệm xong.
-                </p>
-              </div>
-            </div>
+        {req.status === 'AWAITING_ACCEPTANCE' && (() => {
+          const depositPaid = req.depositAmount > 0 ? req.depositAmount : Math.round(req.agreedPrice * 0.3);
+          const remaining = Math.max(0, req.agreedPrice + approvedCostTotal - depositPaid);
+          const finalPaymentItem = payments.find((p) => p.paymentType === 'FINAL');
+          const isFinalPaid = remaining <= 0 || (finalPaymentItem ? finalPaymentItem.status === 'CONFIRMED' : false);
 
-            <p className="text-xs text-emerald-900 leading-relaxed">
-              Quý khách vui lòng trực tiếp kiểm tra thiết bị xem đã hoạt động ổn định và hài lòng chưa. Sau khi bạn xác nhận nghiệm thu đạt, tiền công sẽ được giải ngân cho thợ và <strong>Bảo hành điện tử 90 ngày</strong> sẽ được kích hoạt ngay lập tức.
-            </p>
-
-            <div className="space-y-3 border-t border-emerald-200/80 pt-3">
-              <div className="rounded-xl border border-emerald-200 bg-white/80 p-4">
-                <p className="text-sm font-bold text-slate-800">Đánh giá bắt buộc trước khi hoàn tất</p>
-                <div className="mt-2 flex items-center gap-1" role="radiogroup" aria-label="Chấm điểm thợ từ 1 đến 5 sao">
-                  {[1, 2, 3, 4, 5].map((star) => <button key={star} type="button" role="radio" aria-checked={reviewRating === star} aria-label={`${star} sao`} disabled={reviewSubmitted} onClick={() => setReviewRating(star)} className={`text-2xl transition ${star <= reviewRating ? 'text-amber-500' : 'text-slate-300'} disabled:cursor-default`}>★</button>)}
-                  <span className="ml-2 text-sm font-semibold text-slate-600">{reviewRating}/5</span>
+          return (
+            <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/90 p-5 shadow-sm space-y-3.5 animate-scale-in">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📋</span>
+                <div>
+                  <h3 className="font-display font-bold text-emerald-950 text-base">
+                    Kỹ thuật viên đã hoàn thành sửa chữa & Mời bạn nghiệm thu
+                  </h3>
+                  <p className="text-xs text-emerald-800 mt-0.5">
+                    Thiết bị đã được lắp ráp hoàn chỉnh và chạy thử nghiệm xong.
+                  </p>
                 </div>
-                <textarea value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} disabled={reviewSubmitted} maxLength={2000} rows={3} placeholder="Chia sẻ trải nghiệm sửa chữa của bạn..." className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-50" />
-                {reviewSubmitted && <p className="mt-1 text-xs font-medium text-emerald-700">Đã lưu đánh giá của bạn.</p>}
               </div>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <span className="text-xs font-semibold text-emerald-800">⭐ Tổng chi phí quyết toán: <strong>{formatCurrency(req.agreedPrice)}</strong></span>
-                <Button variant="primary" loading={updatingLifecycle} onClick={() => handleCustomerAction('COMPLETED', 'Khách hàng đã nghiệm thu thiết bị đạt chuẩn và hoàn tất đơn')} className="text-xs py-2.5 px-5 shadow-md bg-emerald-600 hover:bg-emerald-700">
-                  {reviewSubmitted ? 'Nghiệm thu đạt & Hoàn tất đơn' : 'Gửi đánh giá & Hoàn tất đơn'}
-                </Button>
-              </div>
+
+              {!isFinalPaid ? (
+                <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 flex items-center gap-2.5 shadow-xs">
+                  <span className="text-2xl">🔒</span>
+                  <div>
+                    <strong className="font-bold text-amber-950">Chưa hoàn tất thanh toán phần còn lại:</strong> Quý khách vui lòng quét mã QR và xác nhận thanh toán ở khối <em>Thanh toán chi phí còn lại</em> phía dưới trước khi tiến hành nghiệm thu và hoàn tất yêu cầu.
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-emerald-900 leading-relaxed">
+                    Quý khách vui lòng trực tiếp kiểm tra thiết bị xem đã hoạt động ổn định và hài lòng chưa. Sau khi bạn xác nhận nghiệm thu đạt, tiền công sẽ được giải ngân cho thợ và <strong>Bảo hành điện tử 90 ngày</strong> sẽ được kích hoạt ngay lập tức.
+                  </p>
+
+                  <div className="space-y-3 border-t border-emerald-200/80 pt-3">
+                    <div className="rounded-xl border border-emerald-200 bg-white/80 p-4">
+                      <p className="text-sm font-bold text-slate-800">Đánh giá bắt buộc trước khi hoàn tất</p>
+                      <div className="mt-2 flex items-center gap-1" role="radiogroup" aria-label="Chấm điểm thợ từ 1 đến 5 sao">
+                        {[1, 2, 3, 4, 5].map((star) => <button key={star} type="button" role="radio" aria-checked={reviewRating === star} aria-label={`${star} sao`} disabled={reviewSubmitted} onClick={() => setReviewRating(star)} className={`text-2xl transition ${star <= reviewRating ? 'text-amber-500' : 'text-slate-300'} disabled:cursor-default`}>★</button>)}
+                        <span className="ml-2 text-sm font-semibold text-slate-600">{reviewRating}/5</span>
+                      </div>
+                      <textarea value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} disabled={reviewSubmitted} maxLength={2000} rows={3} placeholder="Chia sẻ trải nghiệm sửa chữa của bạn..." className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-50" />
+                      {reviewSubmitted && <p className="mt-1 text-xs font-medium text-emerald-700">Đã lưu đánh giá của bạn.</p>}
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <span className="text-xs font-semibold text-emerald-800">⭐ Tổng chi phí quyết toán: <strong>{formatCurrency(req.agreedPrice + approvedCostTotal)}</strong></span>
+                      <Button variant="primary" loading={updatingLifecycle} onClick={() => handleCustomerAction('COMPLETED', 'Khách hàng đã nghiệm thu thiết bị đạt chuẩn và hoàn tất đơn')} className="text-xs py-2.5 px-5 shadow-md bg-emerald-600 hover:bg-emerald-700">
+                        {reviewSubmitted ? 'Nghiệm thu đạt & Hoàn tất đơn' : 'Gửi đánh giá & Hoàn tất đơn'}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* KHỐI 3: PHIẾU BẢO HÀNH ĐIỆN TỬ KHI ĐÃ HOÀN THÀNH */}
         {req.status === 'COMPLETED' && (
@@ -535,6 +660,26 @@ export default function RepairRequestDetailPage() {
           </Card>
         )}
 
+        {/* KHỐI ĐỔI THỢ NẾU CHƯA THI CÔNG XONG */}
+        {canSwitchTechnician && otherQuotes.length > 0 && (
+          <Card
+            title={`Các thợ khác đã gửi báo giá (${otherQuotes.length})`}
+            description="Nếu kỹ thuật viên hiện tại chưa phù hợp hoặc trễ hẹn, bạn có thể đổi sang thợ khác dưới đây bất kỳ lúc nào trước khi thi công."
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              {otherQuotes.map((q) => (
+                <QuotationCard
+                  key={q.id}
+                  quotation={q}
+                  canSwitch={true}
+                  isSwitching={switchingQuoteId === q.id}
+                  onSwitch={() => setShowSwitchConfirmModal(q)}
+                />
+              ))}
+            </div>
+          </Card>
+        )}
+
         {/* Đang chờ thợ gửi báo giá */}
         {detail.quotations.length === 0 && req.status === 'OPEN' && !isDraft && (
           <Card title="Chờ thợ gửi báo giá">
@@ -565,15 +710,77 @@ export default function RepairRequestDetailPage() {
 
         {/* Đặt cọc QR khi đã giao thợ */}
         {req.status === 'ASSIGNED' && (
-          <Card title="Thanh toán đặt cọc">
-            <div className="space-y-3 text-center py-4">
-              <p className="text-sm text-ink-soft">
-                Yêu cầu đã được giao cho thợ. Vui lòng đặt cọc <strong>30%</strong> để thợ bắt đầu khảo sát.
+          <Card title="Thanh toán đặt cọc (30%)">
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-slate-600 text-center">
+                Yêu cầu đã được giao cho thợ. Vui lòng đặt cọc <strong>30%</strong> để thợ tiến hành khảo sát và thi công.
               </p>
-              <p className="text-lg font-bold text-brand">{formatCurrency(Math.round(req.agreedPrice * 0.3))}</p>
-              <Button loading={creatingPayment} onClick={handleCreateDeposit}>
-                Tạo QR đặt cọc
-              </Button>
+              <div className="text-center font-bold text-2xl text-blue-700">
+                {formatCurrency(Math.round(req.agreedPrice * 0.3))}
+              </div>
+
+              {!hasConfirmedAppointment ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 text-center space-y-1">
+                  <p className="font-semibold text-sm">⏳ Lịch hẹn đang chờ bạn xác nhận</p>
+                  <p className="text-amber-700">
+                    Chỉ khách hàng mới có quyền xác nhận lịch hẹn. Vui lòng bấm <strong>✓ Xác nhận lịch hẹn</strong> ở khối <em>Lịch hẹn khảo sát & thi công</em> bên dưới. Sau khi xác nhận, mã QR đặt cọc 30% sẽ tự động được hiển thị tại đây.
+                  </p>
+                </div>
+              ) : loadingDepositQR ? (
+                <div className="py-8 text-center text-sm text-slate-500 animate-pulse">
+                  ⏳ Đang tự động tạo mã QR đặt cọc...
+                </div>
+              ) : autoDepositQR ? (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-5 space-y-4 max-w-md mx-auto">
+                  <div className="flex justify-center">
+                    <img
+                      src={autoDepositQR.qrUrl}
+                      alt="Mã QR đặt cọc VietQR"
+                      className="w-56 h-56 rounded-xl border border-slate-200 bg-white shadow-sm p-1"
+                    />
+                  </div>
+                  <div className="space-y-2 rounded-xl bg-white p-4 text-xs border border-slate-100 shadow-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Ngân hàng</span>
+                      <span className="font-semibold text-slate-800">{autoDepositQR.bankInfo.bankName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Số tài khoản</span>
+                      <span className="font-mono font-bold text-slate-900">{autoDepositQR.bankInfo.accountNo}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Chủ tài khoản</span>
+                      <span className="font-semibold text-slate-800">{autoDepositQR.bankInfo.accountName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Số tiền đặt cọc</span>
+                      <span className="font-bold text-blue-700">{formatCurrency(autoDepositQR.amount)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Nội dung CK</span>
+                      <span className="font-mono font-bold text-blue-900">{autoDepositQR.transferContent}</span>
+                    </div>
+                  </div>
+                  <p className="text-center text-xs text-slate-500">
+                    Quét mã QR trên app ngân hàng của bạn, sau đó bấm nút xác nhận dưới đây:
+                  </p>
+                  <Button
+                    variant="primary"
+                    fullWidth
+                    loading={confirmingPayment}
+                    onClick={() => handleConfirmInlinePayment(autoDepositQR.paymentId)}
+                    className="py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700"
+                  >
+                    ✓ Tôi đã chuyển khoản đặt cọc thành công
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <Button loading={creatingPayment} onClick={handleCreateDeposit}>
+                    Tạo lại QR đặt cọc
+                  </Button>
+                </div>
+              )}
             </div>
           </Card>
         )}
@@ -581,38 +788,99 @@ export default function RepairRequestDetailPage() {
         {/* Thanh toán tổng khi chờ nghiệm thu */}
         {req.status === 'AWAITING_ACCEPTANCE' && (() => {
           const depositPaid = req.depositAmount > 0 ? req.depositAmount : Math.round(req.agreedPrice * 0.3);
-          const remaining = req.agreedPrice + approvedCostTotal - depositPaid;
+          const remaining = Math.max(0, req.agreedPrice + approvedCostTotal - depositPaid);
+          const finalPaymentItem = payments.find((p) => p.paymentType === 'FINAL');
+          const finalPaid = remaining <= 0 || (finalPaymentItem ? finalPaymentItem.status === 'CONFIRMED' : false);
+
           return (
-            <Card title="Thanh toán tổng">
+            <Card title="Thanh toán chi phí còn lại (Tất toán)">
               <div className="space-y-4 py-2">
-                <p className="text-sm text-ink-soft text-center">
-                  Sửa chữa đã hoàn tất. Thanh toán phần còn lại sau khi trừ đặt cọc.
+                <p className="text-sm text-slate-600 text-center">
+                  Kỹ thuật viên đã hoàn thành công việc sửa chữa. Vui lòng thanh toán phần chi phí còn lại trước khi tiến hành nghiệm thu và hoàn tất đơn.
                 </p>
-                <div className="mx-auto max-w-sm space-y-2 text-sm">
+                <div className="mx-auto max-w-sm space-y-2 text-sm bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <div className="flex justify-between">
-                    <span className="text-ink-soft">Giá deal</span>
-                    <span className="font-medium text-ink">{formatCurrency(req.agreedPrice)}</span>
+                    <span className="text-slate-500">Giá thỏa thuận</span>
+                    <span className="font-medium text-slate-800">{formatCurrency(req.agreedPrice)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-ink-soft">Đã cọc</span>
-                    <span className="font-medium text-danger">-{formatCurrency(depositPaid)}</span>
+                    <span className="text-slate-500">Đã đặt cọc (30%)</span>
+                    <span className="font-medium text-emerald-700">-{formatCurrency(depositPaid)}</span>
                   </div>
                   {approvedCostTotal > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-ink-soft">Phát sinh</span>
+                      <span className="text-slate-500">Chi phí phát sinh được duyệt</span>
                       <span className="font-medium text-amber-600">+{formatCurrency(approvedCostTotal)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between border-t border-line pt-2">
-                    <span className="font-bold text-ink">Còn phải trả</span>
-                    <span className="text-lg font-bold text-brand">{formatCurrency(Math.max(0, remaining))}</span>
+                  <div className="flex justify-between border-t border-slate-200 pt-2 font-bold">
+                    <span className="text-slate-800">Còn phải thanh toán</span>
+                    <span className="text-lg font-bold text-blue-700">{formatCurrency(remaining)}</span>
                   </div>
                 </div>
-                <div className="text-center">
-                  <Button loading={creatingPayment} onClick={handleCreateFinal}>
-                    Tạo QR thanh toán tổng
-                  </Button>
-                </div>
+
+                {finalPaid ? (
+                  <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-center text-xs text-emerald-900 space-y-1">
+                    <p className="font-bold text-sm text-emerald-800">✅ Đã thanh toán phần chi phí còn lại thành công!</p>
+                    <p className="text-emerald-700">
+                      Bạn đã hoàn tất thanh toán. Vui lòng kiểm tra thiết bị và tiến hành nghiệm thu, đánh giá ở khối <strong>Khách nghiệm thu thiết bị</strong> phía trên.
+                    </p>
+                  </div>
+                ) : loadingFinalQR ? (
+                  <div className="py-8 text-center text-sm text-slate-500 animate-pulse">
+                    ⏳ Đang tự động tạo mã QR thanh toán tổng...
+                  </div>
+                ) : autoFinalQR ? (
+                  <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-5 space-y-4 max-w-md mx-auto">
+                    <div className="flex justify-center">
+                      <img
+                        src={autoFinalQR.qrUrl}
+                        alt="Mã QR thanh toán tổng VietQR"
+                        className="w-56 h-56 rounded-xl border border-slate-200 bg-white shadow-sm p-1"
+                      />
+                    </div>
+                    <div className="space-y-2 rounded-xl bg-white p-4 text-xs border border-slate-100 shadow-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Ngân hàng</span>
+                        <span className="font-semibold text-slate-800">{autoFinalQR.bankInfo.bankName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Số tài khoản</span>
+                        <span className="font-mono font-bold text-slate-900">{autoFinalQR.bankInfo.accountNo}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Chủ tài khoản</span>
+                        <span className="font-semibold text-slate-800">{autoFinalQR.bankInfo.accountName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Số tiền còn lại</span>
+                        <span className="font-bold text-blue-700">{formatCurrency(autoFinalQR.amount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Nội dung CK</span>
+                        <span className="font-mono font-bold text-blue-900">{autoFinalQR.transferContent}</span>
+                      </div>
+                    </div>
+                    <p className="text-center text-xs text-slate-500">
+                      Quét mã QR để chuyển khoản phần còn lại, sau đó bấm xác nhận:
+                    </p>
+                    <Button
+                      variant="primary"
+                      fullWidth
+                      loading={confirmingPayment}
+                      onClick={() => handleConfirmInlinePayment(autoFinalQR.paymentId)}
+                      className="py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700"
+                    >
+                      ✓ Tôi đã chuyển khoản phần còn lại thành công
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <Button loading={creatingPayment} onClick={handleCreateFinal}>
+                      Tạo lại QR thanh toán tổng
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           );
@@ -652,7 +920,7 @@ export default function RepairRequestDetailPage() {
             title="Lịch hẹn khảo sát & thi công"
             description="Quản lý vòng đời trạng thái cuộc hẹn giữa bạn và kỹ thuật viên."
             actions={
-              req.technicianId ? (
+              canInspect && req.technicianId ? (
                 <Button
                   variant="primary"
                   className="min-h-[36px] px-3.5 py-1 text-xs"
@@ -874,6 +1142,63 @@ export default function RepairRequestDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Xác nhận đổi thợ */}
+      {showSwitchConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-in">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-900 text-base">Xác nhận đổi thợ</h3>
+              <button
+                type="button"
+                onClick={() => setShowSwitchConfirmModal(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm text-slate-700">
+              <p>
+                Bạn có chắc chắn muốn chuyển giao yêu cầu này sang cho thợ{' '}
+                <strong className="text-slate-900">{showSwitchConfirmModal.technicianName}</strong>?
+              </p>
+              <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Giá báo mới:</span>
+                  <span className="font-bold text-brand">{formatCurrency(showSwitchConfirmModal.totalPrice)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Tiền cọc (30%):</span>
+                  <span className="font-medium text-slate-800">
+                    {formatCurrency(Math.round(showSwitchConfirmModal.totalPrice * 0.3))}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                ⚠️ Thợ mới sẽ tiếp nhận đơn và bắt đầu khảo sát thiết bị theo phương án đã báo giá.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setShowSwitchConfirmModal(null)}
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                variant="primary"
+                loading={switchingQuoteId === showSwitchConfirmModal.id}
+                onClick={() => handleSwitchTechnician(showSwitchConfirmModal.id)}
+              >
+                Xác nhận đổi thợ
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
@@ -911,12 +1236,18 @@ function QuotationCard({
   quotation: q,
   canAccept = false,
   isAccepting = false,
-  onAccept
+  onAccept,
+  canSwitch = false,
+  isSwitching = false,
+  onSwitch
 }: {
   quotation: Quotation;
   canAccept?: boolean;
   isAccepting?: boolean;
   onAccept?: (id: number) => void;
+  canSwitch?: boolean;
+  isSwitching?: boolean;
+  onSwitch?: (id: number) => void;
 }) {
   const isAccepted = q.status === 'ACCEPTED';
 
@@ -991,6 +1322,19 @@ function QuotationCard({
             className="w-full sm:w-auto text-xs py-2 px-4 shadow-sm"
           >
             🤝 Chọn thợ này (Chốt deal)
+          </Button>
+        </div>
+      )}
+
+      {canSwitch && q.status !== 'ACCEPTED' && (
+        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+          <Button
+            variant="secondary"
+            loading={isSwitching}
+            onClick={() => onSwitch?.(q.id)}
+            className="w-full sm:w-auto text-xs py-2 px-4 shadow-sm border-blue-300 text-blue-700 bg-blue-50/60 hover:bg-blue-100"
+          >
+            🔄 Đổi sang thợ này
           </Button>
         </div>
       )}

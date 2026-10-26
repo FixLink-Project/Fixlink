@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -137,9 +138,9 @@ class AppointmentLifecycleIntegrationTest {
                 .notes("Khách ở nhà buổi sáng từ 9h đến 11h")
                 .build();
 
-        // Khách tạo → PENDING_APPROVAL
+        // Thợ tạo lịch hẹn khảo sát → PENDING_APPROVAL
         MvcResult res = mockMvc.perform(post("/api/v1/appointments")
-                        .header("Authorization", "Bearer " + customerToken)
+                        .header("Authorization", "Bearer " + tech01Token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
@@ -153,12 +154,21 @@ class AppointmentLifecycleIntegrationTest {
         sharedAppointmentId = objectMapper.readTree(json).path("data").path("id").asLong();
         assertNotNull(sharedAppointmentId);
 
-        // Thợ approve → CONFIRMED
+        // Thợ không được duyệt lịch hẹn → 403 Forbidden
         mockMvc.perform(patch("/api/v1/appointments/" + sharedAppointmentId + "/approve")
                         .header("Authorization", "Bearer " + tech01Token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status", is("CONFIRMED")))
-                .andExpect(jsonPath("$.data.statusLabel", is("Đã xác nhận")));
+                .andExpect(status().isForbidden());
+
+        // Khách duyệt lịch hẹn → CONFIRMED
+        MvcResult approveRes = mockMvc.perform(patch("/api/v1/appointments/" + sharedAppointmentId + "/approve")
+                        .header("Authorization", "Bearer " + customerToken))
+                .andReturn();
+        if (approveRes.getResponse().getStatus() != 200) {
+            System.err.println("APPROVE ERROR STATUS: " + approveRes.getResponse().getStatus());
+            System.err.println("APPROVE ERROR BODY: " + approveRes.getResponse().getContentAsString());
+        }
+        assertEquals(200, approveRes.getResponse().getStatus());
+        assertEquals("CONFIRMED", objectMapper.readTree(approveRes.getResponse().getContentAsString()).path("data").path("status").asText());
     }
 
     @Test

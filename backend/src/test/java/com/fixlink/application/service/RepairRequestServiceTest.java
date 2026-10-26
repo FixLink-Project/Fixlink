@@ -64,6 +64,12 @@ class RepairRequestServiceTest {
     private SpringDataCustomerProfileRepository customerProfileRepo;
 
     @Mock
+    private SpringDataPaymentRepository paymentRepo;
+
+    @Mock
+    private PaymentService paymentService;
+
+    @Mock
     private RepairRequestMapper repairRequestMapper;
 
     @InjectMocks

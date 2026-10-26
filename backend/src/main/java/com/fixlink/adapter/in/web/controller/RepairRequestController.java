@@ -272,6 +272,19 @@ public class RepairRequestController {
         return ResponseEntity.ok(ApiResponse.success("Bạn đã nhận việc thành công", result));
     }
 
+    @PostMapping("/{requestId}/switch-technician/{quotationId}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(summary = "Khách hàng đổi sang thợ khác (từ báo giá đã nhận)")
+    public ResponseEntity<ApiResponse<AcceptQuotationResponse>> switchTechnician(
+            @PathVariable String requestId,
+            @PathVariable Long quotationId,
+            @AuthenticationPrincipal UserPrincipal user
+    ) {
+        AcceptQuotationResponse result =
+                quotationUseCase.switchTechnician(parseRequestId(requestId), quotationId, requireUserId(user));
+        return ResponseEntity.ok(ApiResponse.success("Đổi thợ thành công", result));
+    }
+
     @GetMapping("/matching")
     @PreAuthorize("hasRole('TECHNICIAN')")
     @Operation(summary = "Yêu cầu phù hợp với thợ (TECHNICIAN)",
