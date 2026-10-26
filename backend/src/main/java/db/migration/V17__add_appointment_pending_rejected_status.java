@@ -13,29 +13,33 @@ public class V17__add_appointment_pending_rejected_status extends BaseJavaMigrat
     @Override
     public void migrate(Context context) throws Exception {
         try (Statement stmt = context.getConnection().createStatement()) {
-            // Collect all CHECK constraint names on the appointments table
             List<String> toDrop = new ArrayList<>();
             try (ResultSet rs = stmt.executeQuery(
-                    "SELECT constraint_name FROM information_schema.table_constraints " +
-                    "WHERE LOWER(table_name) = 'appointments' AND constraint_type = 'CHECK'")) {
+                    "SELECT con.conname " +
+                    "FROM pg_catalog.pg_constraint con " +
+                    "JOIN pg_catalog.pg_class rel ON rel.oid = con.conrelid " +
+                    "JOIN pg_catalog.pg_namespace nsp ON nsp.oid = rel.relnamespace " +
+                    "WHERE rel.relname = 'appointments' " +
+                    "AND nsp.nspname = 'public' " +
+                    "AND con.contype = 'c'")) {
                 while (rs.next()) {
-                    String name = rs.getString("constraint_name");
+                    String name = rs.getString("conname");
                     if (name.toLowerCase().contains("appointment_type")) continue;
                     toDrop.add(name);
                 }
             }
 
-            // Drop the old CHECK constraints on status
             for (String name : toDrop) {
-                stmt.execute("ALTER TABLE appointments DROP CONSTRAINT " + name);
+                stmt.execute("ALTER TABLE appointments DROP CONSTRAINT IF EXISTS " + name);
             }
 
-            // Add the new named CHECK with expanded status values
-            stmt.execute("ALTER TABLE appointments ADD CONSTRAINT appointments_status_check " +
+            stmt.execute("DO $$ BEGIN " +
+                    "IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'appointments_status_check') THEN " +
+                    "ALTER TABLE appointments ADD CONSTRAINT appointments_status_check " +
                     "CHECK (status IN ('PENDING_APPROVAL', 'CONFIRMED', 'REJECTED', " +
-                    "'RESCHEDULED', 'COMPLETED', 'CANCELLED'))");
+                    "'RESCHEDULED', 'COMPLETED', 'CANCELLED')); " +
+                    "END IF; END $$");
 
-            // Update the default
             stmt.execute("ALTER TABLE appointments ALTER COLUMN status SET DEFAULT 'PENDING_APPROVAL'");
         }
     }
