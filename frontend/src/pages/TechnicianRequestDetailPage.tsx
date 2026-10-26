@@ -393,7 +393,7 @@ export default function TechnicianRequestDetailPage() {
                     </div>
                   )}
 
-                  {req.status === 'ASSIGNED' && (
+                  {(req.status === 'ASSIGNED' || req.status === 'DEPOSIT_PAID') && (
                     !hasActiveAppointment ? (
                       <div className="rounded-xl bg-amber-50/90 border border-amber-300 p-4 space-y-3">
                         <div className="flex items-start gap-2.5">

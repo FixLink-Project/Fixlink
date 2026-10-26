@@ -9,7 +9,9 @@ import com.fixlink.application.port.in.RepairRequestUseCase;
 import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.exception.ResourceNotFoundException;
 import com.fixlink.domain.model.QuotationStatus;
+import com.fixlink.domain.model.RepairRequest;
 import com.fixlink.domain.model.RequestStatus;
+import com.fixlink.domain.model.Role;
 import com.fixlink.domain.model.UserStatus;
 import com.fixlink.domain.model.VerificationStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -420,5 +422,26 @@ class RepairRequestServiceTest {
         assertNotNull(detail);
         assertEquals(100L, detail.getRequest().getId());
         assertEquals("Sửa máy giặt LG", detail.getRequest().getTitle());
+    }
+
+    @Test
+    @DisplayName("Thợ có thể chuyển trạng thái từ DEPOSIT_PAID sang INSPECTING")
+    void testUpdateStatus_TechnicianFromDepositPaidToInspecting() {
+        sampleRequest.setStatus(RequestStatus.DEPOSIT_PAID);
+        sampleRequest.setTechnicianId(2L);
+        when(requestRepo.findById(100L)).thenReturn(Optional.of(sampleRequest));
+        when(requestRepo.save(any(RepairRequestJpaEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repairRequestMapper.toDomain(any(RepairRequestJpaEntity.class))).thenReturn(
+                RepairRequest.builder().id(100L).status(RequestStatus.INSPECTING).build()
+        );
+
+        var cmd = new RepairRequestUseCase.UpdateStatusCommand(
+                100L, RequestStatus.INSPECTING, "Bắt đầu khảo sát", 2L, Role.TECHNICIAN
+        );
+
+        var result = service.updateStatus(cmd);
+
+        assertEquals(RequestStatus.INSPECTING, result.request().getStatus());
+        verify(progressRepo, times(1)).save(any(WorkProgressJpaEntity.class));
     }
 }
