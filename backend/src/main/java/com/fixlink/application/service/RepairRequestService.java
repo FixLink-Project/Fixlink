@@ -310,7 +310,8 @@ public class RepairRequestService implements RepairRequestUseCase {
                 throw new InvalidStateTransitionException(currentStatus, targetStatus);
             }
         } else if (command.actorRole() == Role.TECHNICIAN) {
-            boolean startInspecting = targetStatus == RequestStatus.INSPECTING && currentStatus == RequestStatus.ASSIGNED;
+            boolean startInspecting = targetStatus == RequestStatus.INSPECTING
+                    && (currentStatus == RequestStatus.ASSIGNED || currentStatus == RequestStatus.DEPOSIT_PAID);
             boolean startRepair = targetStatus == RequestStatus.IN_PROGRESS && currentStatus == RequestStatus.INSPECTING;
             boolean requestCostApproval = targetStatus == RequestStatus.AWAITING_COST_APPROVAL && currentStatus == RequestStatus.INSPECTING;
             boolean requestAcceptance = targetStatus == RequestStatus.AWAITING_ACCEPTANCE && currentStatus == RequestStatus.IN_PROGRESS;

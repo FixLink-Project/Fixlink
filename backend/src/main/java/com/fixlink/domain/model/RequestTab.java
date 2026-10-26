@@ -21,6 +21,7 @@ public enum RequestTab {
     )),
     IN_PROGRESS("Đang thực hiện", Set.of(
             RequestStatus.ASSIGNED,
+            RequestStatus.DEPOSIT_PAID,
             RequestStatus.INSPECTING,
             RequestStatus.AWAITING_COST_APPROVAL,
             RequestStatus.IN_PROGRESS,

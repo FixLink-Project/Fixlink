@@ -237,7 +237,7 @@ export default function RequestStatusStepper({
                           ? 'bg-emerald-500'
                           : isCurrent
                           ? 'bg-gradient-to-r from-emerald-500 to-slate-200'
-                          : 'bg-slate-100'
+                          : 'bg-slate-200'
                       }`}
                     />
                   )}
