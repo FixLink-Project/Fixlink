@@ -124,7 +124,7 @@ class AppointmentLifecycleIntegrationTest {
 
     @Test
     @Order(1)
-    @DisplayName("TC-48-01: Tạo lịch hẹn mới thành công -> Trạng thái ban đầu CONFIRMED")
+    @DisplayName("TC-48-01: Tạo lịch hẹn mới -> PENDING_APPROVAL, bên kia approve -> CONFIRMED")
     void test01_CreateAppointment_Success_StatusConfirmed() throws Exception {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         LocalTime appointmentTime = LocalTime.of(9, 30);
@@ -137,13 +137,14 @@ class AppointmentLifecycleIntegrationTest {
                 .notes("Khách ở nhà buổi sáng từ 9h đến 11h")
                 .build();
 
+        // Khách tạo → PENDING_APPROVAL
         MvcResult res = mockMvc.perform(post("/api/v1/appointments")
                         .header("Authorization", "Bearer " + customerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.status", is("CONFIRMED")))
-                .andExpect(jsonPath("$.data.statusLabel", is("Đã xác nhận")))
+                .andExpect(jsonPath("$.data.status", is("PENDING_APPROVAL")))
+                .andExpect(jsonPath("$.data.statusLabel", is("Chờ xác nhận")))
                 .andExpect(jsonPath("$.data.repairRequestId", is(testRequestId.intValue())))
                 .andExpect(jsonPath("$.data.scheduledDate", is(tomorrow.toString())))
                 .andReturn();
@@ -151,6 +152,13 @@ class AppointmentLifecycleIntegrationTest {
         String json = res.getResponse().getContentAsString();
         sharedAppointmentId = objectMapper.readTree(json).path("data").path("id").asLong();
         assertNotNull(sharedAppointmentId);
+
+        // Thợ approve → CONFIRMED
+        mockMvc.perform(patch("/api/v1/appointments/" + sharedAppointmentId + "/approve")
+                        .header("Authorization", "Bearer " + tech01Token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status", is("CONFIRMED")))
+                .andExpect(jsonPath("$.data.statusLabel", is("Đã xác nhận")));
     }
 
     @Test
@@ -265,11 +273,12 @@ class AppointmentLifecycleIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createReq)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.status", is("PENDING_APPROVAL")))
                 .andReturn();
 
         Long cancelApptId = objectMapper.readTree(res.getResponse().getContentAsString()).path("data").path("id").asLong();
 
-        // Khách hủy cuộc hẹn kèm lý do
+        // Hủy từ trạng thái PENDING_APPROVAL (không cần approve trước)
         CancelAppointmentRequest cancelReq = CancelAppointmentRequest.builder()
                 .cancelReason("Khách có việc đột xuất phải đi công tác gấp")
                 .build();

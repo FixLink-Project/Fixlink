@@ -85,6 +85,29 @@ public class AppointmentController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách lịch hẹn của tôi thành công", result));
     }
 
+    @PatchMapping("/api/v1/appointments/{id}/approve")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Xác nhận lịch hẹn do bên kia tạo (PENDING_APPROVAL → CONFIRMED)")
+    public ResponseEntity<ApiResponse<AppointmentResponse>> approve(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal user
+    ) {
+        AppointmentResponse result = appointmentUseCase.approveAppointment(id, user.getId(), user.getRole().name());
+        return ResponseEntity.ok(ApiResponse.success("Đã xác nhận lịch hẹn", result));
+    }
+
+    @PatchMapping("/api/v1/appointments/{id}/reject")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Từ chối lịch hẹn do bên kia tạo (PENDING_APPROVAL → REJECTED)")
+    public ResponseEntity<ApiResponse<AppointmentResponse>> reject(
+            @PathVariable Long id,
+            @Valid @RequestBody CancelAppointmentRequest req,
+            @AuthenticationPrincipal UserPrincipal user
+    ) {
+        AppointmentResponse result = appointmentUseCase.rejectAppointment(id, req.getCancelReason(), user.getId(), user.getRole().name());
+        return ResponseEntity.ok(ApiResponse.success("Đã từ chối lịch hẹn", result));
+    }
+
     @PatchMapping("/api/v1/appointments/{id}/reschedule")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Đổi lịch hẹn sang ngày giờ mới (RESCHEDULED)")

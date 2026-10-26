@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import AdditionalCostPanel from '../components/AdditionalCostPanel';
 import Alert from '../components/Alert';
 import AppointmentCard from '../components/AppointmentCard';
+import BillView from '../components/BillView';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import DashboardLayout from '../components/DashboardLayout';
 import MultiImageUploadField from '../components/MultiImageUploadField';
+import PriceQuoteList from '../components/PriceQuoteList';
+import QRPaymentModal from '../components/QRPaymentModal';
 import RequestStatusStepper from '../components/RequestStatusStepper';
 import StatusChip from '../components/StatusChip';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
-import { ApiError, acceptQuotation, api, attachRequestMedia, createAppointment, fetchAppointmentsForRequest, formatCurrency, updateRequestStatus } from '../lib/api';
-import type { Appointment, Quotation, RepairRequestDetail } from '../lib/types';
+import { ApiError, acceptQuotation, api, attachRequestMedia, createAppointment, createDepositPayment, createFinalPayment, fetchAdditionalCosts, fetchAppointmentsForRequest, formatCurrency, updateRequestStatus } from '../lib/api';
+import { useAuth } from '../lib/auth';
+import type { AdditionalCost, Appointment, Bill, PaymentResult, Quotation, RepairRequestDetail } from '../lib/types';
 
 const CUSTOMER_NAV = [
   { to: '/khach-hang', label: 'Bảng điều khiển' },
@@ -21,6 +26,10 @@ const CUSTOMER_NAV = [
 
 export default function RepairRequestDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const currentRole = user?.role ?? 'CUSTOMER';
+  const isCustomer = currentRole === 'CUSTOMER';
+  const isTechnician = currentRole === 'TECHNICIAN';
 
   const [detail, setDetail] = useState<RepairRequestDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +59,11 @@ export default function RepairRequestDetailPage() {
   const [showAttachModal, setShowAttachModal] = useState(false);
   const [additionalMediaUrls, setAdditionalMediaUrls] = useState<string[]>([]);
   const [attaching, setAttaching] = useState(false);
+
+  // QR Payment
+  const [qrPayment, setQrPayment] = useState<PaymentResult | null>(null);
+  const [creatingPayment, setCreatingPayment] = useState(false);
+  const [approvedCostTotal, setApprovedCostTotal] = useState(0);
 
   // Kích hoạt bản nháp
   const [publishing, setPublishing] = useState(false);
@@ -118,6 +132,14 @@ export default function RepairRequestDetailPage() {
       fetchAppointmentsForRequest(Number(id))
         .then((res) => setAppointments(res.data || []))
         .catch(() => setAppointments([]));
+      fetchAdditionalCosts(Number(id))
+        .then((res) => {
+          const total = (res.data || [])
+            .filter((c: AdditionalCost) => c.status === 'APPROVED')
+            .reduce((sum: number, c: AdditionalCost) => sum + c.amount, 0);
+          setApprovedCostTotal(total);
+        })
+        .catch(() => setApprovedCostTotal(0));
     }
   }
 
@@ -198,6 +220,39 @@ export default function RepairRequestDetailPage() {
     } finally {
       setCreatingAppt(false);
     }
+  }
+
+  async function handleCreateDeposit() {
+    if (!detail) return;
+    setCreatingPayment(true);
+    setActionError(null);
+    try {
+      const res = await createDepositPayment(detail.request.id);
+      setQrPayment(res.data);
+    } catch (err: any) {
+      setActionError(err.message || 'Không tạo được QR đặt cọc.');
+    } finally {
+      setCreatingPayment(false);
+    }
+  }
+
+  async function handleCreateFinal() {
+    if (!detail) return;
+    setCreatingPayment(true);
+    setActionError(null);
+    try {
+      const res = await createFinalPayment(detail.request.id);
+      setQrPayment(res.data);
+    } catch (err: any) {
+      setActionError(err.message || 'Không tạo được QR thanh toán.');
+    } finally {
+      setCreatingPayment(false);
+    }
+  }
+
+  function handlePaymentConfirmed(_bill: Bill) {
+    setQrPayment(null);
+    loadDetail();
   }
 
   if (loading) {
@@ -500,6 +555,97 @@ export default function RepairRequestDetailPage() {
           </Card>
         )}
 
+        {/* Báo giá deal giá (Price Quotes) */}
+        <PriceQuoteList
+          requestId={req.id}
+          isCustomer={isCustomer}
+          requestStatus={req.status}
+          onQuoteAccepted={loadDetail}
+        />
+
+        {/* Đặt cọc QR khi đã giao thợ */}
+        {req.status === 'ASSIGNED' && (
+          <Card title="Thanh toán đặt cọc">
+            <div className="space-y-3 text-center py-4">
+              <p className="text-sm text-ink-soft">
+                Yêu cầu đã được giao cho thợ. Vui lòng đặt cọc <strong>30%</strong> để thợ bắt đầu khảo sát.
+              </p>
+              <p className="text-lg font-bold text-brand">{formatCurrency(Math.round(req.agreedPrice * 0.3))}</p>
+              <Button loading={creatingPayment} onClick={handleCreateDeposit}>
+                Tạo QR đặt cọc
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Thanh toán tổng khi chờ nghiệm thu */}
+        {req.status === 'AWAITING_ACCEPTANCE' && (() => {
+          const depositPaid = req.depositAmount > 0 ? req.depositAmount : Math.round(req.agreedPrice * 0.3);
+          const remaining = req.agreedPrice + approvedCostTotal - depositPaid;
+          return (
+            <Card title="Thanh toán tổng">
+              <div className="space-y-4 py-2">
+                <p className="text-sm text-ink-soft text-center">
+                  Sửa chữa đã hoàn tất. Thanh toán phần còn lại sau khi trừ đặt cọc.
+                </p>
+                <div className="mx-auto max-w-sm space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-ink-soft">Giá deal</span>
+                    <span className="font-medium text-ink">{formatCurrency(req.agreedPrice)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-ink-soft">Đã cọc</span>
+                    <span className="font-medium text-danger">-{formatCurrency(depositPaid)}</span>
+                  </div>
+                  {approvedCostTotal > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-ink-soft">Phát sinh</span>
+                      <span className="font-medium text-amber-600">+{formatCurrency(approvedCostTotal)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between border-t border-line pt-2">
+                    <span className="font-bold text-ink">Còn phải trả</span>
+                    <span className="text-lg font-bold text-brand">{formatCurrency(Math.max(0, remaining))}</span>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <Button loading={creatingPayment} onClick={handleCreateFinal}>
+                    Tạo QR thanh toán tổng
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          );
+        })()}
+
+        {/* Chi phí phát sinh */}
+        {['INSPECTING', 'DEPOSIT_PAID', 'IN_PROGRESS', 'AWAITING_COST_APPROVAL', 'AWAITING_ACCEPTANCE', 'COMPLETED'].includes(req.status) && (
+          <AdditionalCostPanel
+            requestId={req.id}
+            isTechnician={isTechnician}
+            isCustomer={isCustomer}
+            onCostChanged={loadDetail}
+          />
+        )}
+
+        {/* Hóa đơn */}
+        {['DEPOSIT_PAID', 'INSPECTING', 'IN_PROGRESS', 'AWAITING_COST_APPROVAL', 'AWAITING_ACCEPTANCE', 'COMPLETED'].includes(req.status) && (
+          <BillView requestId={req.id} />
+        )}
+
+        {/* QR Payment Modal */}
+        {qrPayment && (
+          <QRPaymentModal
+            paymentId={qrPayment.paymentId}
+            qrUrl={qrPayment.qrUrl}
+            amount={qrPayment.amount}
+            transferContent={qrPayment.transferContent}
+            bankInfo={qrPayment.bankInfo}
+            onClose={() => setQrPayment(null)}
+            onConfirmed={handlePaymentConfirmed}
+          />
+        )}
+
         {/* Lịch hẹn khảo sát / thi công (Jira RC-48: Appointment Status Lifecycle) */}
         {(req.technicianId || appointments.length > 0) && (
           <Card
@@ -530,7 +676,7 @@ export default function RepairRequestDetailPage() {
                   <AppointmentCard
                     key={appt.id}
                     appointment={appt}
-                    currentUserRole="CUSTOMER"
+                    currentUserRole={currentRole as 'CUSTOMER' | 'TECHNICIAN' | 'ADMIN'}
                     onUpdated={loadDetail}
                   />
                 ))}
