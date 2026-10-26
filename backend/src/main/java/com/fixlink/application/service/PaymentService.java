@@ -8,6 +8,7 @@ import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.model.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -74,7 +75,7 @@ public class PaymentService {
                 transferContent, vietQRService.getBankInfo());
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PaymentResult createFinalPayment(Long requestId, Long userId) {
         RepairRequestJpaEntity request = findRequest(requestId);
         verifyCustomerOwnership(request, userId);
@@ -84,15 +85,11 @@ public class PaymentService {
                     "Yêu cầu phải ở trạng thái chờ nghiệm thu để tạo thanh toán tổng.", 409);
         }
 
-        PaymentJpaEntity deposit = paymentRepo
+        BigDecimal depositAmount = paymentRepo
                 .findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.DEPOSIT)
-                .orElseThrow(() -> new DomainException("DEPOSIT_NOT_FOUND",
-                        "Chưa đặt cọc cho yêu cầu này.", 409));
-
-        if (deposit.getStatus() != PaymentStatus.CONFIRMED) {
-            throw new DomainException("DEPOSIT_NOT_CONFIRMED",
-                    "Khoản đặt cọc chưa được xác nhận.", 409);
-        }
+                .filter(d -> d.getStatus() == PaymentStatus.CONFIRMED)
+                .map(PaymentJpaEntity::getAmount)
+                .orElse(request.getDepositAmount() != null ? request.getDepositAmount() : BigDecimal.ZERO);
 
         Optional<PaymentJpaEntity> existingFinal = paymentRepo
                 .findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.FINAL);
@@ -105,7 +102,7 @@ public class PaymentService {
         BigDecimal additionalTotal = additionalCostService.getApprovedTotalByRequest(requestId);
         BigDecimal finalAmount = request.getAgreedPrice()
                 .add(additionalTotal)
-                .subtract(deposit.getAmount());
+                .subtract(depositAmount);
 
         if (finalAmount.signum() < 0) {
             finalAmount = BigDecimal.ZERO;

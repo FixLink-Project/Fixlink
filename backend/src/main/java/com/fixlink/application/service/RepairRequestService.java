@@ -327,7 +327,7 @@ public class RepairRequestService implements RepairRequestUseCase {
             }
         } else if (command.actorRole() == Role.TECHNICIAN) {
             boolean startInspecting = targetStatus == RequestStatus.INSPECTING
-                    && (currentStatus == RequestStatus.ASSIGNED || currentStatus == RequestStatus.DEPOSIT_PAID);
+                    && currentStatus == RequestStatus.DEPOSIT_PAID;
             boolean startRepair = targetStatus == RequestStatus.IN_PROGRESS && currentStatus == RequestStatus.INSPECTING;
             boolean requestCostApproval = targetStatus == RequestStatus.AWAITING_COST_APPROVAL && currentStatus == RequestStatus.INSPECTING;
             boolean requestAcceptance = targetStatus == RequestStatus.AWAITING_ACCEPTANCE && currentStatus == RequestStatus.IN_PROGRESS;
@@ -340,8 +340,9 @@ public class RepairRequestService implements RepairRequestUseCase {
         // Cập nhật giá mới nếu có (khi báo giá phát sinh hoặc khách duyệt)
         if (command.newAgreedPrice() != null && command.newAgreedPrice().compareTo(java.math.BigDecimal.ZERO) > 0) {
             entity.setAgreedPrice(command.newAgreedPrice());
-            entity.setDepositAmount(command.newAgreedPrice().multiply(java.math.BigDecimal.valueOf(0.3))
-                    .setScale(0, java.math.RoundingMode.CEILING));
+            // Quy tắc bất biến Hexagonal Domain:
+            // Tiền cọc đã chốt và thanh toán ở đợt 1 (30% giá gốc) KHÔNG được tính lại khi có chi phí phát sinh linh kiện.
+            // Số tiền phát sinh sẽ được thanh toán trong đợt tất toán cuối cùng (Final Payment).
         }
 
         entity.setStatus(targetStatus);

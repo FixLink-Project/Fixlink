@@ -158,14 +158,13 @@ export default function RepairRequestDetailPage() {
 
   // Tự động tải/tạo mã QR đặt cọc khi đã có lịch hẹn CONFIRMED hoặc khi ở trạng thái AWAITING_ACCEPTANCE
   const hasConfirmedAppointment = appointments.some((a) => a.status === 'CONFIRMED');
-  const depositPaidSoFar = detail?.request.depositAmount && detail.request.depositAmount > 0;
 
   useEffect(() => {
     if (!detail) return;
     const currentReq = detail.request;
 
-    // Rule: Tự động tạo mã QR đặt cọc khi khách hàng đã xác nhận lịch hẹn
-    if (currentReq.status === 'ASSIGNED' && hasConfirmedAppointment && !depositPaidSoFar && !autoDepositQR && !loadingDepositQR) {
+    // Rule: Tự động tạo mã QR đặt cọc khi khách hàng đã xác nhận lịch hẹn và đang ở trạng thái ASSIGNED (chờ cọc)
+    if (currentReq.status === 'ASSIGNED' && hasConfirmedAppointment && !autoDepositQR && !loadingDepositQR) {
       setLoadingDepositQR(true);
       createDepositPayment(currentReq.id)
         .then((res) => setAutoDepositQR(res.data))
@@ -173,7 +172,7 @@ export default function RepairRequestDetailPage() {
         .finally(() => setLoadingDepositQR(false));
     }
 
-    // Rule: Sau khi đã sửa chữa xong (AWAITING_ACCEPTANCE) sẽ có mã QR tự động để thanh toán
+    // Rule: Sau khi đã sửa chữa xong (AWAITING_ACCEPTANCE) sẽ có mã QR tự động để thanh toán tất toán
     if (currentReq.status === 'AWAITING_ACCEPTANCE' && !autoFinalQR && !loadingFinalQR) {
       setLoadingFinalQR(true);
       createFinalPayment(currentReq.id)
@@ -181,7 +180,7 @@ export default function RepairRequestDetailPage() {
         .catch((err) => console.warn('Auto final QR notice:', err))
         .finally(() => setLoadingFinalQR(false));
     }
-  }, [detail?.request.status, hasConfirmedAppointment, depositPaidSoFar, autoDepositQR, autoFinalQR, loadingDepositQR, loadingFinalQR]);
+  }, [detail?.request.status, hasConfirmedAppointment, autoDepositQR, autoFinalQR, loadingDepositQR, loadingFinalQR]);
 
   async function handleConfirmInlinePayment(paymentId: number) {
     setConfirmingPayment(true);

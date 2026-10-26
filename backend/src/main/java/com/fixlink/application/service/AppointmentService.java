@@ -12,7 +12,6 @@ import com.fixlink.application.port.in.AppointmentUseCase;
 import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.exception.ResourceNotFoundException;
 import com.fixlink.domain.model.AppointmentStatus;
-import com.fixlink.domain.model.RequestStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
