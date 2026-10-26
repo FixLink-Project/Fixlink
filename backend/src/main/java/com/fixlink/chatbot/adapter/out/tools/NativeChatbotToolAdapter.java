@@ -938,6 +938,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
             case DRAFT -> "Bản nháp";
             case OPEN, BIDDING_OPEN, MATCHED_AWAITING_DEPOSIT -> "Đang tìm thợ";
             case ASSIGNED -> "Đã chọn thợ";
+            case DEPOSIT_PAID -> "Đã đặt cọc";
             case INSPECTING -> "Thợ đang khảo sát";
             case AWAITING_COST_APPROVAL -> "Chờ khách duyệt chi phí phát sinh";
             case IN_PROGRESS -> "Đang sửa chữa";
@@ -961,6 +962,9 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
             case ASSIGNED -> tech
                     ? "Bạn đã được khách chọn: đặt lịch hẹn khảo sát trên hệ thống trước, rồi đến nơi và chuyển sang 'Đang khảo sát'."
                     : "Bạn đã chọn thợ. Thợ sẽ đặt lịch hẹn khảo sát trên hệ thống; bạn có thể xem/dời lịch hẹn trong chi tiết đơn.";
+            case DEPOSIT_PAID -> tech
+                    ? "Khách đã đặt cọc 30%. Đặt lịch hẹn khảo sát và đến nơi để bắt đầu."
+                    : "Bạn đã đặt cọc thành công. Chờ thợ đặt lịch hẹn khảo sát.";
             case INSPECTING -> tech
                     ? "Khảo sát xong: bắt đầu sửa theo ngân sách đã chốt, hoặc gửi đề xuất chi phí phát sinh để khách duyệt."
                     : "Thợ đang khảo sát. Nếu có lỗi phát sinh, thợ sẽ gửi chi phí mới để bạn duyệt trước khi sửa.";
