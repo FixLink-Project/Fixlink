@@ -14,7 +14,7 @@ import RequestStatusStepper from '../components/RequestStatusStepper';
 import StatusChip from '../components/StatusChip';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
-import { ApiError, acceptQuotation, api, attachRequestMedia, confirmPayment, createAppointment, createDepositPayment, createFinalPayment, fetchAdditionalCosts, fetchAppointmentsForRequest, fetchPayments, formatCurrency, switchTechnician, updateRequestStatus } from '../lib/api';
+import { ApiError, acceptQuotation, api, attachRequestMedia, confirmPayment, createAppointment, createDepositPayment, createFinalPayment, fetchAdditionalCosts, fetchAppointmentsForRequest, fetchPayments, fetchTechnicianReviews, formatCurrency, switchTechnician, type TechnicianReviewItem, updateRequestStatus } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { AdditionalCost, Appointment, Bill, Payment, PaymentResult, Quotation, RepairRequestDetail } from '../lib/types';
 
@@ -46,6 +46,12 @@ export default function RepairRequestDetailPage() {
   // Đổi thợ (Switch Technician)
   const [switchingQuoteId, setSwitchingQuoteId] = useState<number | null>(null);
   const [showSwitchConfirmModal, setShowSwitchConfirmModal] = useState<Quotation | null>(null);
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
+
+  // Xem đánh giá thợ (Technician Reviews Modal)
+  const [reviewTech, setReviewTech] = useState<{ id: number; name: string; rating?: number | null } | null>(null);
+  const [techReviews, setTechReviews] = useState<TechnicianReviewItem[]>([]);
+  const [loadingTechReviews, setLoadingTechReviews] = useState(false);
 
   // Appointments (RC-48)
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -254,6 +260,20 @@ export default function RepairRequestDetailPage() {
     }
   }
 
+  async function handleOpenReviews(techId: number, name: string, rating?: number | null) {
+    setReviewTech({ id: techId, name, rating });
+    setLoadingTechReviews(true);
+    try {
+      const res = await fetchTechnicianReviews(techId);
+      setTechReviews(res.data || []);
+    } catch (err: any) {
+      console.error('Failed to load technician reviews:', err);
+      setTechReviews([]);
+    } finally {
+      setLoadingTechReviews(false);
+    }
+  }
+
   async function handleAttachMedia() {
     if (!detail || additionalMediaUrls.length === 0) return;
     setAttaching(true);
@@ -427,56 +447,101 @@ export default function RepairRequestDetailPage() {
         )}
 
         {/* KHỐI 1: KHÁCH DUYỆT BÁO GIÁ PHÁT SINH KHI KHẢO SÁT */}
-        {req.status === 'AWAITING_COST_APPROVAL' && (
-          <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-5 shadow-sm space-y-3.5 animate-scale-in">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">⚠️</span>
-              <div>
-                <h3 className="font-display font-bold text-amber-950 text-base">
-                  Kỹ thuật viên đề xuất điều chỉnh chi phí sau khảo sát
-                </h3>
-                <p className="text-xs text-amber-800 mt-0.5">
-                  Sau khi tháo máy kiểm tra thực tế, thợ phát hiện linh kiện hỏng cần thay thế ngoài dự kiến.
-                </p>
-              </div>
-            </div>
+        {req.status === 'AWAITING_COST_APPROVAL' && (() => {
+          const depositPaid = req.depositAmount > 0 ? req.depositAmount : Math.round(req.agreedPrice * 0.3);
+          const initialPrice = currentSelectedQuote?.totalPrice || (req.depositAmount > 0 ? Math.round(req.depositAmount / 0.3) : req.budgetRef);
+          const surchargeAmount = Math.max(0, req.agreedPrice - initialPrice);
+          const remainingAfterAcceptance = Math.max(0, req.agreedPrice - depositPaid);
 
-            <div className="rounded-xl bg-white border border-amber-200 p-3.5 text-xs text-slate-700 leading-relaxed font-medium">
-              <span className="font-bold text-amber-900">Chi tiết từ thợ:</span>{' '}
-              {detail.workProgress[detail.workProgress.length - 1]?.note || 'Cần bổ sung thay thế linh kiện chuyên dụng'}
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-amber-200/80 pt-3">
-              <div>
-                <span className="text-xs text-amber-800">Tổng chi phí mới trọn gói:</span>
-                <span className="ml-2 font-display text-lg font-bold text-brand">
-                  {formatCurrency(req.agreedPrice)}
-                </span>
-                <span className="ml-2 text-[11px] text-slate-500">
-                  (Đặt cọc 30%: {formatCurrency(req.depositAmount)})
-                </span>
-              </div>
+          return (
+            <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-5 shadow-sm space-y-4 animate-scale-in">
               <div className="flex items-center gap-2">
-                <Button
-                  variant="primary"
-                  loading={updatingLifecycle}
-                  onClick={() => handleCustomerAction('IN_PROGRESS', 'Khách hàng đồng ý chi phí phát sinh, cho phép tiếp tục sửa chữa')}
-                  className="text-xs py-2 px-4 shadow-sm"
-                >
-                  ✅ Đồng ý chi phí mới
-                </Button>
-                <Button
-                  variant="secondary"
-                  loading={updatingLifecycle}
-                  onClick={() => handleCustomerAction('CANCELLED', 'Khách hàng không đồng ý chi phí phát sinh và hủy yêu cầu')}
-                  className="text-xs py-2 px-4 text-rose-700 border-rose-300 bg-white hover:bg-rose-50"
-                >
-                  ❌ Không đồng ý (Hủy đơn)
-                </Button>
+                <span className="text-2xl">⚠️</span>
+                <div>
+                  <h3 className="font-display font-bold text-amber-950 text-base">
+                    Kỹ thuật viên đề xuất điều chỉnh chi phí sau khảo sát
+                  </h3>
+                  <p className="text-xs text-amber-800 mt-0.5">
+                    Sau khi tháo máy kiểm tra thực tế tại hiện trường, thợ phát hiện linh kiện hỏng cần thay thế ngoài dự kiến ban đầu.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-white border border-amber-200 p-3.5 text-xs text-slate-700 leading-relaxed font-medium">
+                <span className="font-bold text-amber-900">Chi tiết linh kiện & lý do phát sinh từ thợ:</span>{' '}
+                {detail.workProgress[detail.workProgress.length - 1]?.note || 'Cần bổ sung thay thế linh kiện chuyên dụng'}
+              </div>
+
+              {/* Bảng chiết tính 5 dòng minh bạch tuyệt đối */}
+              <div className="rounded-xl bg-white border border-amber-200 p-4 space-y-2 text-xs shadow-xs">
+                <div className="flex justify-between text-slate-600">
+                  <span>1. Giá thỏa thuận ban đầu (Đã chốt qua báo giá):</span>
+                  <span className="font-semibold text-slate-800">{formatCurrency(initialPrice)}</span>
+                </div>
+                <div className="flex justify-between text-amber-700">
+                  <span>2. Chi phí linh kiện / vật tư phát sinh sau khảo sát:</span>
+                  <span className="font-bold text-amber-800">+{formatCurrency(surchargeAmount)}</span>
+                </div>
+                <div className="flex justify-between border-t border-slate-200 pt-2 font-bold text-slate-900 text-sm">
+                  <span>3. Tổng giá trị dịch vụ mới (Trọn gói):</span>
+                  <span className="text-brand text-base">{formatCurrency(req.agreedPrice)}</span>
+                </div>
+                <div className="flex justify-between text-blue-700">
+                  <span>4. Tiền cọc 30% bạn đã chuyển (Giữ nguyên không đổi):</span>
+                  <span className="font-semibold">-{formatCurrency(depositPaid)}</span>
+                </div>
+                <div className="flex justify-between border-t border-dashed border-slate-300 pt-2 font-bold text-emerald-700 text-sm bg-emerald-50/70 p-2.5 rounded-lg">
+                  <span>5. Số tiền còn lại bạn sẽ trả khi nghiệm thu hoàn tất:</span>
+                  <span className="text-emerald-800 text-base">{formatCurrency(remainingAfterAcceptance)}</span>
+                </div>
+              </div>
+
+              {/* Hình ảnh bằng chứng do thợ tải lên */}
+              {displayPhotos.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                    <span>📸</span> Hình ảnh linh kiện hỏng / hiện trường do thợ chụp gửi:
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {displayPhotos.map((url, idx) => (
+                      <img
+                        key={idx}
+                        src={url}
+                        alt={`Bằng chứng phát sinh ${idx + 1}`}
+                        onClick={() => setActiveMediaUrl(url)}
+                        className="w-full h-24 object-cover rounded-xl border border-amber-200/80 cursor-pointer hover:opacity-90 transition-all shadow-xs hover:shadow-sm"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-amber-200/80 pt-3">
+                <div className="text-xs text-slate-500 italic">
+                  * Nếu đồng ý, thợ sẽ tiến hành thay thế và sửa chữa theo chi phí mới.
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="primary"
+                    loading={updatingLifecycle}
+                    onClick={() => handleCustomerAction('IN_PROGRESS', 'Khách hàng đồng ý chi phí phát sinh, cho phép tiếp tục sửa chữa')}
+                    className="text-xs py-2 px-4 shadow-sm bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    ✅ Đồng ý chi phí mới
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    loading={updatingLifecycle}
+                    onClick={() => handleCustomerAction('CANCELLED', 'Khách hàng không đồng ý chi phí phát sinh và hủy yêu cầu')}
+                    className="text-xs py-2 px-4 text-rose-700 border-rose-300 bg-white hover:bg-rose-50"
+                  >
+                    ❌ Không đồng ý (Hủy đơn)
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* KHỐI 2: KHÁCH NGHIỆM THU THIẾT BỊ KHI SỬA XONG */}
         {req.status === 'AWAITING_ACCEPTANCE' && (() => {
@@ -639,6 +704,7 @@ export default function RepairRequestDetailPage() {
                   canAccept={req.status === 'OPEN'}
                   isAccepting={acceptingQuoteId === q.id}
                   onAccept={handleAcceptQuotation}
+                  onViewReviews={handleOpenReviews}
                 />
               ))}
             </div>
@@ -650,10 +716,19 @@ export default function RepairRequestDetailPage() {
           <Card
             title="Thợ kỹ thuật thực hiện"
             description="Báo giá và kỹ thuật viên đã được bạn lựa chọn thực hiện công việc."
+            actions={canSwitchTechnician ? (
+              <Button
+                variant="secondary"
+                onClick={() => setShowSwitchModal(true)}
+                className="text-xs py-1.5 px-3 border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-medium shadow-xs"
+              >
+                🔄 Đổi thợ khác
+              </Button>
+            ) : undefined}
           >
             <div className="grid gap-4 md:grid-cols-2">
               {detail.quotations.filter((q) => q.status === 'ACCEPTED').map((q) => (
-                <QuotationCard key={q.id} quotation={q} />
+                <QuotationCard key={q.id} quotation={q} onViewReviews={handleOpenReviews} />
               ))}
             </div>
           </Card>
@@ -673,6 +748,7 @@ export default function RepairRequestDetailPage() {
                   canSwitch={true}
                   isSwitching={switchingQuoteId === q.id}
                   onSwitch={() => setShowSwitchConfirmModal(q)}
+                  onViewReviews={handleOpenReviews}
                 />
               ))}
             </div>
@@ -719,12 +795,28 @@ export default function RepairRequestDetailPage() {
               </div>
 
               {!hasConfirmedAppointment ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 text-center space-y-1">
-                  <p className="font-semibold text-sm">⏳ Lịch hẹn đang chờ bạn xác nhận</p>
-                  <p className="text-amber-700">
-                    Chỉ khách hàng mới có quyền xác nhận lịch hẹn. Vui lòng bấm <strong>✓ Xác nhận lịch hẹn</strong> ở khối <em>Lịch hẹn khảo sát & thi công</em> bên dưới. Sau khi xác nhận, mã QR đặt cọc 30% sẽ tự động được hiển thị tại đây.
-                  </p>
-                </div>
+                appointments.length === 0 ? (
+                  <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-xs text-sky-900 text-center space-y-1">
+                    <p className="font-semibold text-sm">⏳ Đang chờ thợ liên hệ và lên lịch hẹn khảo sát với bạn</p>
+                    <p className="text-sky-700">
+                      Sau khi bạn chốt deal, kỹ thuật viên sẽ chủ động liên hệ qua điện thoại và đề xuất thời gian khảo sát thực tế. Lịch hẹn đề xuất sẽ hiển thị tại đây để bạn duyệt trước khi tiến hành đặt cọc.
+                    </p>
+                  </div>
+                ) : appointments.some((a) => a.status === 'PENDING_APPROVAL') ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 text-center space-y-1">
+                    <p className="font-semibold text-sm">📅 Thợ đã đề xuất lịch hẹn khảo sát</p>
+                    <p className="text-amber-700">
+                      Chỉ khách hàng mới có quyền xác nhận lịch hẹn. Vui lòng bấm <strong>✓ Xác nhận lịch hẹn</strong> ở khối <em>Lịch hẹn khảo sát & thi công</em> bên dưới. Sau khi xác nhận, mã QR đặt cọc 30% sẽ tự động được hiển thị tại đây.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 text-center space-y-1">
+                    <p className="font-semibold text-sm">⏳ Lịch hẹn đang chờ cập nhật</p>
+                    <p className="text-amber-700">
+                      Vui lòng kiểm tra tiến độ lịch hẹn ở khối bên dưới hoặc liên hệ thợ để thống nhất thời gian khảo sát.
+                    </p>
+                  </div>
+                )
               ) : loadingDepositQR ? (
                 <div className="py-8 text-center text-sm text-slate-500 animate-pulse">
                   ⏳ Đang tự động tạo mã QR đặt cọc...
@@ -1198,6 +1290,172 @@ export default function RepairRequestDetailPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL 1: ĐỔI THỢ KỸ THUẬT (SWITCH TECHNICIAN MODAL) */}
+      {showSwitchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🔄</span>
+                <h3 className="font-display font-bold text-slate-900 text-base">
+                  Đổi thợ kỹ thuật thực hiện
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSwitchModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Nếu bạn cảm thấy kỹ thuật viên hiện tại làm việc không ổn hoặc trễ hẹn, bạn có thể chuyển giao công việc cho một trong các thợ khác đã gửi báo giá dưới đây, hoặc mở lại sàn để nhận thêm báo giá mới.
+            </p>
+
+            {otherQuotes.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-800">Danh sách thợ đã gửi báo giá dự phòng ({otherQuotes.length}):</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {otherQuotes.map((q) => (
+                    <QuotationCard
+                      key={q.id}
+                      quotation={q}
+                      canSwitch={true}
+                      isSwitching={switchingQuoteId === q.id}
+                      onSwitch={() => {
+                        setShowSwitchModal(false);
+                        setShowSwitchConfirmModal(q);
+                      }}
+                      onViewReviews={handleOpenReviews}
+                    />
+                  ))}
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-xl">
+                  <p className="text-xs text-slate-600">
+                    Không muốn chọn các thợ trong danh sách này?
+                  </p>
+                  <Button
+                    variant="secondary"
+                    loading={updatingLifecycle}
+                    onClick={() => {
+                      setShowSwitchModal(false);
+                      handleCustomerAction('OPEN', 'Khách hàng đổi thợ và mở lại sàn nhận báo giá mới');
+                    }}
+                    className="text-xs py-1.5 px-3 border-blue-300 text-blue-700 hover:bg-blue-50 font-medium"
+                  >
+                    🚀 Mở lại sàn nhận báo giá mới
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="py-8 text-center space-y-3 bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <span className="text-3xl">📭</span>
+                <p className="text-xs font-bold text-slate-700">Chưa có thợ nào khác gửi báo giá dự phòng cho đơn này</p>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Bạn có thể mở lại yêu cầu sửa chữa về trạng thái ban đầu để các kỹ thuật viên khác trong khu vực có thể nộp báo giá cạnh tranh mới.
+                </p>
+                <Button
+                  variant="primary"
+                  loading={updatingLifecycle}
+                  onClick={() => {
+                    setShowSwitchModal(false);
+                    handleCustomerAction('OPEN', 'Khách hàng đổi thợ và mở lại sàn nhận báo giá mới');
+                  }}
+                  className="text-xs py-2 px-4 shadow-sm"
+                >
+                  🚀 Mở lại sàn nhận báo giá (Chuyển sang OPEN)
+                </Button>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <Button variant="secondary" onClick={() => setShowSwitchModal(false)} className="text-xs py-1.5 px-4">
+                Đóng
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: XEM BẢNG ĐÁNH GIÁ THỢ (TECHNICIAN REVIEWS MODAL) */}
+      {reviewTech && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">⭐</span>
+                <div>
+                  <h3 className="font-display font-bold text-slate-900 text-base">
+                    Đánh giá từ khách hàng: {reviewTech.name}
+                  </h3>
+                  {reviewTech.rating != null && (
+                    <p className="text-xs font-semibold text-amber-600 flex items-center gap-1">
+                      ★ {reviewTech.rating.toFixed(1)} / 5.0 điểm uy tín
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewTech(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {loadingTechReviews ? (
+              <div className="py-8 text-center text-xs text-slate-500 animate-pulse">
+                ⏳ Đang tải các đánh giá từ khách hàng...
+              </div>
+            ) : techReviews.length === 0 ? (
+              <div className="py-8 text-center space-y-2 bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <span className="text-2xl">💬</span>
+                <p className="text-xs font-bold text-slate-700">Chưa có đánh giá nào</p>
+                <p className="text-xs text-slate-500">
+                  Kỹ thuật viên này chưa có đánh giá nào từ các đơn hàng trước. Các phản hồi sẽ được cập nhật khi thợ hoàn tất các đơn sửa chữa.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-700">
+                  Tất cả đánh giá ({techReviews.length}):
+                </p>
+                <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+                  {techReviews.map((r) => (
+                    <div key={r.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-800">
+                          {r.customerName || 'Khách hàng FixLink'}
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          {r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : ''}
+                        </span>
+                      </div>
+                      <div className="flex items-center text-amber-500 text-sm">
+                        {'★'.repeat(r.rating || 5)}{'☆'.repeat(Math.max(0, 5 - (r.rating || 5)))}
+                      </div>
+                      <p className="text-slate-700 leading-relaxed italic bg-white p-2 rounded border border-slate-100">
+                        "{r.comment || 'Dịch vụ tốt, thợ nhiệt tình, đúng giờ.'}"
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <Button variant="secondary" onClick={() => setReviewTech(null)} className="text-xs py-1.5 px-4">
+                Đóng
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
@@ -1238,7 +1496,8 @@ function QuotationCard({
   onAccept,
   canSwitch = false,
   isSwitching = false,
-  onSwitch
+  onSwitch,
+  onViewReviews
 }: {
   quotation: Quotation;
   canAccept?: boolean;
@@ -1247,6 +1506,7 @@ function QuotationCard({
   canSwitch?: boolean;
   isSwitching?: boolean;
   onSwitch?: (id: number) => void;
+  onViewReviews?: (techId: number, name: string, rating?: number | null) => void;
 }) {
   const isAccepted = q.status === 'ACCEPTED';
 
@@ -1271,14 +1531,28 @@ function QuotationCard({
                 <p className="font-bold text-slate-900 text-sm">{q.technicianName ?? 'Thợ kỹ thuật'}</p>
                 <span className="text-blue-600 text-xs" title="Thợ đã xác minh eKYC">✓</span>
               </div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 {q.avgRating != null && (
-                  <span className="font-semibold text-amber-600 flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => onViewReviews?.(q.technicianId, q.technicianName ?? 'Thợ kỹ thuật', q.avgRating)}
+                    className="font-semibold text-amber-700 flex items-center gap-0.5 hover:underline cursor-pointer bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200"
+                    title="Bấm để xem đánh giá từ khách hàng"
+                  >
                     ★ {q.avgRating.toFixed(1)}
-                  </span>
+                  </button>
                 )}
                 {q.completedJobs != null && <span>• {q.completedJobs} đơn</span>}
                 {q.yearsExperience != null && <span>• {q.yearsExperience} năm kn</span>}
+                {onViewReviews && (
+                  <button
+                    type="button"
+                    onClick={() => onViewReviews(q.technicianId, q.technicianName ?? 'Thợ kỹ thuật', q.avgRating)}
+                    className="text-brand hover:underline font-medium text-[11px] ml-0.5 cursor-pointer"
+                  >
+                    💬 Xem đánh giá
+                  </button>
+                )}
               </div>
             </div>
           </div>

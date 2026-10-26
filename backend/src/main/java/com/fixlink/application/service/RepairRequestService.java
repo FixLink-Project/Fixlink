@@ -304,6 +304,11 @@ public class RepairRequestService implements RepairRequestUseCase {
             boolean publishDraft = targetStatus == RequestStatus.PENDING && currentStatus == RequestStatus.DRAFT;
             boolean approveCost = targetStatus == RequestStatus.IN_PROGRESS && currentStatus == RequestStatus.AWAITING_COST_APPROVAL;
             boolean completeAcceptance = targetStatus == RequestStatus.COMPLETED && currentStatus == RequestStatus.AWAITING_ACCEPTANCE;
+            boolean reopenRequest = targetStatus == RequestStatus.OPEN
+                    && (currentStatus == RequestStatus.ASSIGNED
+                    || currentStatus == RequestStatus.DEPOSIT_PAID
+                    || currentStatus == RequestStatus.INSPECTING
+                    || currentStatus == RequestStatus.AWAITING_COST_APPROVAL);
 
             if (completeAcceptance) {
                 // Rule: Sau khi sửa chữa xong sẽ có mã QR để thanh toán, khách thanh toán rồi mới bắt đầu nghiệm thu rồi mới hoàn thành
@@ -322,7 +327,16 @@ public class RepairRequestService implements RepairRequestUseCase {
                 }
             }
 
-            if (!cancelOwnRequest && !publishDraft && !approveCost && !completeAcceptance) {
+            if (reopenRequest && entity.getSelectedQuotationId() != null) {
+                quotationRepo.findById(entity.getSelectedQuotationId()).ifPresent(q -> {
+                    q.setStatus(QuotationStatus.REJECTED);
+                    quotationRepo.save(q);
+                });
+                entity.setSelectedQuotationId(null);
+                entity.setTechnicianId(null);
+            }
+
+            if (!cancelOwnRequest && !publishDraft && !approveCost && !completeAcceptance && !reopenRequest) {
                 throw new InvalidStateTransitionException(currentStatus, targetStatus);
             }
         } else if (command.actorRole() == Role.TECHNICIAN) {
@@ -370,6 +384,7 @@ public class RepairRequestService implements RepairRequestUseCase {
                 case AWAITING_ACCEPTANCE -> "Thợ đã hoàn thành công việc sửa chữa và chạy thử nghiệm. Mời khách hàng nghiệm thu.";
                 case COMPLETED -> "Khách hàng đã nghiệm thu đạt chất lượng và kích hoạt bảo hành điện tử.";
                 case CANCELLED -> "Yêu cầu sửa chữa đã bị hủy.";
+                case OPEN -> "Khách hàng đã mở lại yêu cầu để tiếp tục nhận báo giá từ các thợ khác.";
                 default -> "Cập nhật trạng thái sang " + targetStatus;
             };
         }

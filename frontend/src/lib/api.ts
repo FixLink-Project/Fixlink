@@ -161,6 +161,19 @@ export function switchTechnician(requestId: number, quotationId: number): Promis
   return api.post<AcceptQuotationResult>(`/repair-requests/${requestId}/switch-technician/${quotationId}`);
 }
 
+export interface TechnicianReviewItem {
+  id: number;
+  requestId: number;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  customerName?: string;
+}
+
+export function fetchTechnicianReviews(technicianId: number): Promise<ApiResponse<TechnicianReviewItem[]>> {
+  return api.get<TechnicianReviewItem[]>(`/technicians/${technicianId}/reviews`);
+}
+
 /**
  * Thợ nhận việc (mô hình "ai nhận trước được trước").
  *

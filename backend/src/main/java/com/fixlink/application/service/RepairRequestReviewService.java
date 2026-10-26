@@ -1,6 +1,7 @@
 package com.fixlink.application.service;
 
 import com.fixlink.adapter.out.persistence.entity.RepairRequestReviewJpaEntity;
+import com.fixlink.adapter.out.persistence.repository.SpringDataCustomerProfileRepository;
 import com.fixlink.adapter.out.persistence.repository.SpringDataRepairRequestRepository;
 import com.fixlink.adapter.out.persistence.repository.SpringDataRepairRequestReviewRepository;
 import com.fixlink.adapter.out.persistence.repository.SpringDataTechnicianProfileRepository;
@@ -17,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -25,6 +27,7 @@ public class RepairRequestReviewService implements RepairRequestReviewUseCase {
     private final SpringDataRepairRequestRepository requestRepository;
     private final SpringDataRepairRequestReviewRepository reviewRepository;
     private final SpringDataTechnicianProfileRepository technicianProfileRepository;
+    private final SpringDataCustomerProfileRepository customerProfileRepository;
     private final RepairRequestUseCase repairRequestUseCase;
 
     @Override
@@ -97,5 +100,24 @@ public class RepairRequestReviewService implements RepairRequestReviewUseCase {
         result.put("comment", review.getComment());
         result.put("createdAt", review.getCreatedAt());
         return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getReviewsForTechnician(Long technicianId) {
+        if (technicianId == null) {
+            return List.of();
+        }
+        return reviewRepository.findByTechnicianIdAndDeletedAtIsNull(technicianId)
+                .stream()
+                .map(r -> {
+                    Map<String, Object> map = toMap(r);
+                    String customerName = customerProfileRepository.findByUserIdAndDeletedAtIsNull(r.getCustomerId())
+                            .map(cp -> cp.getFullName())
+                            .orElse("Khách hàng");
+                    map.put("customerName", customerName);
+                    return map;
+                })
+                .toList();
     }
 }
