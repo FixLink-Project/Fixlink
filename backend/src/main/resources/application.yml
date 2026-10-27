@@ -76,6 +76,13 @@ chatbot:
     max-tool-result-chars: 2000
     max-history-messages: 6
     max-history-message-chars: 600
+  # Cổng LiteLLM (litellm/config.yaml): Groq gpt-oss-120b → qwen3.8-27b → gpt-oss-20b khi hết hạn mức.
+  # Bỏ trống LITELLM_BASE_URL thì backend gọi thẳng Groq như cũ.
+  litellm:
+    base-url: ${LITELLM_BASE_URL:}
+    api-key: ${LITELLM_MASTER_KEY:}
+    models: ${LITELLM_MODELS:fixlink-chat}
+    timeout-seconds: 75
   gemini:
     api-key: ${GEMINI_API_KEY:}
     base-url: https://generativelanguage.googleapis.com/v1beta
@@ -106,5 +113,6 @@ chatbot:
     max-input-chars: 1000
     max-tool-rounds: 5
     history-turns: 10
-    guest-rate-per-10min: 20
+    # Đủ cho người dùng hỏi liên tục (~4 tin/phút) mà vẫn chặn spam
+    guest-rate-per-10min: 40
 

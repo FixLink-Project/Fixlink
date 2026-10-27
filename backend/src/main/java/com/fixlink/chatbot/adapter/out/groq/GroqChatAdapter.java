@@ -13,6 +13,7 @@ import com.fixlink.chatbot.domain.model.ChatMessage;
 import com.fixlink.chatbot.domain.service.RepairRequestDraftLink;
 import com.fixlink.chatbot.infrastructure.config.ChatbotProperties;
 import com.fixlink.chatbot.infrastructure.config.ChatbotProperties.GroqProperties;
+import com.fixlink.chatbot.infrastructure.config.ChatbotProperties.LitellmProperties;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -34,8 +35,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Gọi Groq qua endpoint tương thích OpenAI ({@code /chat/completions}) với chuỗi failover nhiều
+ * Gọi LLM qua endpoint tương thích OpenAI ({@code /chat/completions}) với chuỗi failover nhiều
  * model và vòng lặp tool calling.
+ *
+ * <p>Thứ tự ưu tiên: cổng LiteLLM (nếu cấu hình {@code chatbot.litellm.base-url}; LiteLLM tự chuyển
+ * Groq → nhà cung cấp dự phòng khi hết hạn mức) → gọi thẳng Groq (khi LiteLLM không chạy) → bộ trả
+ * lời cục bộ từ kho tri thức.
  *
  * <p>Khai báo tool của hệ thống viết theo kiểu Gemini (type viết hoa: OBJECT, STRING...), adapter
  * chuyển sang JSON Schema chuẩn OpenAI trước khi gửi.
@@ -77,6 +82,41 @@ public class GroqChatAdapter implements LlmChatPort {
         return properties.getGroq();
     }
 
+    static final String LITELLM = "litellm";
+    static final String GROQ = "groq";
+    static final String SERVED_MODEL_HEADER = "x-litellm-model-name";
+    private static final long LITELLM_RATE_LIMIT_PAUSE_SECONDS = 10;
+    private static final String SERVED_MODEL_FIELD = "_servedModel";
+
+    /** Một đích gọi tương thích OpenAI: cổng LiteLLM hoặc Groq trực tiếp. */
+    record Endpoint(String name, String baseUrl, String apiKey, List<String> models,
+                    int timeoutSeconds, int maxRetries, int budgetSeconds) {
+
+        boolean isLitellm() {
+            return LITELLM.equals(name);
+        }
+    }
+
+    List<Endpoint> endpoints() {
+        List<Endpoint> result = new ArrayList<>();
+        LitellmProperties litellm = properties.getLitellm();
+        if (litellm != null && litellm.isEnabled() && !litellm.getModels().isEmpty()) {
+            String base = litellm.getBaseUrl().trim().replaceAll("/+$", "");
+            if (!base.contains("://")) {
+                base = "http://" + base; // Render cấp địa chỉ nội bộ dạng host:port
+            }
+            // LiteLLM đã tự thử lại và chuyển nhà cung cấp bên trong nên không thử lại thêm ở đây.
+            result.add(new Endpoint(LITELLM, base, litellm.getApiKey(), litellm.getModels(),
+                    litellm.getTimeoutSeconds(), 0, litellm.getTimeoutSeconds() + 5));
+        }
+        String groqKey = groq().getApiKey();
+        if (groqKey != null && !groqKey.isBlank()) {
+            result.add(new Endpoint(GROQ, groq().getBaseUrl(), groqKey, groq().getModels(),
+                    groq().getTimeoutSeconds(), groq().getMaxRetries(), groq().getTotalBudgetSeconds()));
+        }
+        return result;
+    }
+
     @Override
     public ChatOrchestrationResult generateChatResponse(
             String systemPrompt,
@@ -89,41 +129,45 @@ public class GroqChatAdapter implements LlmChatPort {
             String guestContact,
             String knowledgeContext
     ) {
-        String apiKey = groq().getApiKey();
-        if (apiKey == null || apiKey.isBlank()) {
-            LOG.warn("No GROQ_API_KEY configured. Using local knowledge-base synthesizer directly.");
+        List<Endpoint> endpoints = endpoints();
+        if (endpoints.isEmpty()) {
+            LOG.warn("No LITELLM_BASE_URL or GROQ_API_KEY configured. Using local knowledge-base synthesizer directly.");
             return fallbackSynthesizer.synthesize(userMessage, knowledgeContext);
         }
 
-        Instant start = Instant.now();
-        Duration totalBudget = Duration.ofSeconds(groq().getTotalBudgetSeconds());
         List<Map<String, Object>> openAiTools = toOpenAiTools(tools);
         // Dùng chung kết quả tool giữa các model trong một lượt hỏi để không tạo phiếu hỗ trợ trùng.
         Map<String, ToolExecutionResult> toolCache = new HashMap<>();
         // [0] = mã phiếu hỗ trợ vừa tạo, [1] = link form đăng yêu cầu điền sẵn
         String[] ticketHolder = new String[2];
 
-        for (String model : orderModelsByAvailability()) {
-            if (Duration.between(start, Instant.now()).compareTo(totalBudget) > 0) {
-                LOG.warn("Groq time budget ({}s) exhausted before trying model '{}'", totalBudget.toSeconds(), model);
-                break;
-            }
-            try {
-                ChatOrchestrationResult result = executeWithModel(model, apiKey, systemPrompt, history, userMessage,
-                        openAiTools, currentUserId, currentRole, guestContact, toolCache, ticketHolder);
-                LOG.info("Received answer from Groq model '{}' in {} ms",
-                        model, Duration.between(start, Instant.now()).toMillis());
-                return result;
-            } catch (GroqCallException ex) {
-                LOG.warn("Groq model '{}' failed: {}. Trying next model...", model, ex.getMessage());
-                applyCooldown(model, ex.status(), ex.retryAfterSeconds());
-            } catch (Exception ex) {
-                LOG.warn("Groq model '{}' failed with unexpected error: {}. Trying next model...", model, ex.toString());
-                applyCooldown(model, 0, 0);
+        for (Endpoint endpoint : endpoints) {
+            Instant start = Instant.now();
+            Duration budget = Duration.ofSeconds(endpoint.budgetSeconds());
+            for (String model : orderModelsByAvailability(endpoint)) {
+                if (Duration.between(start, Instant.now()).compareTo(budget) > 0) {
+                    LOG.warn("{} time budget ({}s) exhausted before trying model '{}'",
+                            endpoint.name(), budget.toSeconds(), model);
+                    break;
+                }
+                try {
+                    ChatOrchestrationResult result = executeWithModel(endpoint, model, systemPrompt, history,
+                            userMessage, openAiTools, currentUserId, currentRole, guestContact, toolCache, ticketHolder);
+                    LOG.info("Received answer via {} (model '{}') in {} ms", endpoint.name(), result.modelUsed(),
+                            Duration.between(start, Instant.now()).toMillis());
+                    return result;
+                } catch (GroqCallException ex) {
+                    LOG.warn("{} model '{}' failed: {}. Trying next option...", endpoint.name(), model, ex.getMessage());
+                    applyCooldown(endpoint, model, ex.status(), ex.retryAfterSeconds());
+                } catch (Exception ex) {
+                    LOG.warn("{} model '{}' failed with unexpected error: {}. Trying next option...",
+                            endpoint.name(), model, ex.toString());
+                    applyCooldown(endpoint, model, 0, 0);
+                }
             }
         }
 
-        LOG.error("All Groq models failed. Activating local knowledge-base synthesizer.");
+        LOG.error("All LLM providers failed. Activating local knowledge-base synthesizer.");
         ChatOrchestrationResult fallback = fallbackSynthesizer.synthesize(userMessage, knowledgeContext);
         if (ticketHolder[0] != null) {
             return new ChatOrchestrationResult(
@@ -135,24 +179,34 @@ public class GroqChatAdapter implements LlmChatPort {
         return fallback;
     }
 
-    private List<String> orderModelsByAvailability() {
-        List<String> configured = groq().getModels();
+    private List<String> orderModelsByAvailability(Endpoint endpoint) {
+        List<String> configured = endpoint.models();
         Instant now = Instant.now();
         List<String> available = configured.stream()
                 .filter(m -> {
-                    Instant until = modelCooldownUntil.get(m);
+                    Instant until = modelCooldownUntil.get(endpoint.name() + "|" + m);
                     return until == null || now.isAfter(until);
                 })
                 .toList();
+        if (available.isEmpty() && endpoint.isLitellm()) {
+            return List.of(); // cổng LiteLLM đang tạm nghỉ (không kết nối được / hết hạn mức): gọi thẳng Groq
+        }
         return available.isEmpty() ? configured : available;
     }
 
-    private void applyCooldown(String model, int status, long retryAfterSeconds) {
+    private void applyCooldown(Endpoint endpoint, String model, int status, long retryAfterSeconds) {
         long seconds;
-        if (status == 429) {
+        if (endpoint.isLitellm() && status == 429) {
+            // LiteLLM báo 429 khi mọi model Groq vừa chạm hạn mức token/phút; hạn mức này hồi lại sau vài giây
+            // nên chỉ tạm bỏ qua LiteLLM rất ngắn rồi dùng lại.
+            seconds = Math.min(retryAfterSeconds > 0 ? retryAfterSeconds : LITELLM_RATE_LIMIT_PAUSE_SECONDS,
+                    LITELLM_RATE_LIMIT_PAUSE_SECONDS);
+        } else if (endpoint.isLitellm() && status >= 500) {
+            seconds = 20;
+        } else if (status == 429) {
             seconds = retryAfterSeconds > 0 ? Math.min(retryAfterSeconds, 300) : groq().getCooldownSeconds();
         } else if (status == 404) {
-            seconds = 3600; // model không tồn tại / đã ngừng trên Groq
+            seconds = 3600; // model không tồn tại / đã ngừng
         } else if (status == 401 || status == 403) {
             seconds = 0; // key sai: lỗi chung cho mọi model, không phạt riêng model nào
         } else if (status >= 500 || status == 0 || status == 504) {
@@ -161,13 +215,13 @@ public class GroqChatAdapter implements LlmChatPort {
             return;
         }
         if (seconds > 0) {
-            modelCooldownUntil.put(model, Instant.now().plusSeconds(seconds));
+            modelCooldownUntil.put(endpoint.name() + "|" + model, Instant.now().plusSeconds(seconds));
         }
     }
 
     private ChatOrchestrationResult executeWithModel(
+            Endpoint endpoint,
             String model,
-            String apiKey,
             String systemPrompt,
             List<ChatMessage> history,
             String userMessage,
@@ -211,12 +265,19 @@ public class GroqChatAdapter implements LlmChatPort {
             }
             payload.put("temperature", groq().getTemperature());
             payload.put("max_completion_tokens", groq().getMaxOutputTokens());
-            if (model.startsWith("openai/gpt-oss") && groq().getReasoningEffort() != null
+            // Qua LiteLLM thì reasoning_effort khai báo theo từng model trong litellm/config.yaml.
+            if (!endpoint.isLitellm() && model.startsWith("openai/gpt-oss") && groq().getReasoningEffort() != null
                     && !groq().getReasoningEffort().isBlank()) {
                 payload.put("reasoning_effort", groq().getReasoningEffort());
             }
 
-            JsonNode root = postWithRetry(model, apiKey, payload);
+            JsonNode root = postWithRetry(endpoint, model, payload);
+            JsonNode usage = root.path("usage");
+            if (!usage.isMissingNode()) {
+                // Theo dõi token để ước lượng hạn mức/ngày của gói miễn phí.
+                LOG.info("{} round {} token usage: prompt={}, completion={}", endpoint.name(), round + 1,
+                        usage.path("prompt_tokens").asInt(), usage.path("completion_tokens").asInt());
+            }
             JsonNode message = root.path("choices").path(0).path("message");
             if (message.isMissingNode()) {
                 throw new GroqCallException(200, "No choice returned", 0);
@@ -243,7 +304,7 @@ public class GroqChatAdapter implements LlmChatPort {
                 throw new GroqCallException(200, "Empty answer (finish_reason=" + finishReason + ")", 0);
             }
             try {
-                ChatOrchestrationResult parsed = replyParser.parse(content, ticketHolder[0], model);
+                ChatOrchestrationResult parsed = replyParser.parse(content, ticketHolder[0], modelLabel(endpoint, model, root));
                 return replyParser.withLeadingAction(parsed, PREFILL_ACTION_LABEL, ticketHolder[1]);
             } catch (IllegalStateException ex) {
                 throw new GroqCallException(200, ex.getMessage(), 0);
@@ -310,29 +371,45 @@ public class GroqChatAdapter implements LlmChatPort {
         return toolMessage;
     }
 
-    private JsonNode postWithRetry(String model, String apiKey, Map<String, Object> payload) throws Exception {
-        String url = groq().getBaseUrl() + "/chat/completions";
-        int attempts = 1 + Math.max(0, groq().getMaxRetries());
+    /** Qua LiteLLM thì ghi lại model thật đã trả lời (ví dụ litellm/mistral-small-latest) để thống kê. */
+    static String modelLabel(Endpoint endpoint, String requestedModel, JsonNode root) {
+        if (!endpoint.isLitellm()) {
+            return requestedModel;
+        }
+        String actual = root != null ? root.path(SERVED_MODEL_FIELD).asText(root.path("model").asText("")) : "";
+        return LITELLM + "/" + (actual.isBlank() ? requestedModel : actual);
+    }
+
+    private JsonNode postWithRetry(Endpoint endpoint, String model, Map<String, Object> payload) throws Exception {
+        String url = endpoint.baseUrl() + "/chat/completions";
+        int attempts = 1 + Math.max(0, endpoint.maxRetries());
 
         for (int attempt = 1; ; attempt++) {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Authorization", "Bearer " + (endpoint.apiKey() != null ? endpoint.apiKey() : ""))
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
-                    .timeout(Duration.ofSeconds(groq().getTimeoutSeconds()))
+                    .timeout(Duration.ofSeconds(endpoint.timeoutSeconds()))
                     .build();
 
             HttpResponse<String> response;
             try {
                 response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             } catch (HttpTimeoutException ex) {
-                throw new GroqCallException(504, "Timeout after " + groq().getTimeoutSeconds() + "s", 0);
+                throw new GroqCallException(504, "Timeout after " + endpoint.timeoutSeconds() + "s", 0);
             }
 
             int status = response.statusCode();
             if (status == 200) {
-                return objectMapper.readTree(response.body());
+                JsonNode root = objectMapper.readTree(response.body());
+                // LiteLLM trả về tên nhóm model; header này cho biết model thật đã trả lời (kể cả khi đã fallback).
+                response.headers().firstValue(SERVED_MODEL_HEADER).ifPresent(served -> {
+                    if (root instanceof ObjectNode obj) {
+                        obj.put(SERVED_MODEL_FIELD, served);
+                    }
+                });
+                return root;
             }
             String body = response.body() != null ? response.body() : "";
 

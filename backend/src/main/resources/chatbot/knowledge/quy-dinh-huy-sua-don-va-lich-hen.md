@@ -16,7 +16,7 @@ confidence: verified
 | Trạng thái đơn | Được hủy? |
 |---|---|
 | Bản nháp (`DRAFT`), Đang tìm thợ (`OPEN`) | Có |
-| Đã có thợ nhận (`ASSIGNED`), Đang khảo sát (`INSPECTING`) | Có |
+| Đã chọn thợ (`ASSIGNED`), Đã đặt cọc (`DEPOSIT_PAID`), Đang khảo sát (`INSPECTING`) | Có (hoặc dùng "Đổi thợ khác") |
 | Chờ duyệt chi phí phát sinh (`AWAITING_COST_APPROVAL`) | Có (ví dụ khi không đồng ý mức phát sinh) |
 | Đang sửa chữa (`IN_PROGRESS`), Chờ nghiệm thu (`AWAITING_ACCEPTANCE`) | **Không** |
 | Đã hoàn thành (`COMPLETED`), Đã hủy (`CANCELLED`) | **Không** |
@@ -30,15 +30,20 @@ confidence: verified
 - Chỉ phát sinh sau khi thợ đã đến khảo sát (`INSPECTING`) và phát hiện hư hỏng ngoài mô tả ban đầu.
 - Thợ gửi mức giá mới kèm giải trình; đơn chuyển sang **Chờ duyệt chi phí phát sinh** (`AWAITING_COST_APPROVAL`).
 - Khách vào chi tiết đơn để xem giải trình:
-  - **Đồng ý** → đơn chuyển sang `IN_PROGRESS`, giá chốt cập nhật theo giá mới và tiền cọc tính lại bằng 30% giá mới.
-  - **Không đồng ý** → không bấm đồng ý; khách có thể trao đổi lại với thợ hoặc **hủy đơn**.
+  - **Đồng ý** → đơn chuyển sang `IN_PROGRESS`; khoản phát sinh được cộng vào đợt thanh toán cuối, **tiền cọc đã đóng không tính lại**.
+  - **Không đồng ý** → bấm **"Từ chối giá & Đổi thợ khác"**, trao đổi lại với thợ, hoặc **hủy đơn**.
+- Thợ cũng có thể thêm từng khoản trong mục **"Chi phí phát sinh"**; khách duyệt hoặc từ chối từng khoản.
 - Thợ **không được tự ý sửa phần phát sinh** khi khách chưa đồng ý, và không được thu tiền ngoài hệ thống.
 
 ## 4. Lịch hẹn khảo sát / sửa chữa
-- Lịch hẹn được tạo cho đơn **đã chọn thợ**; thợ phải đặt lịch hẹn khảo sát trên hệ thống **trước khi bắt đầu khảo sát**; chỉ khách hàng chủ đơn và thợ phụ trách mới xem và thao tác được lịch hẹn của đơn đó.
+- Lịch hẹn do **thợ đặt** cho đơn **đã chọn thợ**; chỉ khách hàng chủ đơn và thợ phụ trách mới xem và thao tác được lịch hẹn của đơn đó.
+- **Chỉ khách hàng** được bấm **"✓ Xác nhận lịch hẹn"** hoặc từ chối. Khách xác nhận xong thì mã QR đặt cọc 30% tự hiện; khách đặt cọc thì thợ mới được bắt đầu khảo sát.
+- **Chỉ thợ phụ trách** được bấm hoàn thành lịch hẹn/công việc.
 - Ngày và giờ hẹn là bắt buộc và phải **từ thời điểm hiện tại trở đi**.
 - Trạng thái lịch hẹn:
-  - `CONFIRMED` (Đã xác nhận) – lịch vừa tạo.
+  - `PENDING_APPROVAL` (Chờ xác nhận) – lịch thợ vừa đặt, chờ khách xác nhận.
+  - `CONFIRMED` (Đã xác nhận) – khách đã xác nhận.
+  - `REJECTED` (Bị từ chối) – khách từ chối lịch; thợ đặt lịch khác.
   - `RESCHEDULED` (Đã dời lịch) – có thể dời nhiều lần.
   - `COMPLETED` (Đã hoàn thành) và `CANCELLED` (Đã hủy) là trạng thái cuối, không thao tác tiếp được.
 - **Hủy lịch hẹn bắt buộc nhập lý do.** Hủy lịch hẹn không tự động hủy yêu cầu sửa chữa; hai bên có thể tạo lịch hẹn mới.

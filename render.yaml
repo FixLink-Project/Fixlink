@@ -19,6 +19,38 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      # Trợ lý FixLink AI: dán key trên Render Dashboard (sync: false = không lưu trong git)
+      - key: CHATBOT_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      # Gọi cổng LiteLLM qua mạng nội bộ của Render; LiteLLM không phản hồi thì backend gọi thẳng Groq
+      - key: LITELLM_BASE_URL
+        fromService:
+          name: fixlink-litellm
+          type: web
+          property: hostport
+      # Dán CÙNG một giá trị (bắt đầu bằng sk-) cho cả fixlink-api và fixlink-litellm
+      - key: LITELLM_MASTER_KEY
+        sync: false
+
+  # Cổng LiteLLM: Groq gpt-oss-120b → qwen3.8-27b → gpt-oss-20b khi hết hạn mức (cấu hình trong litellm/config.yaml)
+  - type: web
+    name: fixlink-litellm
+    runtime: docker
+    dockerfilePath: ./litellm/Dockerfile
+    dockerContext: ./litellm
+    healthCheckPath: /health/liveliness
+    envVars:
+      - key: PORT
+        value: "4000"
+      - key: LITELLM_MASTER_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      # Tùy chọn: key Groq của tài khoản thứ hai (gấp đôi hạn mức/ngày), bỏ trống cũng được
+      - key: GROQ_API_KEY_2
+        sync: false
 
 databases:
   - name: fixlink-db

@@ -29,8 +29,8 @@ class ChatEngagementFeaturesTest {
 
         assertThat(cards).hasSize(1);
         ChatCard card = cards.get(0);
-        assertThat(card.getCurrentStep()).isEqualTo(4);
-        assertThat(card.getSteps()).hasSize(6);
+        assertThat(card.getCurrentStep()).isEqualTo(5);
+        assertThat(card.getSteps()).hasSize(7).contains("Đặt cọc");
         assertThat(card.getBadgeTone()).isEqualTo("warning");
         assertThat(card.getUrl()).isEqualTo("/yeu-cau-cua-toi/26");
         assertThat(card.getFields()).extracting(ChatCard.Field::getLabel).contains("Giá chốt", "Tiền cọc (30%)", "Thợ phụ trách");

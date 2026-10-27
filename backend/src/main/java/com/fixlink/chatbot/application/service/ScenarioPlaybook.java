@@ -58,42 +58,43 @@ public class ScenarioPlaybook {
                     "tho hen roi khong den"),
                     "Thợ trễ hẹn/không đến. Nếu khách đã đăng nhập: gọi get_my_appointments hoặc get_repair_request_status để xem lịch hẹn, "
                             + "trạng thái đơn và tên thợ. Hướng dẫn: (1) liên hệ thợ qua thông tin trong chi tiết đơn; (2) dời lịch hẹn nếu cần "
-                            + "(dời được nhiều lần); (3) nếu thợ không đến và đơn chưa ở Đang sửa chữa (IN_PROGRESS) thì khách được hủy đơn kèm lý do; "
+                            + "(dời được nhiều lần); (3) nếu thợ không đến và đơn chưa ở Đang sửa chữa (IN_PROGRESS) thì khách bấm 'Đổi thợ khác' (lý do trễ hẹn) để chuyển sang thợ dự phòng hoặc mở lại đơn nhận báo giá, hoặc hủy đơn kèm lý do; "
                             + "(4) đề nghị tạo phiếu hỗ trợ ưu tiên High để CSKH xử lý tiền cọc. KHÔNG hứa bồi thường hay hoàn tiền cụ thể (chưa công bố)."),
 
             new Scenario("quality_complaint", List.of("sua khong xong", "sua xong lai hong", "sua roi van hong", "lai bi", "tho lam hong",
                     "lam hu them", "lam vo", "lam tray", "thai do", "tho hon", "tho vo le", "khong hai long", "khieu nai", "to cao",
                     "boi thuong", "den bu", "chat luong kem", "lam an gian doi", "tho an cap", "mat do"),
                     "Khiếu nại chất lượng/thái độ/hư hỏng tài sản. 1 câu đồng cảm, tóm tắt đúng vấn đề. Nếu đơn chưa nghiệm thu: "
-                            + "khuyên CHƯA hoàn tất nghiệm thu khi chưa hài lòng (tiền vẫn giữ trung gian; bước nghiệm thu có chấm sao và nhận xét bắt buộc). Hỏi mã đơn, mô tả sự việc, ảnh/video bằng chứng. "
+                            + "khuyên CHƯA thanh toán phần còn lại và CHƯA hoàn tất nghiệm thu khi chưa hài lòng (tiền cọc vẫn được FixLink giữ bảo chứng; bước nghiệm thu có chấm sao và nhận xét bắt buộc). Nếu đơn chưa Đang sửa chữa thì có thể 'Đổi thợ khác'. Hỏi mã đơn, mô tả sự việc, ảnh/video bằng chứng. "
                             + "Đề nghị tạo phiếu hỗ trợ (Critical nếu gian lận/mất tài sản/tranh chấp tiền, High nếu hư hỏng/thái độ). "
                             + "Bảo hành: hệ thống kích hoạt bảo hành khi nghiệm thu nhưng thời hạn bảo hành chưa công bố. KHÔNG hứa bồi thường, sửa lại miễn phí hay mức đền bù."),
 
             new Scenario("extra_money", List.of("doi them tien", "doi them", "tinh them tien", "phat sinh", "tien mat", "chuyen khoan rieng",
                     "tra ngoai", "tra truc tiep cho tho", "thay linh kien", "mua linh kien", "bao gia them", "len gia"),
                     "Chi phí phát sinh/thợ đòi thêm tiền. Quy định: thợ phải gửi đề xuất chi phí mới trên hệ thống (đơn sang Chờ duyệt chi phí phát sinh), "
-                            + "khách xem giải trình rồi Đồng ý (giá chốt và cọc 30% tính lại theo giá mới) hoặc không đồng ý và có thể hủy đơn. "
+                            + "khách xem giải trình rồi Đồng ý (khoản phát sinh cộng vào đợt thanh toán cuối, tiền cọc KHÔNG tính lại) hoặc không đồng ý thì bấm 'Từ chối giá & Đổi thợ khác' hoặc hủy đơn. "
                             + "Thợ không được sửa phần phát sinh khi khách chưa đồng ý. Tuyệt đối không trả tiền mặt/chuyển khoản riêng ngoài hệ thống; "
                             + "bị ép trả ngoài → tạo phiếu hỗ trợ Critical."),
 
             new Scenario("change_technician", List.of("doi tho", "chon tho", "tho khac", "khong muon tho nay", "chi dinh tho", "tho quen",
                     "tho nu", "tho gioi nhat", "tho uy tin nhat", "xem danh gia tho", "xem ho so tho"),
                     "Muốn chọn/đổi thợ. Khách CHỌN thợ trong các báo giá nhận được (nút 'Chọn thợ này' khi đơn OPEN; đã đăng nhập thì gọi get_request_quotations để so sánh "
-                            + "giá, phương án, điểm đánh giá, số việc đã làm — không chọn thay khách). KHÔNG đổi được thợ sau khi đã chọn, không chỉ định trước thợ chưa báo giá. Đã chọn rồi mà muốn đổi: trao đổi với thợ; nếu không muốn tiếp tục "
-                            + "và đơn chưa ở Đang sửa chữa thì hủy đơn (nhập lý do) rồi đăng đơn mới; hoặc tạo phiếu hỗ trợ để CSKH xem xét."),
+                            + "giá, phương án, điểm đánh giá, số việc đã làm — không chọn thay khách). Không chỉ định trước thợ chưa báo giá. ĐỔI THỢ ĐƯỢC khi đơn ASSIGNED/DEPOSIT_PAID/INSPECTING/AWAITING_COST_APPROVAL: "
+                            + "chi tiết đơn → 'Đổi thợ khác' → chọn lý do → (1) chọn báo giá dự phòng của thợ khác, hoặc (2) 'Mở lại sàn nhận báo giá' (đơn về OPEN). "
+                            + "Tiền cọc đã đóng được giữ bảo chứng, thợ cũ không nhận, bảo lưu cho thợ mới. Từ IN_PROGRESS trở đi KHÔNG đổi được. Có thể gọi get_request_quotations để xem thợ dự phòng."),
 
             new Scenario("compare_quotes", List.of("bao gia", "may bao gia", "nhung bao gia", "so sanh bao gia", "nen chon tho nao",
                     "chon tho nao", "tho nao re", "tho nao tot", "chon bao gia", "chot tho", "gui bao gia", "tra gia", "rut bao gia",
                     "chua co bao gia", "chua ai bao gia"),
                     "Báo giá/chọn thợ. Khách đã đăng nhập hỏi về đơn cụ thể → gọi get_request_quotations (dùng ID trong đường dẫn trang nếu có) "
                             + "rồi so sánh khách quan: giá công + vật tư, phương án, điểm đánh giá, số việc đã làm; nêu ưu/nhược, KHÔNG chọn thay khách, "
-                            + "không khẳng định thợ nào chắc chắn tốt hơn. Nhắc: bấm 'Chọn thợ này' trong chi tiết đơn, báo giá khác sẽ tự bị từ chối, "
-                            + "không đổi thợ được sau khi chọn. Chưa có báo giá: đơn nhận báo giá tối đa 3 ngày; mô tả rõ, ảnh đầy đủ, ngân sách hợp lý giúp có báo giá sớm. "
+                            + "không khẳng định thợ nào chắc chắn tốt hơn. Nhắc: bấm 'Chọn thợ này' trong chi tiết đơn, báo giá nhận được không vượt ngân sách khách đặt; "
+                            + "trước khi sửa vẫn có thể 'Đổi thợ khác' sang báo giá dự phòng. Chưa có báo giá: đơn nhận báo giá tối đa 3 ngày; mô tả rõ, ảnh đầy đủ, ngân sách hợp lý giúp có báo giá sớm. "
                             + "Với THỢ: gửi báo giá trong chi tiết yêu cầu (tiền công bắt buộc), sửa/rút khi còn chờ duyệt, giá đối thủ hiển thị ẩn danh."),
 
             new Scenario("reschedule", List.of("doi lich", "doi gio", "doi ngay", "hen lai", "doi lich hen", "huy lich", "huy hen",
                     "ban viec", "khong co nha", "vang nha", "ve que"),
-                    "Đổi/hủy lịch hẹn. Lịch hẹn chỉ có sau khi khách đã chọn thợ (thợ phải đặt lịch hẹn trên hệ thống trước khi bắt đầu khảo sát); dời lịch được nhiều lần (thời gian mới phải từ hiện tại trở đi); "
+                    "Đổi/hủy lịch hẹn. Lịch hẹn chỉ có sau khi khách đã chọn thợ: thợ đặt lịch (Chờ xác nhận), CHỈ khách bấm 'Xác nhận lịch hẹn' hoặc từ chối; xác nhận xong thì QR đặt cọc 30% hiện ra, đặt cọc xong thợ mới được khảo sát; dời lịch được nhiều lần (thời gian mới phải từ hiện tại trở đi); "
                             + "hủy lịch hẹn phải nhập lý do và KHÔNG tự hủy yêu cầu sửa chữa. Thao tác trong trang chi tiết đơn (/yeu-cau-cua-toi/{id} với khách, "
                             + "/tho/yeu-cau/{id} với thợ). Đã đăng nhập thì gọi get_my_appointments để nêu đúng lịch hiện tại. Chatbot không tự dời lịch."),
 
@@ -105,10 +106,11 @@ public class ScenarioPlaybook {
                             + "ghi rõ 'cần gấp' và khung giờ mong muốn trong mô tả, chọn đúng danh mục và khu vực, đính kèm ảnh, đặt ngân sách hợp lý."),
 
             new Scenario("refund_payment", List.of("hoan tien", "tra lai tien", "bi tru tien", "tru tien 2 lan", "mat tien", "chua nhan tien",
-                    "thanh toan bang gi", "thanh toan the nao", "momo", "zalopay", "vnpay", "the ngan hang", "tra gop", "hoa don", "vat",
+                    "thanh toan bang gi", "thanh toan the nao", "ma qr", "quet qr", "chuyen khoan", "momo", "zalopay", "vnpay", "the ngan hang", "tra gop", "hoa don", "vat",
                     "xuat hoa don", "tien coc ve dau", "lay lai coc"),
-                    "Thanh toán/hoàn tiền/hóa đơn. Được nói: cọc 30% giá chốt giữ trung gian khi khách chọn thợ, 70% còn lại khi khách nghiệm thu, giải ngân cho thợ "
-                            + "khi nghiệm thu. CHƯA công bố: phương thức/cổng thanh toán cụ thể (ví điện tử, thẻ, trả góp), tỷ lệ hoàn cọc khi hủy, hóa đơn VAT. "
+                    "Thanh toán/hoàn tiền/hóa đơn. Được nói: thanh toán bằng mã QR chuyển khoản ngân hàng (VietQR) trong chi tiết đơn; đợt 1 cọc 30% giá chốt (QR hiện sau khi khách xác nhận lịch hẹn), "
+                            + "đợt 2 phần còn lại = giá chốt + phát sinh đã duyệt − cọc (QR hiện khi thợ báo hoàn thành); mỗi lần thanh toán có hóa đơn điện tử in/xuất PDF; "
+                            + "thợ nhận tiền khi khách nghiệm thu. CHƯA công bố/chưa hỗ trợ: ví điện tử, thẻ, trả góp, tỷ lệ hoàn cọc khi hủy, hóa đơn VAT. "
                             + "Không xác nhận khách có bị trừ tiền hay chưa (chatbot không xem được giao dịch). Hướng xử lý: hỏi mã đơn, thời điểm, số tiền "
                             + "rồi đề nghị tạo phiếu hỗ trợ Critical để bộ phận kế toán kiểm tra."),
 
@@ -149,7 +151,7 @@ public class ScenarioPlaybook {
             new Scenario("compare_competitor", List.of("so voi", "khac gi", "hon gi", "tai sao chon", "vi sao chon", "co uy tin khong",
                     "co lua dao khong", "dang tin", "an toan khong", "dien may xanh", "ung dung khac", "ben khac"),
                     "So sánh/hỏi độ tin cậy. Không chê bai đơn vị khác, không bịa số liệu (số thợ, số đơn, đánh giá). Nêu điểm mạnh có thật của FixLink: "
-                            + "thợ xác minh KYC; thợ báo giá công khai, khách so sánh điểm đánh giá thật và tự chọn thợ; cọc giữ trung gian, chỉ giải ngân khi khách nghiệm thu; phát sinh phải được khách duyệt; "
+                            + "thợ xác minh KYC; thợ báo giá công khai, khách so sánh điểm đánh giá thật và tự chọn thợ; cọc 30% qua QR được giữ bảo chứng, đổi thợ được trước khi sửa, chỉ giải ngân khi khách nghiệm thu; phát sinh phải được khách duyệt; "
                             + "có phiếu hỗ trợ để khiếu nại."),
 
             new Scenario("diy_repair", List.of("tu sua", "huong dan sua", "cach sua", "tu lam", "thao ra", "nap ga tai nha", "tu thay",

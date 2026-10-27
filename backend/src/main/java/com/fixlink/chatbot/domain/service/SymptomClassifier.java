@@ -94,7 +94,9 @@ public final class SymptomClassifier {
             Map.entry("tk", "tài khoản"), Map.entry("mk", "mật khẩu"), Map.entry("ntn", "như thế nào"), Map.entry("j", "gì"));
 
     private static final Pattern BUDGET = Pattern.compile(
-            "(\\d+(?:[.,]\\d+)?)\\s*(k|nghin|ngan|d|dong|vnd)?(?![a-z0-9])");
+            "(\\d+(?:[.,]\\d+)?)\\s*(k|nghin|ngan(?!\\s*sach)|d|dong|vnd)?(?![a-z0-9])");
+    /** Số đứng sau "quận"/"q" là tên quận (quận 7), không phải số tiền. */
+    private static final Pattern DISTRICT_PREFIX = Pattern.compile("(?:quan|q)\\s*$");
     private static final Pattern TRIEU = Pattern.compile(
             "(\\d+(?:[.,]\\d+)?)\\s*(?:trieu|tr|cu)(?![a-z])\\s*(\\d)?(?!\\d)");
 
@@ -159,6 +161,9 @@ public final class SymptomClassifier {
         }
         Matcher m = BUDGET.matcher(text);
         while (m.find()) {
+            if (DISTRICT_PREFIX.matcher(text.substring(0, m.start())).find()) {
+                continue;
+            }
             String unit = m.group(2);
             double number = Double.parseDouble(m.group(1).replace(',', '.'));
             if (unit == null) {

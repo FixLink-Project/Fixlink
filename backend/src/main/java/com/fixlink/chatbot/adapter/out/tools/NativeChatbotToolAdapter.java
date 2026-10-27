@@ -139,7 +139,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                 "Lấy danh sách yêu cầu sửa chữa của người dùng đang đăng nhập: với KHÁCH HÀNG là các đơn họ đã đăng; "
                         + "với THỢ là các việc thợ đã nhận.",
                 Map.of("status", prop("STRING",
-                        "Lọc theo trạng thái (OPEN, ASSIGNED, INSPECTING, AWAITING_COST_APPROVAL, IN_PROGRESS, "
+                        "Lọc theo trạng thái (OPEN, ASSIGNED, DEPOSIT_PAID, INSPECTING, AWAITING_COST_APPROVAL, IN_PROGRESS, "
                                 + "AWAITING_ACCEPTANCE, COMPLETED, CANCELLED, DRAFT) hoặc nhóm tab "
                                 + "(AWAITING_QUOTE = đang nhận báo giá, IN_PROGRESS = đang thực hiện). Bỏ trống để lấy tất cả.")),
                 List.of()));
@@ -420,8 +420,9 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                 "depositText", formatVnd(deposit),
                 "remainingRate", "70%",
                 "remainingText", formatVnd(remaining),
-                "rule", "Tiền cọc = 30% giá đã chốt (làm tròn lên), được giữ trung gian khi khách chọn thợ; "
-                        + "70% còn lại tất toán khi khách đánh giá và nghiệm thu. Nếu khách duyệt chi phí phát sinh, cọc được tính lại theo giá mới."
+                "rule", "Tiền cọc = 30% giá đã chốt, khách trả qua mã QR chuyển khoản sau khi xác nhận lịch hẹn; FixLink giữ bảo chứng. "
+                        + "Phần còn lại (70% nếu không có phát sinh) trả qua QR khi thợ báo hoàn thành = giá chốt + phát sinh đã duyệt − tiền cọc. "
+                        + "Duyệt chi phí phát sinh KHÔNG làm thay đổi tiền cọc."
         ));
     }
 
@@ -960,23 +961,23 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                     ? "Đơn đang nhận báo giá: thợ đúng chuyên môn và khu vực gửi báo giá (sửa/rút khi còn chờ duyệt); khách sẽ so sánh và chọn thợ."
                     : "Đơn đang nhận báo giá (tối đa 3 ngày, quá hạn đơn tự hủy). Vào chi tiết đơn để so sánh các báo giá và bấm 'Chọn thợ này'. Chỉ sửa được nội dung đơn khi chưa có báo giá nào.";
             case ASSIGNED -> tech
-                    ? "Bạn đã được khách chọn: đặt lịch hẹn khảo sát trên hệ thống trước, rồi đến nơi và chuyển sang 'Đang khảo sát'."
-                    : "Bạn đã chọn thợ. Thợ sẽ đặt lịch hẹn khảo sát trên hệ thống; bạn có thể xem/dời lịch hẹn trong chi tiết đơn.";
+                    ? "Bạn đã được khách chọn: đặt lịch hẹn khảo sát trên hệ thống, chờ khách xác nhận lịch và thanh toán cọc 30% qua QR rồi mới được bắt đầu khảo sát."
+                    : "Bạn đã chọn thợ. Thợ sẽ đề xuất lịch hẹn: bấm 'Xác nhận lịch hẹn' trong chi tiết đơn, sau đó quét mã QR đặt cọc 30% và bấm xác nhận đã chuyển khoản. Nếu chưa ưng thợ, bạn có thể bấm 'Đổi thợ khác'.";
             case DEPOSIT_PAID -> tech
-                    ? "Khách đã đặt cọc 30%. Đặt lịch hẹn khảo sát và đến nơi để bắt đầu."
-                    : "Bạn đã đặt cọc thành công. Chờ thợ đặt lịch hẹn khảo sát.";
+                    ? "Khách đã đặt cọc 30%. Đến đúng lịch hẹn và chuyển đơn sang 'Đang khảo sát'."
+                    : "Bạn đã đặt cọc thành công, tiền cọc được FixLink giữ bảo chứng. Thợ sẽ đến theo lịch hẹn để khảo sát.";
             case INSPECTING -> tech
                     ? "Khảo sát xong: bắt đầu sửa theo ngân sách đã chốt, hoặc gửi đề xuất chi phí phát sinh để khách duyệt."
                     : "Thợ đang khảo sát. Nếu có lỗi phát sinh, thợ sẽ gửi chi phí mới để bạn duyệt trước khi sửa.";
             case AWAITING_COST_APPROVAL -> tech
                     ? "Chờ khách duyệt chi phí phát sinh; chỉ được sửa khi khách đồng ý."
-                    : "Vào chi tiết đơn xem giải trình của thợ và bấm Đồng ý để thợ tiếp tục sửa, hoặc hủy đơn nếu không đồng ý.";
+                    : "Vào chi tiết đơn xem giải trình của thợ và bấm Đồng ý để thợ tiếp tục sửa. Nếu không đồng ý, bạn có thể 'Từ chối giá & Đổi thợ khác' hoặc hủy đơn.";
             case IN_PROGRESS -> tech
                     ? "Hoàn tất sửa chữa, chạy thử rồi báo hoàn thành để khách nghiệm thu."
                     : "Thợ đang sửa chữa. Đơn ở trạng thái này không thể hủy.";
             case AWAITING_ACCEPTANCE -> tech
-                    ? "Chờ khách kiểm tra, chấm sao và nghiệm thu."
-                    : "Kiểm tra, vận hành thử thiết bị, chấm 1–5 sao và viết nhận xét (bắt buộc) rồi hoàn tất nghiệm thu để giải ngân cho thợ.";
+                    ? "Chờ khách thanh toán phần còn lại qua QR, chấm sao và nghiệm thu."
+                    : "Kiểm tra, vận hành thử thiết bị, quét mã QR thanh toán phần còn lại (giá chốt + phát sinh đã duyệt − tiền cọc), chấm 1–5 sao và viết nhận xét (bắt buộc) rồi hoàn tất nghiệm thu.";
             case COMPLETED -> "Đơn đã hoàn tất, thanh toán đã được giải ngân cho thợ.";
             case CANCELLED -> "Đơn đã hủy, không thể thao tác tiếp. Có thể đăng yêu cầu mới tại /dang-yeu-cau.";
         };

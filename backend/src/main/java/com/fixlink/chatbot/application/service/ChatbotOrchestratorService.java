@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -57,6 +58,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
     private final ToolCallRecorder recorder;
     private final ChatCardFactory cardFactory;
     private final FaqAnswerCache faqCache;
+    private final OfflinePersonalResponder offlineResponder;
 
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter PROMPT_TIME_FORMAT =
@@ -79,7 +81,8 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             ReplyGroundingGuard groundingGuard,
             ToolCallRecorder recorder,
             ChatCardFactory cardFactory,
-            FaqAnswerCache faqCache
+            FaqAnswerCache faqCache,
+            OfflinePersonalResponder offlineResponder
     ) {
         this.geminiChatPort = geminiChatPort;
         this.toolPort = toolPort;
@@ -94,6 +97,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         this.recorder = recorder;
         this.cardFactory = cardFactory;
         this.faqCache = faqCache;
+        this.offlineResponder = offlineResponder;
     }
 
     @PostConstruct
@@ -227,6 +231,25 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             } finally {
                 toolTraces = recorder.stop();
             }
+            if (orchestrationResult.modelUsed() != null && orchestrationResult.modelUsed().startsWith("local-")
+                    && command.userId() != null) {
+                // AI hết hạn mức: câu hỏi về đơn/lịch hẹn/hồ sơ vẫn được trả lời bằng dữ liệu thật
+                recorder.start();
+                Optional<LlmChatPort.ChatOrchestrationResult> offline;
+                try {
+                    offline = offlineResponder.answer(cleanMessage, command.userId(), command.role());
+                } finally {
+                    List<ToolCallRecorder.ToolTrace> offlineTraces = recorder.stop();
+                    if (!offlineTraces.isEmpty()) {
+                        toolTraces = new ArrayList<>(toolTraces);
+                        toolTraces.addAll(offlineTraces);
+                    }
+                }
+                if (offline.isPresent()) {
+                    orchestrationResult = offline.get();
+                }
+            }
+            orchestrationResult = withPreviousTurnContext(orchestrationResult, cleanMessage, history, ragContext);
             faqCache.store(cleanMessage, command.role(), history, orchestrationResult, toolTraces);
         }
 
@@ -259,7 +282,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         if (draftSummary != null && (modelUsed.equals("local-fallback") || modelUsed.equals("local-synthesizer"))) {
             // AI tạm quá tải nhưng đã đủ thông tin đặt thợ: trả bản tóm tắt cụ thể thay vì câu xin lỗi chung chung
             reply = draftSummary;
-        } else if (draftSummary != null && modelUsed.startsWith("local-")) {
+        } else if (draftSummary != null && modelUsed.startsWith("local-") && describesBooking(cleanMessage, userConversation)) {
             // Câu trả lời FAQ cục bộ vẫn giữ, kèm bản tóm tắt yêu cầu đã điền sẵn lên đầu
             reply = draftSummary + NL + NL + "---" + NL + NL + reply;
         }
@@ -367,6 +390,19 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
      * đặt thợ, hoặc model đã gợi ý đăng yêu cầu. Làm bằng code để không phụ thuộc việc model nhớ gọi tool
      * hay chép đúng đường dẫn dài.
      */
+    /**
+     * Khách đang mô tả yêu cầu đặt thợ (muốn đặt thợ, đã cho khu vực hoặc ngân sách) thì mới chèn bản tóm tắt
+     * yêu cầu lên đầu câu trả lời cục bộ; câu chỉ hỏi giá hay hỏi bằng tiếng Anh thì giữ nguyên câu trả lời.
+     */
+    private static boolean describesBooking(String message, String userConversation) {
+        if (ExtractiveFallbackSynthesizer.looksEnglish(message)) {
+            return false;
+        }
+        return BOOKING_INTENT.matcher(SymptomClassifier.normalize(message)).find()
+                || SymptomClassifier.detectAreaCode(userConversation).isPresent()
+                || SymptomClassifier.detectBudget(userConversation).isPresent();
+    }
+
     private String attachDraftRequestAction(List<ChatAction> actions, String message, String userConversation,
                                             List<ChatMessage> history) {
         boolean alreadyPrefilled = actions.stream()
@@ -473,6 +509,29 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             }
         }
         return false;
+    }
+
+    /**
+     * AI hết hạn mức và câu hiện tại quá ngắn để tự hiểu (ví dụ "đơn đang ở trạng thái thợ đang sửa" sau
+     * câu "tôi muốn hủy đơn"): ghép với câu hỏi liền trước rồi tra lại câu trả lời chuẩn.
+     */
+    private LlmChatPort.ChatOrchestrationResult withPreviousTurnContext(LlmChatPort.ChatOrchestrationResult result,
+                                                                        String message, List<ChatMessage> history,
+                                                                        String ragContext) {
+        String model = result.modelUsed() != null ? result.modelUsed() : "";
+        boolean unresolved = model.equals("local-synthesizer") || model.equals("local-fallback");
+        if (!unresolved || history == null) {
+            return result;
+        }
+        for (int i = history.size() - 1; i >= 0; i--) {
+            ChatMessage m = history.get(i);
+            if ("user".equalsIgnoreCase(m.getRole()) && m.getContent() != null) {
+                LlmChatPort.ChatOrchestrationResult combined =
+                        verifiedAnswers.synthesize(m.getContent() + " " + message, ragContext);
+                return "local-faq".equals(combined.modelUsed()) ? combined : result;
+            }
+        }
+        return result;
     }
 
     private static String userConversationText(List<ChatMessage> history, String currentMessage) {

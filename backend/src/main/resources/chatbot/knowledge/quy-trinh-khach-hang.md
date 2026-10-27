@@ -11,9 +11,11 @@ confidence: verified
 1. **Đăng ký / Đăng nhập:** Đăng ký miễn phí tại `/dang-ky`, đăng nhập tại `/dang-nhap`.
 2. **Đăng yêu cầu sửa chữa:** Chọn danh mục, mô tả sự cố, đính kèm ảnh hiện trường, chọn khu vực, nhập địa chỉ và **ngân sách dự kiến**.
 3. **Nhận báo giá:** Yêu cầu mở (`OPEN`) trong 3 ngày. Các thợ phù hợp gửi **báo giá** (tiền công + vật tư, phương án sửa).
-4. **So sánh và chọn thợ:** Khách xem các báo giá trong chi tiết đơn và bấm **"Chọn thợ này"**. Đơn chuyển sang `ASSIGNED`, giá chốt = báo giá được chọn, tiền cọc 30% được ghi nhận.
-5. **Hẹn lịch & khảo sát:** Thợ đặt lịch hẹn khảo sát trên hệ thống rồi mới đến nơi kiểm tra (`INSPECTING`). Có phát sinh thì thợ gửi chi phí mới để khách duyệt (`AWAITING_COST_APPROVAL`). Thợ sửa (`IN_PROGRESS`).
-6. **Đánh giá & nghiệm thu:** Thợ báo xong (`AWAITING_ACCEPTANCE`). Khách kiểm tra thiết bị, **chấm sao (1–5) và viết nhận xét (bắt buộc)** rồi hoàn tất nghiệm thu (`COMPLETED`); phần còn lại được tất toán và giải ngân cho thợ.
+4. **So sánh và chọn thợ:** Khách xem các báo giá trong chi tiết đơn và bấm **"Chọn thợ này"**. Đơn chuyển sang `ASSIGNED`, giá chốt = báo giá được chọn. Báo giá không vượt ngân sách bạn đặt.
+5. **Xác nhận lịch & đặt cọc:** Thợ đặt lịch hẹn khảo sát → bạn bấm **"✓ Xác nhận lịch hẹn"** → mã QR đặt cọc 30% hiện ra → quét QR chuyển khoản và xác nhận → đơn **Đã đặt cọc (`DEPOSIT_PAID`)**.
+6. **Khảo sát & sửa:** Thợ đến nơi kiểm tra (`INSPECTING`). Có phát sinh thì thợ gửi chi phí mới để khách duyệt (`AWAITING_COST_APPROVAL`). Thợ sửa (`IN_PROGRESS`).
+7. **Thanh toán, đánh giá & nghiệm thu:** Thợ báo xong (`AWAITING_ACCEPTANCE`) → mã QR thanh toán phần còn lại (giá chốt + phát sinh đã duyệt − cọc) hiện ra. Khách kiểm tra thiết bị, **thanh toán phần còn lại**, **chấm sao (1–5) và viết nhận xét (bắt buộc)** rồi hoàn tất nghiệm thu (`COMPLETED`); tiền được giải ngân cho thợ.
+- Chưa ưng thợ trước khi sửa (đơn `ASSIGNED`/`DEPOSIT_PAID`/`INSPECTING`/`AWAITING_COST_APPROVAL`): bấm **"Đổi thợ khác"** để chọn thợ dự phòng hoặc mở lại đơn nhận báo giá.
 
 ## 2. Hướng dẫn chi tiết cách đăng yêu cầu sửa chữa
 - **Bước 1:** Đăng nhập bằng tài khoản khách hàng, vào **"Đăng yêu cầu"** (`/dang-yeu-cau`). Chỉ tài khoản Khách hàng đang hoạt động mới đăng được yêu cầu.
@@ -38,6 +40,6 @@ confidence: verified
 
 ## 5. Đánh giá, nghiệm thu và giải ngân
 - Khách không giao tiền mặt trực tiếp cho thợ ngoài hệ thống.
-- Khi thợ báo hoàn thành (`AWAITING_ACCEPTANCE`), khách kiểm tra, vận hành thử thiết bị.
+- Khi thợ báo hoàn thành (`AWAITING_ACCEPTANCE`), khách kiểm tra, vận hành thử thiết bị và **quét mã QR thanh toán phần còn lại** (bắt buộc trước khi hoàn tất nghiệm thu).
 - **Bắt buộc chấm điểm 1–5 sao và viết nhận xét** trước khi hoàn tất. Điểm đánh giá được cộng vào điểm trung bình hiển thị trên hồ sơ thợ.
 - Chỉ khi khách hoàn tất nghiệm thu, hệ thống mới giải ngân cho thợ. Chưa hài lòng thì đừng nghiệm thu – hãy trao đổi với thợ hoặc tạo phiếu hỗ trợ.

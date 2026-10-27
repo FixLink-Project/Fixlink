@@ -21,7 +21,7 @@ public class ChatCardFactory {
     private static final int MAX_CARDS = 4;
 
     static final List<String> REQUEST_STEPS = List.of(
-            "Nhận báo giá", "Đã chọn thợ", "Khảo sát", "Sửa chữa", "Chờ nghiệm thu", "Hoàn thành");
+            "Nhận báo giá", "Đã chọn thợ", "Đặt cọc", "Khảo sát", "Sửa chữa", "Chờ nghiệm thu", "Hoàn thành");
 
     private final ObjectMapper objectMapper;
 
@@ -214,13 +214,13 @@ public class ChatCardFactory {
     private ChatCard depositCard(JsonNode node) {
         List<Field> fields = new ArrayList<>();
         addField(fields, "Giá chốt", node.path("amountText").asText(""));
-        addField(fields, "Cọc khi chọn thợ (30%)", node.path("depositText").asText(""));
+        addField(fields, "Đặt cọc qua QR (30%)", node.path("depositText").asText(""));
         addField(fields, "Thanh toán khi nghiệm thu (70%)", node.path("remainingText").asText(""));
         return ChatCard.builder()
                 .type("deposit")
                 .title("Tạm tính tiền cọc")
                 .fields(fields)
-                .note("Tiền cọc được giữ ở tài khoản trung gian và chỉ giải ngân cho thợ khi bạn đánh giá và nghiệm thu.")
+                .note("Cọc trả qua mã QR sau khi bạn xác nhận lịch hẹn và được FixLink giữ bảo chứng. Có phát sinh đã duyệt thì cộng vào lần thanh toán cuối; thợ chỉ nhận tiền khi bạn nghiệm thu.")
                 .build();
     }
 
@@ -324,10 +324,11 @@ public class ChatCardFactory {
         return switch (status) {
             case "DRAFT", "PENDING", "OPEN", "BIDDING_OPEN", "MATCHED_AWAITING_DEPOSIT" -> 0;
             case "ASSIGNED" -> 1;
-            case "INSPECTING", "AWAITING_COST_APPROVAL" -> 2;
-            case "IN_PROGRESS" -> 3;
-            case "AWAITING_ACCEPTANCE" -> 4;
-            case "COMPLETED" -> 5;
+            case "DEPOSIT_PAID" -> 2;
+            case "INSPECTING", "AWAITING_COST_APPROVAL" -> 3;
+            case "IN_PROGRESS" -> 4;
+            case "AWAITING_ACCEPTANCE" -> 5;
+            case "COMPLETED" -> 6;
             default -> null; // CANCELLED: không hiển thị thanh tiến độ
         };
     }
@@ -336,7 +337,7 @@ public class ChatCardFactory {
         return switch (status) {
             case "COMPLETED" -> "success";
             case "CANCELLED" -> "danger";
-            case "AWAITING_COST_APPROVAL", "AWAITING_ACCEPTANCE" -> "warning"; // khách cần thao tác
+            case "ASSIGNED", "AWAITING_COST_APPROVAL", "AWAITING_ACCEPTANCE" -> "warning"; // khách cần thao tác
             case "DRAFT" -> "neutral";
             default -> "info";
         };
