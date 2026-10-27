@@ -42,8 +42,14 @@ export default function AppointmentCard({
   const isTerminal = appt.status === 'COMPLETED' || appt.status === 'CANCELLED' || appt.status === 'REJECTED';
 
   // Rule: Nếu là lịch hẹn khảo sát và yêu cầu đã qua giai đoạn khảo sát (INSPECTING trở đi) thì coi như đã khảo sát xong
+  const isSurveyOrInitialAppt =
+    !appt.appointmentType ||
+    appt.appointmentType.toUpperCase() === 'SURVEY' ||
+    appt.appointmentType.toUpperCase() === 'INSPECTION' ||
+    (appt.appointmentType.toUpperCase() === 'REPAIR' && !appt.notes?.toLowerCase().includes('thi công'));
+
   const isInspectionDone =
-    (appt.appointmentType === 'INSPECTION' || !appt.appointmentType) &&
+    isSurveyOrInitialAppt &&
     ['INSPECTING', 'AWAITING_COST_APPROVAL', 'IN_PROGRESS', 'AWAITING_ACCEPTANCE', 'COMPLETED'].includes(
       requestStatus || ''
     );

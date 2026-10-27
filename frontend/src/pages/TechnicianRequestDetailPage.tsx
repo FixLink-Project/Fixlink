@@ -62,6 +62,7 @@ export default function TechnicianRequestDetailPage() {
   const [extraCostReason, setExtraCostReason] = useState('');
   const [extraPartsCost, setExtraPartsCost] = useState<number>(150000);
   const [extraCostImages, setExtraCostImages] = useState<string[]>([]);
+  const [willRescheduleWithCost, setWillRescheduleWithCost] = useState(false);
 
   // Modal Hẹn lại ngày thi công (Luồng mới sau khảo sát: Cần chuẩn bị linh kiện/dụng cụ)
   const [showRescheduleRepairModal, setShowRescheduleRepairModal] = useState(false);
@@ -713,6 +714,25 @@ export default function TechnicianRequestDetailPage() {
                             <span className="text-emerald-800 font-bold">{formatCurrency(remainingAfterAcceptance)}</span>
                           </div>
                         </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-amber-200/80">
+                          <span className="text-[11px] text-amber-900 italic">
+                            💡 Trong lúc chờ khách duyệt, bạn có thể thống nhất hẹn lại ngày thi công phù hợp.
+                          </span>
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setRescheduleRepairReason('Cần chuẩn bị linh kiện đã duyệt và hẹn lại ngày thi công');
+                              setNewRepairDate(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+                              setNewRepairTime('09:00');
+                              setRescheduleRepairNote('');
+                              setShowRescheduleRepairModal(true);
+                            }}
+                            className="text-xs py-1.5 px-3 border-amber-300 text-amber-900 bg-white hover:bg-amber-100 shadow-xs"
+                          >
+                            📅 Hẹn lại ngày thi công mới
+                          </Button>
+                        </div>
                       </div>
                     );
                   })()}
@@ -1309,6 +1329,21 @@ export default function TechnicianRequestDetailPage() {
                     console.warn('Attach media warning:', err);
                   }
                 }
+                if (willRescheduleWithCost && newRepairDate) {
+                  try {
+                    const numericUserId = parseNumericUserId(user?.id) ?? undefined;
+                    await createAppointment({
+                      repairRequestId: detail.request.id,
+                      technicianId: numericUserId,
+                      appointmentType: 'REPAIR',
+                      scheduledDate: newRepairDate,
+                      scheduledTime: newRepairTime.length === 5 ? `${newRepairTime}:00` : newRepairTime,
+                      notes: `Lịch thi công sau khảo sát: Cần mua/chuẩn bị linh kiện phát sinh (${extraCostReason || 'Linh kiện thay thế'}).`
+                    });
+                  } catch (err) {
+                    console.warn('Create appointment on surcharge warning:', err);
+                  }
+                }
                 const calculatedTotal = (req.agreedPrice || req.budgetRef || 0) + extraPartsCost;
                 handleTransition(
                   'AWAITING_COST_APPROVAL',
@@ -1355,6 +1390,64 @@ export default function TechnicianRequestDetailPage() {
                   <span>Tổng chi phí mới:</span>
                   <span className="text-blue-700">{formatCurrency((req.agreedPrice || req.budgetRef || 0) + extraPartsCost)}</span>
                 </div>
+              </div>
+
+              {/* Tùy chọn hẹn ngày thi công sau khi khảo sát phát hiện hư hỏng */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="block text-xs font-semibold text-slate-800">
+                  Kế hoạch thi công thay thế linh kiện:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setWillRescheduleWithCost(false)}
+                    className={`p-2.5 rounded-xl border text-xs font-medium text-left transition-all ${
+                      !willRescheduleWithCost
+                        ? 'border-brand bg-blue-50/70 text-blue-900 ring-1 ring-brand'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    ⚡ Sửa ngay sau khi duyệt
+                    <span className="block text-[11px] text-slate-500 font-normal mt-0.5">Có sẵn đồ nghề & phụ tùng</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWillRescheduleWithCost(true);
+                      if (!newRepairDate) {
+                        setNewRepairDate(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl border text-xs font-medium text-left transition-all ${
+                      willRescheduleWithCost
+                        ? 'border-indigo-400 bg-indigo-50/70 text-indigo-900 ring-1 ring-indigo-400'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    📅 Hẹn ngày thi công mới
+                    <span className="block text-[11px] text-slate-500 font-normal mt-0.5">Cần đặt hàng linh kiện</span>
+                  </button>
+                </div>
+
+                {willRescheduleWithCost && (
+                  <div className="grid grid-cols-2 gap-2.5 bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100 mt-2">
+                    <TextField
+                      label="Ngày hẹn mới *"
+                      type="date"
+                      min={new Date().toISOString().split('T')[0]}
+                      value={newRepairDate}
+                      onChange={(e) => setNewRepairDate(e.target.value)}
+                      required={willRescheduleWithCost}
+                    />
+                    <TextField
+                      label="Giờ hẹn mới *"
+                      type="time"
+                      value={newRepairTime}
+                      onChange={(e) => setNewRepairTime(e.target.value)}
+                      required={willRescheduleWithCost}
+                    />
+                  </div>
+                )}
               </div>
 
               <div>

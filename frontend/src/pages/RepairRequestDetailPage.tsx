@@ -754,15 +754,28 @@ export default function RepairRequestDetailPage() {
           <Card
             title="Thợ kỹ thuật thực hiện"
             description="Báo giá và kỹ thuật viên đã được bạn lựa chọn thực hiện công việc."
-            actions={canSwitchTechnician ? (
-              <Button
-                variant="secondary"
-                onClick={() => setShowSwitchModal(true)}
-                className="text-xs py-1.5 px-3 border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-medium shadow-xs"
-              >
-                🔄 Đổi thợ khác
-              </Button>
-            ) : undefined}
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                {currentSelectedQuote && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => handleOpenReviews(currentSelectedQuote.technicianId, currentSelectedQuote.technicianName || 'Thợ kỹ thuật', currentSelectedQuote.avgRating)}
+                    className="text-xs py-1.5 px-3 border-amber-200 text-amber-800 bg-amber-50 hover:bg-amber-100 font-medium shadow-xs"
+                  >
+                    ⭐ Xem đánh giá thợ
+                  </Button>
+                )}
+                {canSwitchTechnician && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowSwitchModal(true)}
+                    className="text-xs py-1.5 px-3 border-slate-300 text-slate-700 bg-white hover:bg-slate-50 font-medium shadow-xs"
+                  >
+                    🔄 Đổi thợ khác
+                  </Button>
+                )}
+              </div>
+            }
           >
             <div className="grid gap-4 md:grid-cols-2">
               {detail.quotations.filter((q) => q.status === 'ACCEPTED').map((q) => (
