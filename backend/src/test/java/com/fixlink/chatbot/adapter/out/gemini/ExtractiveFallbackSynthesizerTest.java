@@ -88,6 +88,8 @@ class ExtractiveFallbackSynthesizerTest {
         // Hỏi tất cả dịch vụ: đủ 4 nhóm, có giá, không lộ mã nội bộ
         assertThat(reply("gợi ý cho tôi tất cả dịch vụ hiện đang có")).contains("Sửa Chữa Điện Lạnh").contains("Sửa Chữa Điện Nước")
                 .contains("Sửa Điện Gia Dụng").contains("Sửa Khóa & Cửa Cuốn").contains("350.000 đ").doesNotContain("DIEN_LANH");
+        // Phép tính là câu ngoài phạm vi, không phải câu hỏi dịch vụ
+        assertThat(reply("1+1=?")).contains("ngoài phạm vi").doesNotContain("Vệ sinh máy lạnh");
         // Có số tiền cụ thể thì tính luôn tiền cọc
         assertThat(reply("ngân sách 800 nghìn thì cọc bao nhiêu?")).contains("240.000 đ").contains("560.000 đ");
         // An toàn luôn ưu tiên dù câu có từ khóa khác

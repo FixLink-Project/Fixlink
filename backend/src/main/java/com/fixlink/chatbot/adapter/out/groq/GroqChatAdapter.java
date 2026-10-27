@@ -114,6 +114,12 @@ public class GroqChatAdapter implements LlmChatPort {
             result.add(new Endpoint(GROQ, groq().getBaseUrl(), groqKey, groq().getModels(),
                     groq().getTimeoutSeconds(), groq().getMaxRetries(), groq().getTotalBudgetSeconds()));
         }
+        String groqKey2 = groq().getApiKey2();
+        if (groqKey2 != null && !groqKey2.isBlank() && !groqKey2.equals(groqKey)) {
+            // Tài khoản Groq thứ hai có hạn mức riêng: dùng khi key chính đã hết hạn mức trong ngày
+            result.add(new Endpoint(GROQ + "-2", groq().getBaseUrl(), groqKey2, groq().getModels(),
+                    groq().getTimeoutSeconds(), groq().getMaxRetries(), groq().getTotalBudgetSeconds()));
+        }
         return result;
     }
 

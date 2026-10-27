@@ -480,6 +480,15 @@ public class ExtractiveFallbackSynthesizer {
             );
         }
 
+        if (isArithmetic(userMessage)) {
+            return new ChatOrchestrationResult(
+                    "Câu hỏi này nằm ngoài phạm vi hỗ trợ của mình. Mình là **Trợ lý FixLink**, chuyên hỗ trợ về sửa chữa "
+                            + "thiết bị gia dụng: tư vấn sự cố, chọn dịch vụ, đăng yêu cầu, báo giá – đặt cọc – nghiệm thu, "
+                            + "tài khoản và khiếu nại.\n\nBạn đang cần sửa thiết bị nào không?",
+                    List.of("FixLink sửa những gì?", "Máy lạnh không mát", "Cách đăng yêu cầu"),
+                    List.of(), false, null, MODEL_INTENT);
+        }
+
         if (looksEnglish(userMessage)) {
             return new ChatOrchestrationResult(
                     "I'm the **FixLink Assistant**. FixLink connects customers in Ho Chi Minh City with KYC-verified technicians "
@@ -541,8 +550,10 @@ public class ExtractiveFallbackSynthesizer {
         }
 
         return new ChatOrchestrationResult(
-                "Xin lỗi bạn, hệ thống AI đang tạm quá tải nên mình chưa trả lời chính xác được câu hỏi này. "
-                        + "Bạn thử hỏi lại sau ít phút, hoặc để mình tạo **phiếu hỗ trợ** để nhân viên CSKH liên hệ giải đáp nhé.",
+                "Mình chưa hiểu rõ câu hỏi này. Mình hỗ trợ các vấn đề về sửa chữa thiết bị gia dụng trên FixLink: "
+                        + "tư vấn sự cố, chọn dịch vụ, đăng yêu cầu, báo giá – đặt cọc – nghiệm thu, tài khoản và khiếu nại.\n\n"
+                        + "Bạn diễn đạt lại giúp mình hoặc chọn một gợi ý bên dưới nhé; cần nhân viên CSKH thì mình tạo "
+                        + "**phiếu hỗ trợ** cho bạn.",
                 List.of("Tạo phiếu hỗ trợ", "FixLink là gì?", "Cách đăng yêu cầu sửa chữa"),
                 List.of(Map.of("type", "link", "label", "Trang chủ", "url", "/"), LINK_POST),
                 true,
@@ -585,6 +596,12 @@ public class ExtractiveFallbackSynthesizer {
             }
         }
         return Optional.ofNullable(best);
+    }
+
+    /** Câu chỉ gồm phép tính (ví dụ "1+1=?"): ngoài phạm vi, trả lời ngay không cần gọi AI. */
+    public static boolean isArithmetic(String message) {
+        return message != null && message.strip().matches("[0-9+\\-*/×÷=^%?().,xX\\s]+")
+                && message.matches(".*[+\\-*/×÷=^%].*");
     }
 
     /** Cọc 30% làm tròn lên đến đồng, giống calculate_deposit và lúc khách chọn thợ. */

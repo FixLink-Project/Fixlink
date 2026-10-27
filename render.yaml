@@ -24,6 +24,9 @@ services:
         value: groq
       - key: GROQ_API_KEY
         sync: false
+      # Tùy chọn: key Groq của tài khoản thứ hai (gấp đôi hạn mức/ngày), bỏ trống cũng được
+      - key: GROQ_API_KEY_2
+        sync: false
       # Gọi cổng LiteLLM qua mạng nội bộ của Render; LiteLLM không phản hồi thì backend gọi thẳng Groq
       - key: LITELLM_BASE_URL
         fromService:

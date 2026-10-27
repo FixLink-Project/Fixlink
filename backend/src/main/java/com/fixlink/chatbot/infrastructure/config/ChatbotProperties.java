@@ -39,6 +39,8 @@ public class ChatbotProperties {
     @Setter
     public static class GroqProperties {
         private String apiKey = "";
+        /** Key Groq của tài khoản thứ hai (tùy chọn): dùng khi key chính hết hạn mức. */
+        private String apiKey2 = "";
         /** Endpoint tương thích OpenAI của Groq. */
         private String baseUrl = "https://api.groq.com/openai/v1";
         /** Chuỗi failover: model đầu tiên là model chính. */

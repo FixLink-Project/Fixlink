@@ -211,7 +211,11 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         LlmChatPort.ChatOrchestrationResult orchestrationResult;
         List<ToolCallRecorder.ToolTrace> toolTraces;
         FaqAnswerCache.Entry cached = faqCache.lookup(cleanMessage, command.role(), history);
-        if (cached != null) {
+        if (ExtractiveFallbackSynthesizer.isArithmetic(cleanMessage)) {
+            // Câu tính toán nằm ngoài phạm vi: trả lời từ chối ngay, không gửi lên AI (model hay trả lời luôn)
+            orchestrationResult = verifiedAnswers.synthesize(cleanMessage, "");
+            toolTraces = List.of();
+        } else if (cached != null) {
             orchestrationResult = cached.result();
             toolTraces = cached.traces();
         } else {
@@ -512,6 +516,14 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
     }
 
     /**
+     * Câu hiện tại phải là câu nối tiếp chủ đề FixLink (nhắc đơn, thợ, cọc, lịch, giá, khu vực... hoặc "vậy",
+     * "còn... thì sao") mới được ghép với câu trước; câu lạc đề như "1+1=?" thì không.
+     */
+    private static final Pattern FOLLOW_UP_SIGNAL = Pattern.compile(
+            "\\b(don|tho|coc|huy|trang thai|lich|gia|tien|sua|quan|ngan sach|thanh toan|bao gia|nghiem thu|"
+                    + "dang sua|vay|the con|con .* thi sao|thi sao|nhu the nao|bao nhieu)\\b");
+
+    /**
      * AI hết hạn mức và câu hiện tại quá ngắn để tự hiểu (ví dụ "đơn đang ở trạng thái thợ đang sửa" sau
      * câu "tôi muốn hủy đơn"): ghép với câu hỏi liền trước rồi tra lại câu trả lời chuẩn.
      */
@@ -520,7 +532,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
                                                                         String ragContext) {
         String model = result.modelUsed() != null ? result.modelUsed() : "";
         boolean unresolved = model.equals("local-synthesizer") || model.equals("local-fallback");
-        if (!unresolved || history == null) {
+        if (!unresolved || history == null || !FOLLOW_UP_SIGNAL.matcher(SymptomClassifier.normalize(message)).find()) {
             return result;
         }
         for (int i = history.size() - 1; i >= 0; i--) {

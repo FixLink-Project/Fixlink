@@ -216,4 +216,29 @@ class GroqChatAdapterContractTest {
         assertThat(result.reply()).isEqualTo("Chào bạn!");
         assertThat(result.modelUsed()).isEqualTo("openai/gpt-oss-120b");
     }
+
+    @Test
+    @DisplayName("Key Groq chính hết hạn mức ngày thì dùng key của tài khoản thứ hai")
+    void shouldUseSecondGroqKeyWhenFirstIsExhausted() {
+        properties.getGroq().setApiKey2("gsk_second");
+        responder = body -> new FakeResponse(200, FINAL_ANSWER.formatted("openai/gpt-oss-120b"));
+        server.removeContext("/");
+        server.createContext("/", exchange -> {
+            String auth = exchange.getRequestHeaders().getFirst("Authorization");
+            authHeaders.add(auth);
+            exchange.getRequestBody().readAllBytes();
+            boolean first = "Bearer gsk_test".equals(auth);
+            byte[] bytes = (first
+                    ? "{\"error\":{\"message\":\"Rate limit reached on tokens per day (TPD)\"}}"
+                    : FINAL_ANSWER.formatted("openai/gpt-oss-120b")).getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(first ? 429 : 200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+        });
+
+        LlmChatPort.ChatOrchestrationResult result = ask("Xin chào");
+
+        assertThat(result.reply()).isEqualTo("Chào bạn!");
+        assertThat(authHeaders).contains("Bearer gsk_test", "Bearer gsk_second");
+    }
 }

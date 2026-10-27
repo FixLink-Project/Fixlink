@@ -59,6 +59,8 @@ chatbot:
   provider: ${CHATBOT_PROVIDER:groq}
   groq:
     api-key: ${GROQ_API_KEY:}
+    # Tùy chọn: key Groq của tài khoản thứ hai, dùng khi key chính hết hạn mức (gấp đôi hạn mức/ngày)
+    api-key-2: ${GROQ_API_KEY_2:}
     base-url: https://api.groq.com/openai/v1
     # Chuỗi failover: model đầu tiên là model chính. Ghi đè bằng GROQ_MODELS (phân tách bằng dấu phẩy).
     models: ${GROQ_MODELS:openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b}
