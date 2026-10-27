@@ -62,6 +62,7 @@ export default function RepairRequestDetailPage() {
   const [newApptNotes, setNewApptNotes] = useState('');
   const [creatingAppt, setCreatingAppt] = useState(false);
   const [createApptError, setCreateApptError] = useState<string | null>(null);
+  const [showCancelledAppts, setShowCancelledAppts] = useState(false);
 
   // Modal xem ảnh phóng to
   const [activeMediaUrl, setActiveMediaUrl] = useState<string | null>(null);
@@ -1095,19 +1096,65 @@ export default function RepairRequestDetailPage() {
               <div className="py-6 text-center text-slate-500 text-sm">
                 Chưa có lịch hẹn nào được thiết lập. Hãy bấm <strong>Đặt lịch hẹn mới</strong> để hẹn thời gian kỹ thuật viên tới nhà.
               </div>
-            ) : (
-              <div className="space-y-4 my-2">
-                {appointments.map((appt) => (
-                  <AppointmentCard
-                    key={appt.id}
-                    appointment={appt}
-                    currentUserRole={currentRole as 'CUSTOMER' | 'TECHNICIAN' | 'ADMIN'}
-                    requestStatus={detail.request.status}
-                    onUpdated={loadDetail}
-                  />
-                ))}
-              </div>
-            )}
+            ) : (() => {
+              const activeList = appointments.filter((a) => a.status !== 'CANCELLED' && a.status !== 'REJECTED');
+              const cancelledList = appointments.filter((a) => a.status === 'CANCELLED' || a.status === 'REJECTED');
+
+              return (
+                <div className="space-y-4 my-2">
+                  {activeList.length === 0 && (
+                    <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span>ℹ️</span>
+                        <span>Hiện chưa có lịch hẹn mới nào đang chờ. Bạn hoặc thợ có thể bấm <strong>+ Đặt lịch hẹn mới</strong> ở góc trên.</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeList.map((appt) => (
+                    <AppointmentCard
+                      key={appt.id}
+                      appointment={appt}
+                      currentUserRole={currentRole as 'CUSTOMER' | 'TECHNICIAN' | 'ADMIN'}
+                      requestStatus={detail.request.status}
+                      onUpdated={loadDetail}
+                    />
+                  ))}
+
+                  {cancelledList.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setShowCancelledAppts(!showCancelledAppts)}
+                        className="flex items-center justify-between w-full p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors text-xs font-semibold"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>📋</span>
+                          <span>Lịch hẹn cũ đã hủy ({cancelledList.length})</span>
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          {showCancelledAppts ? '▲ Thu gọn' : '▼ Xem chi tiết'}
+                        </span>
+                      </button>
+
+                      {showCancelledAppts && (
+                        <div className="mt-3 space-y-3 pl-2 border-l-2 border-slate-200">
+                          {cancelledList.map((appt) => (
+                            <AppointmentCard
+                              key={appt.id}
+                              appointment={appt}
+                              currentUserRole={currentRole as 'CUSTOMER' | 'TECHNICIAN' | 'ADMIN'}
+                              requestStatus={detail.request.status}
+                              onUpdated={loadDetail}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </Card>
         )}
 
