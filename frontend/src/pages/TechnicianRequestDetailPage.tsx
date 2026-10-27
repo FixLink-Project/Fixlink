@@ -1076,22 +1076,30 @@ export default function TechnicianRequestDetailPage() {
 
           if (myQuote && myQuote.status === 'REJECTED') {
             return (
-              <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-5 shadow-sm space-y-3">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">ℹ️</span>
-                  <div>
-                    <h3 className="font-display font-bold text-amber-950 text-base">
-                      Đơn hàng đã được chuyển giao cho kỹ thuật viên khác
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-5 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🛠️</span>
+                    <h3 className="font-display font-bold text-slate-800 text-sm">
+                      Tiến độ đơn hàng: <span className="text-blue-700 font-bold">Đang xử lý</span>
                     </h3>
-                    <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-                      Khách hàng đã lựa chọn đổi sang kỹ thuật viên khác để tiếp tục xử lý công việc (do không thống nhất được chi phí phát sinh hoặc thay đổi kế hoạch).
-                    </p>
                   </div>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                    Đang xử lý
+                  </span>
                 </div>
-                <div className="rounded-xl bg-white border border-amber-200 p-3.5 text-xs text-slate-700 space-y-1.5 leading-relaxed">
-                  <p className="font-semibold text-slate-900">• Báo giá của bạn đã chính thức kết thúc tại đơn hàng này.</p>
-                  <p>• Nếu bạn đã tháo máy kiểm tra tại hiện trường, vui lòng hỗ trợ khách hàng lắp ráp lại nguyên trạng thiết bị.</p>
-                  <p>• Bạn có thể quay lại <strong>Sàn việc</strong> để tiếp tục nhận và nộp báo giá cho các đơn sửa chữa mới trong khu vực.</p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Đơn hàng đang trong tiến trình triển khai thực hiện. Báo giá của bạn ({formatCurrency(myQuote.totalPrice || myQuote.priceLaborVnd || 0)}) đã được ghi nhận trong hệ thống.
+                </p>
+                <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-500">
+                    Bạn có thể quay lại sàn việc để nộp báo giá cho các đơn mới trong khu vực.
+                  </span>
+                  <Link to="/tho">
+                    <Button variant="secondary" className="text-xs py-1 px-3">
+                      Quay lại sàn việc
+                    </Button>
+                  </Link>
                 </div>
               </div>
             );
@@ -1106,44 +1114,35 @@ export default function TechnicianRequestDetailPage() {
           );
         })()}
 
-        {/* Lịch hẹn làm việc / khảo sát (Chỉ hiển thị khi đã chốt thợ, ẩn hoàn toàn khi đang đấu giá) */}
+        {/* Lịch hẹn làm việc / khảo sát (Chỉ hiển thị cho thợ phụ trách, ẩn khi đang đấu giá hoặc thợ khác xem) */}
         {(() => {
           const numericUserId = parseNumericUserId(user?.id);
           const isAssignedToOther = detail.request.technicianId && numericUserId && detail.request.technicianId !== numericUserId;
           const isOpenForBidding = req.status === 'OPEN' || req.status === 'BIDDING_OPEN';
 
-          // Khi đang đấu giá: ẨN HOÀN TOÀN khối đặt lịch hẹn
-          if (isOpenForBidding) return null;
+          // Khi đang đấu giá hoặc đơn do thợ khác phụ trách: Ẩn hoàn toàn khối lịch hẹn để tránh gây rối
+          if (isOpenForBidding || isAssignedToOther) return null;
 
           return (
             <Card
               title="Lịch hẹn khảo sát & thi công"
               description="Quản lý vòng đời trạng thái cuộc hẹn giữa bạn và khách hàng."
               actions={
-                !isAssignedToOther ? (
-                  <Button
-                    variant="primary"
-                    className="min-h-[36px] px-3.5 py-1 text-xs"
-                    onClick={() => {
-                      setCreateApptError(null);
-                      setShowCreateApptModal(true);
-                    }}
-                  >
-                    + Đặt lịch hẹn mới
-                  </Button>
-                ) : undefined
+                <Button
+                  variant="primary"
+                  className="min-h-[36px] px-3.5 py-1 text-xs"
+                  onClick={() => {
+                    setCreateApptError(null);
+                    setShowCreateApptModal(true);
+                  }}
+                >
+                  + Đặt lịch hẹn mới
+                </Button>
               }
             >
-              {isAssignedToOther && (
-                <div className="mb-3 rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
-                  ⚠️ Đơn hàng này đang được phụ trách bởi một kỹ thuật viên khác. Bạn đang xem với quyền chỉ đọc.
-                </div>
-              )}
               {appointments.length === 0 ? (
                 <div className="py-6 text-center text-slate-500 text-sm">
-                  {isAssignedToOther
-                    ? 'Chưa có lịch hẹn nào được thiết lập cho đơn này.'
-                    : 'Chưa có lịch hẹn nào được thiết lập cho đơn này. Bấm nút + Đặt lịch hẹn mới để hẹn thời gian tới nhà khách hàng.'}
+                  Chưa có lịch hẹn nào được thiết lập cho đơn này. Bấm nút + Đặt lịch hẹn mới để hẹn thời gian tới nhà khách hàng.
                 </div>
               ) : (
                 <div className="space-y-4 my-2">

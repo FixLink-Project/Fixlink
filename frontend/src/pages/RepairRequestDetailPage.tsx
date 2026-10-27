@@ -1690,10 +1690,10 @@ function QuotationCard({
       {canSwitch && q.status !== 'ACCEPTED' && (
         <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
           <Button
-            variant="secondary"
+            variant="primary"
             loading={isSwitching}
             onClick={() => onSwitch?.(q.id)}
-            className="w-full sm:w-auto text-xs py-2 px-4 shadow-sm border-blue-300 text-blue-700 bg-blue-50/60 hover:bg-blue-100"
+            className="w-full sm:w-auto text-xs py-2.5 px-5 font-bold shadow-md bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all"
           >
             🔄 Đổi sang thợ này
           </Button>
