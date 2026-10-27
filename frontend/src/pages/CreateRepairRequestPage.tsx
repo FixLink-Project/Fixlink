@@ -31,6 +31,59 @@ function getCategoryIcon(name: string): string {
   return '🔧';
 }
 
+function readVietnameseNumber(n: number): string {
+  if (!n || n <= 0 || isNaN(n)) return '';
+  const digits = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+
+  function readTriple(num: number, showZeroHundred: boolean): string {
+    const h = Math.floor(num / 100);
+    const t = Math.floor((num % 100) / 10);
+    const o = num % 10;
+    if (h === 0 && t === 0 && o === 0) return '';
+    let res = '';
+    if (h > 0 || showZeroHundred) {
+      res += `${digits[h]} trăm `;
+    }
+    if (t === 0 && o > 0) {
+      if (h > 0 || showZeroHundred) res += 'lẻ ';
+      res += digits[o];
+    } else if (t === 1) {
+      res += 'mười ';
+      if (o === 1) res += 'một';
+      else if (o === 5) res += 'lăm';
+      else if (o > 0) res += digits[o];
+    } else if (t > 1) {
+      res += `${digits[t]} mươi `;
+      if (o === 1) res += 'mốt';
+      else if (o === 4) res += 'tư';
+      else if (o === 5) res += 'lăm';
+      else if (o > 0) res += digits[o];
+    }
+    return res.trim();
+  }
+
+  const scales = ['', 'nghìn', 'triệu', 'tỷ', 'nghìn tỷ'];
+  let temp = Math.floor(n);
+  const parts: { num: number; scale: string }[] = [];
+  let scaleIdx = 0;
+  while (temp > 0) {
+    const chunk = temp % 1000;
+    if (chunk > 0) {
+      parts.unshift({ num: chunk, scale: scales[scaleIdx] });
+    }
+    temp = Math.floor(temp / 1000);
+    scaleIdx++;
+  }
+  if (parts.length === 0) return '';
+  const words = parts.map((p, idx) => {
+    const str = readTriple(p.num, idx > 0);
+    return p.scale ? `${str} ${p.scale}` : str;
+  }).join(' ');
+
+  const trimmed = words.trim();
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1) + ' đồng';
+}
+
 export default function CreateRepairRequestPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(1);
@@ -300,16 +353,71 @@ export default function CreateRepairRequestPage() {
               </div>
             </div>
 
-            <TextField
-              label="Ngân sách của bạn (VND)"
-              type="number"
-              min={1}
-              required
-              placeholder="VD: 500000"
-              hint="Đây sẽ là giá cuối cùng cho công việc — thợ nhận việc theo đúng mức này, không thương lượng."
-              value={form.budgetRef}
-              onChange={(e) => update('budgetRef', e.target.value)}
-            />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Ngân sách dự kiến của bạn (VND) *
+                </label>
+                {Number(form.budgetRef) > 0 && (
+                  <span className="text-xs font-bold text-brand">
+                    {formatCurrency(Number(form.budgetRef))}
+                  </span>
+                )}
+              </div>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  placeholder="Ví dụ: 500.000"
+                  value={form.budgetRef ? Number(form.budgetRef).toLocaleString('vi-VN') : ''}
+                  onChange={(e) => {
+                    const rawDigits = e.target.value.replace(/\D/g, '');
+                    update('budgetRef', rawDigits);
+                  }}
+                  className="w-full rounded-xl border border-slate-300 p-2.5 pr-14 text-sm font-semibold text-slate-800 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand shadow-xs"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                  VNĐ
+                </span>
+              </div>
+
+              {/* Đọc số thành chữ & tính cọc 30% */}
+              {Number(form.budgetRef) > 0 && (
+                <div className="rounded-xl bg-blue-50/70 border border-blue-100 p-2.5 text-xs space-y-1 text-blue-900 shadow-xs animate-fade-in">
+                  <p className="font-semibold flex items-center gap-1">
+                    <span>📝</span> Bằng chữ: <span className="italic font-bold text-brand">{readVietnameseNumber(Number(form.budgetRef))}</span>
+                  </p>
+                  <p className="text-[11px] text-blue-800">
+                    🔒 Tiền đặt cọc bảo đảm ước tính (30%): <strong>{formatCurrency(Math.round(Number(form.budgetRef) * 0.3))}</strong> <em>(Chỉ thanh toán sau khi bạn chọn được thợ ưng ý)</em>
+                  </p>
+                </div>
+              )}
+
+              {/* Nút chọn nhanh ngân sách */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[11px] text-slate-500 font-medium">Mức gợi ý:</span>
+                {[200000, 500000, 1000000, 2000000, 5000000].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => update('budgetRef', String(preset))}
+                    className={`px-2.5 py-1 text-xs rounded-lg border font-semibold transition-all ${
+                      Number(form.budgetRef) === preset
+                        ? 'bg-blue-50 border-brand text-brand ring-1 ring-brand'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {preset >= 1000000 ? `${preset / 1000000} triệu` : `${preset / 1000}k`}
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-xs text-slate-500 pt-0.5">
+                Mức ngân sách tối đa bạn dự kiến chi trả. Các thợ kỹ thuật uy tín sẽ căn cứ mức này để gửi báo giá cạnh tranh nhất cho bạn so sánh và lựa chọn.
+              </p>
+            </div>
 
             {/* RC-30 & RC-8: Ảnh đính kèm Firebase Storage */}
             <div className="pt-2 border-t border-slate-100">

@@ -754,15 +754,28 @@ export default function RepairRequestDetailPage() {
           <Card
             title="Thợ kỹ thuật thực hiện"
             description="Báo giá và kỹ thuật viên đã được bạn lựa chọn thực hiện công việc."
-            actions={canSwitchTechnician ? (
-              <Button
-                variant="secondary"
-                onClick={() => setShowSwitchModal(true)}
-                className="text-xs py-1.5 px-3 border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-medium shadow-xs"
-              >
-                🔄 Đổi thợ khác
-              </Button>
-            ) : undefined}
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                {currentSelectedQuote && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => handleOpenReviews(currentSelectedQuote.technicianId, currentSelectedQuote.technicianName || 'Thợ kỹ thuật', currentSelectedQuote.avgRating)}
+                    className="text-xs py-1.5 px-3 border-amber-200 text-amber-800 bg-amber-50 hover:bg-amber-100 font-medium shadow-xs"
+                  >
+                    ⭐ Xem đánh giá thợ
+                  </Button>
+                )}
+                {canSwitchTechnician && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowSwitchModal(true)}
+                    className="text-xs py-1.5 px-3 border-slate-300 text-slate-700 bg-white hover:bg-slate-50 font-medium shadow-xs"
+                  >
+                    🔄 Đổi thợ khác
+                  </Button>
+                )}
+              </div>
+            }
           >
             <div className="grid gap-4 md:grid-cols-2">
               {detail.quotations.filter((q) => q.status === 'ACCEPTED').map((q) => (
@@ -1590,9 +1603,11 @@ function QuotationCard({
       className={`rounded-2xl border p-5 transition-all duration-200 flex flex-col justify-between ${
         isAccepted
           ? 'border-brand bg-blue-50/60 shadow-sm ring-1 ring-brand'
-          : q.status === 'REJECTED'
-            ? 'border-slate-200 bg-slate-50/60 opacity-60'
-            : 'border-slate-200 bg-white shadow-xs hover:border-brand/40 hover:shadow-card'
+          : canSwitch
+            ? 'border-blue-200 bg-white shadow-xs hover:border-brand/50 hover:shadow-card'
+            : q.status === 'REJECTED'
+              ? 'border-slate-200 bg-slate-50/60 opacity-60'
+              : 'border-slate-200 bg-white shadow-xs hover:border-brand/40 hover:shadow-card'
       }`}
     >
       <div>
@@ -1631,7 +1646,14 @@ function QuotationCard({
               </div>
             </div>
           </div>
-          <StatusChip status={q.status} />
+          {canSwitch ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Sẵn sàng nhận việc
+            </span>
+          ) : (
+            <StatusChip status={q.status} />
+          )}
         </div>
 
         <div className="mt-3.5 rounded-xl bg-slate-50 p-3 border border-slate-100">
@@ -1677,10 +1699,10 @@ function QuotationCard({
       {canSwitch && q.status !== 'ACCEPTED' && (
         <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
           <Button
-            variant="secondary"
+            variant="primary"
             loading={isSwitching}
             onClick={() => onSwitch?.(q.id)}
-            className="w-full sm:w-auto text-xs py-2 px-4 shadow-sm border-blue-300 text-blue-700 bg-blue-50/60 hover:bg-blue-100"
+            className="w-full sm:w-auto text-xs py-2.5 px-5 font-bold shadow-md bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all"
           >
             🔄 Đổi sang thợ này
           </Button>
