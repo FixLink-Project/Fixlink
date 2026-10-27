@@ -211,6 +211,11 @@ export default function AppointmentCard({
           <Alert tone="success">{actionSuccess}</Alert>
         </div>
       )}
+      {actionError && (
+        <div className="mb-4">
+          <Alert tone="error">{actionError}</Alert>
+        </div>
+      )}
 
       {/* Header cuộc hẹn: Ngày giờ + Status Badge */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">

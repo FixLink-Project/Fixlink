@@ -12,6 +12,7 @@ import com.fixlink.application.port.in.AppointmentUseCase;
 import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.exception.ResourceNotFoundException;
 import com.fixlink.domain.model.AppointmentStatus;
+import com.fixlink.domain.model.RequestStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -55,6 +56,9 @@ public class AppointmentService implements AppointmentUseCase {
         if (isTechnicianRole) {
             // Khi Kỹ thuật viên tạo lịch hẹn, kỹ thuật viên phụ trách là chính người đang đăng nhập
             technicianId = actorId;
+        } else if (request.getTechnicianId() != null) {
+            // Nếu đơn đã có thợ phụ trách, cuộc hẹn luôn gắn với thợ phụ trách của đơn
+            technicianId = request.getTechnicianId();
         } else if (technicianId == null) {
             technicianId = request.getTechnicianId();
         }
@@ -135,11 +139,14 @@ public class AppointmentService implements AppointmentUseCase {
         appointment = appointmentRepo.save(appointment);
         log.info("Appointment #{} approved by customer #{}", appointment.getId(), actorId);
 
-        // Rule: Tự động tạo mã QR đặt cọc khi khách hàng đã xác nhận lịch hẹn
+        // Rule: Tự động tạo mã QR đặt cọc khi khách hàng đã xác nhận lịch hẹn (chỉ khi đơn chưa cọc và đang ở ASSIGNED)
         try {
-            paymentService.createDepositPayment(appointment.getRepairRequestId(), appointment.getCustomerId());
-            log.info("Auto-generated deposit payment for request #{} after appointment #{} approved",
-                    appointment.getRepairRequestId(), appointment.getId());
+            RepairRequestJpaEntity req = requestRepo.findById(appointment.getRepairRequestId()).orElse(null);
+            if (req != null && req.getStatus() == RequestStatus.ASSIGNED) {
+                paymentService.createDepositPayment(appointment.getRepairRequestId(), appointment.getCustomerId());
+                log.info("Auto-generated deposit payment for request #{} after appointment #{} approved",
+                        appointment.getRepairRequestId(), appointment.getId());
+            }
         } catch (Exception e) {
             log.info("Deposit payment auto-creation on appointment approval info: {}", e.getMessage());
         }
