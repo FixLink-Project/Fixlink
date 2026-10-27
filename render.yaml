@@ -4,6 +4,8 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
+    plan: free
+    region: singapore
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
@@ -11,16 +13,22 @@ services:
         fromDatabase:
           name: fixlink-db
           property: connectionString
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: fixlink-db
+          property: connectionString
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ALLOWED_ORIGINS
-        sync: false
-      - key: FIREBASE_CREDENTIALS
-        sync: false
+        value: https://fixlink.vercel.app,http://localhost:5173
       - key: FRONTEND_URL
-        sync: false
+        value: https://fixlink.vercel.app
+      - key: CHATBOT_ENABLED
+        value: "false"
 
 databases:
   - name: fixlink-db
     plan: free
-    databaseName: fixlink
+    region: singapore
+    databaseName: fixlink_db
+    user: fixlink_user

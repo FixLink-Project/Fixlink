@@ -9,7 +9,7 @@ import StatusChip from '../components/StatusChip';
 import Tabs from '../components/Tabs';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
-import { ApiError, api, toFieldErrors } from '../lib/api';
+import { ApiError, api, fetchTechnicianReviews, toFieldErrors, type TechnicianReviewItem } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { ServiceArea, ServiceCategory, VerificationStatus } from '../lib/types';
 
@@ -32,11 +32,12 @@ interface TechnicianProfile {
   areas: SimpleRef[];
 }
 
-type TabId = 'CA_NHAN' | 'CHUYEN_MON' | 'BAO_MAT';
+type TabId = 'CA_NHAN' | 'CHUYEN_MON' | 'DANH_GIA' | 'BAO_MAT';
 
 const TABS = [
   { id: 'CA_NHAN' as const, label: 'Thông tin cá nhân' },
   { id: 'CHUYEN_MON' as const, label: 'Chuyên môn & Khu vực' },
+  { id: 'DANH_GIA' as const, label: '⭐ Đánh giá từ khách hàng' },
   { id: 'BAO_MAT' as const, label: 'Bảo mật' }
 ];
 
@@ -81,6 +82,10 @@ export default function TechnicianProfilePage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
 
+  // Danh sách đánh giá từ khách hàng
+  const [reviews, setReviews] = useState<TechnicianReviewItem[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+
   const applyProfile = useCallback((data: TechnicianProfile) => {
     setProfile(data);
     setForm({
@@ -121,6 +126,17 @@ export default function TechnicianProfilePage() {
       alive = false;
     };
   }, [applyProfile]);
+
+  // Tải danh sách đánh giá từ khách hàng khi chuyển sang tab DANH_GIA
+  useEffect(() => {
+    if (tab === 'DANH_GIA' && profile?.userId) {
+      setLoadingReviews(true);
+      fetchTechnicianReviews(profile.userId)
+        .then((res) => setReviews(res.data || []))
+        .catch(() => setReviews([]))
+        .finally(() => setLoadingReviews(false));
+    }
+  }, [tab, profile?.userId]);
 
   function update(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -381,6 +397,72 @@ export default function TechnicianProfilePage() {
                   {saving ? 'Đang lưu...' : 'Lưu chuyên môn'}
                 </Button>
               </form>
+            </Card>
+          )}
+
+          {tab === 'DANH_GIA' && (
+            <Card
+              title="Đánh giá từ khách hàng"
+              description="Tổng hợp các nhận xét và chấm điểm sao từ các khách hàng mà bạn đã hoàn tất sửa chữa."
+            >
+              {loadingReviews ? (
+                <div className="py-8 text-center text-sm text-slate-500 animate-pulse">
+                  Đang tải danh sách đánh giá...
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className="py-10 text-center text-slate-500 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  <span className="text-3xl block mb-2">⭐</span>
+                  Chưa có đánh giá nào từ khách hàng.<br />
+                  Sau khi hoàn thành và nghiệm thu các đơn hàng được giao, đánh giá của khách hàng sẽ xuất hiện tại đây.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Tóm tắt điểm trung bình */}
+                  <div className="flex items-center justify-between p-4 bg-amber-50/80 border border-amber-200 rounded-xl">
+                    <div>
+                      <p className="text-xs font-bold text-amber-900 uppercase tracking-wide">Điểm đánh giá trung bình</p>
+                      <p className="text-2xl font-black text-amber-950 mt-0.5">
+                        {(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)} / 5.0
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-amber-800 font-semibold">{reviews.length} lượt đánh giá thực tế</p>
+                      <div className="text-amber-500 text-lg">
+                        {'★'.repeat(Math.round(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Danh sách từng đánh giá */}
+                  <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+                    {reviews.map((rev) => (
+                      <div key={rev.id} className="p-4 bg-white hover:bg-slate-50/60 transition-colors space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900">{rev.customerName || 'Khách hàng'}</span>
+                            <span className="text-slate-400">• Đơn #{rev.requestId}</span>
+                          </div>
+                          <span className="text-amber-500 font-bold">
+                            {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                          "{rev.comment || 'Khách hàng không để lại nhận xét chi tiết.'}"
+                        </p>
+                        {rev.createdAt && (
+                          <p className="text-[11px] text-slate-400">
+                            {new Date(rev.createdAt).toLocaleDateString('vi-VN', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Card>
           )}
 

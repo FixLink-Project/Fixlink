@@ -9,12 +9,14 @@ import type { Appointment } from '../lib/types';
 interface AppointmentCardProps {
   appointment: Appointment;
   currentUserRole?: 'CUSTOMER' | 'TECHNICIAN' | 'ADMIN';
+  requestStatus?: string;
   onUpdated?: () => void;
 }
 
 export default function AppointmentCard({
   appointment: appt,
   currentUserRole,
+  requestStatus,
   onUpdated
 }: AppointmentCardProps) {
   // Modal states
@@ -39,7 +41,22 @@ export default function AppointmentCard({
 
   const isTerminal = appt.status === 'COMPLETED' || appt.status === 'CANCELLED' || appt.status === 'REJECTED';
 
+  // Rule: Nếu là lịch hẹn khảo sát và yêu cầu đã qua giai đoạn khảo sát (INSPECTING trở đi) thì coi như đã khảo sát xong
+  const isInspectionDone =
+    (appt.appointmentType === 'INSPECTION' || !appt.appointmentType) &&
+    ['INSPECTING', 'AWAITING_COST_APPROVAL', 'IN_PROGRESS', 'AWAITING_ACCEPTANCE', 'COMPLETED'].includes(
+      requestStatus || ''
+    );
+
   function getStatusBadge() {
+    if (isInspectionDone) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+          Đã khảo sát
+        </span>
+      );
+    }
     switch (appt.status) {
       case 'PENDING_APPROVAL':
         return (
@@ -255,7 +272,11 @@ export default function AppointmentCard({
 
       {/* Footer Hành động theo vòng đời */}
       <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-        {isTerminal ? (
+        {isInspectionDone ? (
+          <span className="text-xs text-emerald-800 font-medium flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+            <span>✅</span> Cuộc hẹn đã hoàn thành khảo sát thực tế (Đã khóa cuộc hẹn, không thể đổi hoặc hủy lịch).
+          </span>
+        ) : isTerminal ? (
           <span className="text-xs text-slate-500 italic">
             🔒 Cuộc hẹn này đã ở trạng thái kết thúc ({appt.statusLabel || appt.status}), không thể thay đổi thêm.
           </span>

@@ -36,7 +36,18 @@ USER fixlink
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:8080/api/v1/health || exit 1
+# Healthcheck động theo port môi trường Render hoặc local
+HEALTHCHECK --interval=30s --timeout=5s --start-period=50s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:${PORT:-8080}/api/v1/health || exit 1
 
-ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "/app/app.jar"]
+# Cờ tối ưu JVM cho Render (512MB RAM): Giới hạn Heap 256MB, Metaspace 128MB, JIT Tier 1
+ENTRYPOINT ["java", \
+  "-Xms128m", \
+  "-Xmx256m", \
+  "-XX:MaxMetaspaceSize=128m", \
+  "-XX:CompressedClassSpaceSize=32m", \
+  "-XX:ReservedCodeCacheSize=64m", \
+  "-Xss256k", \
+  "-XX:+TieredCompilation", \
+  "-XX:TieredStopAtLevel=1", \
+  "-jar", "/app/app.jar"]
