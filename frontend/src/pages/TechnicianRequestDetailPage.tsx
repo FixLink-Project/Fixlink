@@ -730,16 +730,31 @@ export default function TechnicianRequestDetailPage() {
                           </p>
                         </div>
                       </div>
-                      <Button
-                        variant="primary"
-                        onClick={() => {
-                          setAcceptanceNote('Đã hoàn thành sửa chữa, chạy thử nghiệm thiết bị hoạt động tốt và bàn giao.');
-                          setShowAcceptanceModal(true);
-                        }}
-                        className="w-full sm:w-auto text-xs py-2 px-4 shadow-sm bg-indigo-600 hover:bg-indigo-700"
-                      >
-                        📋 Báo cáo hoàn thành & Mời nghiệm thu
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            setAcceptanceNote('Đã hoàn thành sửa chữa, chạy thử nghiệm thiết bị hoạt động tốt và bàn giao.');
+                            setShowAcceptanceModal(true);
+                          }}
+                          className="text-xs py-2 px-4 shadow-sm bg-indigo-600 hover:bg-indigo-700"
+                        >
+                          📋 Báo cáo hoàn thành & Mời nghiệm thu
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setRescheduleRepairReason('Cần chuẩn bị linh kiện đã duyệt và hẹn lại ngày thi công');
+                            setNewRepairDate(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+                            setNewRepairTime('09:00');
+                            setRescheduleRepairNote('');
+                            setShowRescheduleRepairModal(true);
+                          }}
+                          className="text-xs py-2 px-4 border-indigo-300 text-indigo-900 bg-white hover:bg-indigo-50 shadow-xs"
+                        >
+                          📅 Hẹn lại ngày thi công (Chuẩn bị đồ nghề / linh kiện)
+                        </Button>
+                      </div>
                     </div>
                   )}
 
@@ -1117,6 +1132,7 @@ export default function TechnicianRequestDetailPage() {
                       key={appt.id}
                       appointment={appt}
                       currentUserRole="TECHNICIAN"
+                      requestStatus={detail.request.status}
                       onUpdated={loadDetail}
                     />
                   ))}

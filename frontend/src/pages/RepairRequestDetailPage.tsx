@@ -129,7 +129,7 @@ export default function RepairRequestDetailPage() {
       .then((res) => {
         setDetail(res.data);
         setError(null);
-        if (id && res.data.request.status === 'AWAITING_ACCEPTANCE') {
+        if (id && (res.data.request.status === 'AWAITING_ACCEPTANCE' || res.data.request.status === 'COMPLETED')) {
           api.get<{ rating: number; comment: string } | null>(`/repair-requests/${id}/review`)
             .then((review) => {
               if (review.data) {
@@ -372,10 +372,15 @@ export default function RepairRequestDetailPage() {
   const otherQuotes = detail.quotations.filter((q) => q.technicianId !== req.technicianId && q.status !== 'ACCEPTED');
   const currentSelectedQuote = detail.quotations.find((q) => q.status === 'ACCEPTED' || q.technicianId === req.technicianId);
 
-  // Lấy danh sách ảnh tổng hợp (từ media hoặc mediaUrls)
-  const displayPhotos: string[] = req.media && req.media.length > 0
-    ? req.media.map(m => m.url)
+  // 1. Ảnh do khách hàng tải lên ban đầu mô tả lỗi thiết bị (không tính ảnh thợ tải lên sau)
+  const customerPhotos: string[] = req.media && req.media.length > 0
+    ? req.media.filter(m => !req.technicianId || m.uploadedBy !== req.technicianId).map(m => m.url)
     : req.mediaUrls || [];
+
+  // 2. Ảnh bằng chứng do thợ tải lên tại hiện trường (phát sinh linh kiện/khảo sát)
+  const technicianProofPhotos: string[] = req.media && req.media.length > 0
+    ? req.media.filter(m => req.technicianId && m.uploadedBy === req.technicianId).map(m => m.url)
+    : [];
 
   return (
     <DashboardLayout
@@ -497,14 +502,14 @@ export default function RepairRequestDetailPage() {
                 </div>
               </div>
 
-              {/* Hình ảnh bằng chứng do thợ tải lên */}
-              {displayPhotos.length > 0 && (
+              {/* Hình ảnh bằng chứng linh kiện hỏng do thợ chụp gửi */}
+              {technicianProofPhotos.length > 0 ? (
                 <div className="space-y-2">
                   <p className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                    <span>📸</span> Hình ảnh linh kiện hỏng / hiện trường do thợ chụp gửi:
+                    <span>📸</span> Hình ảnh linh kiện hỏng / hiện trường do thợ chụp gửi ({technicianProofPhotos.length}):
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {displayPhotos.map((url, idx) => (
+                    {technicianProofPhotos.map((url, idx) => (
                       <img
                         key={idx}
                         src={url}
@@ -514,6 +519,10 @@ export default function RepairRequestDetailPage() {
                       />
                     ))}
                   </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-amber-100/50 border border-amber-200/60 text-xs text-amber-800 italic">
+                  ℹ️ Kỹ thuật viên chưa đính kèm ảnh chụp linh kiện phát sinh cho lần điều chỉnh này.
                 </div>
               )}
 
@@ -631,6 +640,24 @@ export default function RepairRequestDetailPage() {
           </div>
         )}
 
+        {/* KHỐI 4: ĐÁNH GIÁ CỦA BẠN DÀNH CHO THỢ */}
+        {req.status === 'COMPLETED' && reviewSubmitted && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                <span>⭐</span> Đánh giá của bạn dành cho kỹ thuật viên
+              </h3>
+              <div className="flex items-center gap-1 text-amber-500 font-bold text-sm">
+                {'★'.repeat(reviewRating)}{'☆'.repeat(5 - reviewRating)}
+                <span className="text-xs text-slate-600 ml-1">({reviewRating}/5 sao)</span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-700 italic bg-white/80 p-3 rounded-xl border border-amber-100">
+              "{reviewComment || 'Rất hài lòng với chất lượng dịch vụ và thái độ làm việc của thợ.'}"
+            </p>
+          </div>
+        )}
+
         {/* Thông tin đơn */}
         <Card title="Thông tin yêu cầu sửa chữa">
           <dl className="divide-y divide-slate-100 text-sm">
@@ -657,9 +684,9 @@ export default function RepairRequestDetailPage() {
           <div className="mt-5 border-t border-slate-100 pt-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <span>📷</span> Hình ảnh & Tệp bằng chứng hiện trường ({displayPhotos.length})
+                <span>📷</span> Hình ảnh & Tệp bằng chứng hiện trường ban đầu ({customerPhotos.length})
               </p>
-              {displayPhotos.length < 6 && (
+              {customerPhotos.length < 6 && (
                 <button
                   type="button"
                   onClick={() => setShowAttachModal(true)}
@@ -670,9 +697,9 @@ export default function RepairRequestDetailPage() {
               )}
             </div>
 
-            {displayPhotos.length > 0 ? (
+            {customerPhotos.length > 0 ? (
               <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-6 gap-3">
-                {displayPhotos.map((url, i) => (
+                {customerPhotos.map((url, i) => (
                   <button
                     key={i}
                     type="button"
@@ -1047,6 +1074,7 @@ export default function RepairRequestDetailPage() {
                     key={appt.id}
                     appointment={appt}
                     currentUserRole={currentRole as 'CUSTOMER' | 'TECHNICIAN' | 'ADMIN'}
+                    requestStatus={detail.request.status}
                     onUpdated={loadDetail}
                   />
                 ))}
@@ -1169,8 +1197,8 @@ export default function RepairRequestDetailPage() {
               label="Chọn ảnh bổ sung"
               value={additionalMediaUrls}
               onChange={setAdditionalMediaUrls}
-              maxFiles={Math.max(6 - displayPhotos.length, 1)}
-              hint={`Bạn có thể gắn thêm tối đa ${6 - displayPhotos.length} ảnh.`}
+              maxFiles={Math.max(6 - customerPhotos.length, 1)}
+              hint={`Bạn có thể gắn thêm tối đa ${6 - customerPhotos.length} ảnh.`}
             />
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
