@@ -370,8 +370,8 @@ export default function CreateRepairRequestPage() {
                   type="text"
                   inputMode="numeric"
                   required
-                  placeholder="Ví dụ: 500.000"
-                  value={form.budgetRef ? Number(form.budgetRef).toLocaleString('vi-VN') : ''}
+                  placeholder="Ví dụ: 500000"
+                  value={form.budgetRef}
                   onChange={(e) => {
                     const rawDigits = e.target.value.replace(/\D/g, '');
                     update('budgetRef', rawDigits);

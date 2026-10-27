@@ -373,6 +373,26 @@ public class RepairRequestService implements RepairRequestUseCase {
             }
         }
 
+        // Rule: Tự động trích 10% hoa hồng nền tảng và giải ngân 90% còn lại vào Ví FixLink của thợ khi nghiệm thu hoàn tất
+        if (targetStatus == RequestStatus.COMPLETED && saved.getTechnicianId() != null) {
+            try {
+                techProfileRepo.findById(saved.getTechnicianId()).ifPresent(tech -> {
+                    BigDecimal totalJobPrice = saved.getAgreedPrice() != null ? saved.getAgreedPrice() : BigDecimal.ZERO;
+                    BigDecimal commission = totalJobPrice.multiply(new BigDecimal("0.10")).setScale(0, java.math.RoundingMode.HALF_UP);
+                    BigDecimal netPayout = totalJobPrice.subtract(commission);
+
+                    BigDecimal currentBalance = tech.getWalletBalance() != null ? tech.getWalletBalance() : BigDecimal.ZERO;
+                    tech.setWalletBalance(currentBalance.add(netPayout));
+                    tech.setCompletedJobs((tech.getCompletedJobs() == null ? 0 : tech.getCompletedJobs()) + 1);
+                    techProfileRepo.save(tech);
+                    log.info("Disbursed {} to technician #{} wallet (total: {}, platform commission 10%: {})",
+                            netPayout, tech.getUserId(), totalJobPrice, commission);
+                });
+            } catch (Exception e) {
+                log.warn("Wallet disbursement error for request #{}: {}", saved.getId(), e.getMessage());
+            }
+        }
+
         String progressNote = command.note();
         if (progressNote == null || progressNote.isBlank()) {
             progressNote = switch (targetStatus) {

@@ -400,10 +400,11 @@ export default function TechnicianRequestDetailPage() {
           const isDeadlineExpired = req.applyDeadline ? new Date(req.applyDeadline).getTime() <= Date.now() : false;
 
           const activeAppointments = appointments.filter(
-            (a) => a.status !== 'CANCELLED' && a.status !== 'REJECTED'
+            (a) => a.technicianId === numericUserId && a.status !== 'CANCELLED' && a.status !== 'REJECTED'
           );
           const hasActiveAppointment = activeAppointments.length > 0;
           const latestAppt = activeAppointments[0];
+          const hasConfirmedAppointment = activeAppointments.some((a) => a.status === 'CONFIRMED');
 
           if (isAssignedToMe) {
             const isSwitchedOrder = detail.workProgress?.some(
@@ -580,6 +581,32 @@ export default function TechnicianRequestDetailPage() {
                             </Button>
                           </div>
                         </div>
+                      ) : !hasConfirmedAppointment ? (
+                        <div className="rounded-xl bg-amber-50/90 border border-amber-300 p-4 space-y-3">
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-xl">⏳</span>
+                            <div>
+                              <p className="text-xs font-bold text-amber-950">
+                                Lịch hẹn đang chờ khách hàng xác nhận ({latestAppt.scheduledTime?.slice(0, 5)} ngày {new Date(latestAppt.scheduledDate).toLocaleDateString('vi-VN')})
+                              </p>
+                              <p className="text-xs text-amber-900 mt-0.5 leading-relaxed">
+                                Bạn đã đề xuất lịch hẹn. Nút <strong>Bắt đầu khảo sát hiện trường</strong> sẽ tự động mở ngay sau khi khách hàng bấm đồng ý xác nhận cuộc hẹn này.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2.5">
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                setCreateApptError(null);
+                                setShowCreateApptModal(true);
+                              }}
+                              className="text-xs py-2 px-3 text-slate-700 bg-white"
+                            >
+                              📅 Đổi / Thêm lịch hẹn
+                            </Button>
+                          </div>
+                        </div>
                       ) : (
                         <div className="rounded-xl bg-teal-50/90 border border-teal-200/90 p-4 space-y-3">
                           <div className="flex items-start gap-2.5">
@@ -589,7 +616,7 @@ export default function TechnicianRequestDetailPage() {
                                 Khảo sát hiện trường (Đã có lịch hẹn & Đã cọc)
                               </p>
                               <p className="text-xs text-teal-800 mt-0.5 leading-relaxed">
-                                Lịch hẹn: <strong>{latestAppt.scheduledTime?.slice(0, 5)} ngày {new Date(latestAppt.scheduledDate).toLocaleDateString('vi-VN')}</strong>.
+                                Lịch hẹn đã được khách hàng xác nhận: <strong>{latestAppt.scheduledTime?.slice(0, 5)} ngày {new Date(latestAppt.scheduledDate).toLocaleDateString('vi-VN')}</strong>.
                                 Khi bạn đã có mặt tại nhà khách hàng theo lịch hẹn, hãy bấm bắt đầu khảo sát để ghi nhận mốc hiện trường.
                               </p>
                             </div>
@@ -1304,7 +1331,7 @@ export default function TechnicianRequestDetailPage() {
       {/* Modal Báo giá phát sinh khi Khảo sát */}
       {showCostApprovalModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-scale-in max-h-[88vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-900 text-base flex items-center gap-1.5">
                 <span>⚠️</span> Báo giá phát sinh sau khảo sát
@@ -1459,7 +1486,7 @@ export default function TechnicianRequestDetailPage() {
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 sticky bottom-0 bg-white/95 backdrop-blur-xs pb-1 mt-3">
                 <Button variant="secondary" type="button" onClick={() => setShowCostApprovalModal(false)}>
                   Hủy
                 </Button>
@@ -1475,7 +1502,7 @@ export default function TechnicianRequestDetailPage() {
       {/* Modal Báo cáo hoàn thành & Mời nghiệm thu */}
       {showAcceptanceModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-in max-h-[88vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-900 text-base flex items-center gap-1.5">
                 <span>📋</span> Báo cáo hoàn thành & Mời nghiệm thu
