@@ -215,7 +215,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         DataAnswer personal = command.userId() != null ? answerFromData(cleanMessage, command) : null;
         // Câu hỏi quy định đã có câu trả lời chuẩn: trả lời trực tiếp, không để AI thêm thắt điều kiện không có thật
         Optional<LlmChatPort.ChatOrchestrationResult> verified = personal == null
-                ? verifiedAnswers.directAnswer(cleanMessage) : Optional.empty();
+                ? verifiedAnswers.directAnswer(withDeviceContext(cleanMessage, history)) : Optional.empty();
         if (ExtractiveFallbackSynthesizer.isArithmetic(cleanMessage)) {
             // Câu tính toán nằm ngoài phạm vi: trả lời từ chối ngay, không gửi lên AI (model hay trả lời luôn)
             orchestrationResult = verifiedAnswers.synthesize(cleanMessage, "");
@@ -313,9 +313,12 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         String draftSummary = attachDraftRequestAction(actions, cleanMessage, userConversation, history,
                 orchestrationResult.modelUsed());
         String modelUsed = orchestrationResult.modelUsed() != null ? orchestrationResult.modelUsed() : "";
+        String shownModel = orchestrationResult.modelUsed();
         if (draftSummary != null && (modelUsed.equals("local-fallback") || modelUsed.equals("local-synthesizer"))) {
-            // AI tạm quá tải nhưng đã đủ thông tin đặt thợ: trả bản tóm tắt cụ thể thay vì câu xin lỗi chung chung
+            // AI tạm quá tải nhưng đã đủ thông tin đặt thợ: trả bản tóm tắt cụ thể thay vì câu xin lỗi chung chung.
+            // Bản tóm tắt dựng từ chính thông tin khách nêu nên hiển thị như câu trả lời chuẩn, không phải "dự phòng".
             reply = draftSummary;
+            shownModel = "local-faq";
         } else if (draftSummary != null && modelUsed.startsWith("local-") && describesBooking(cleanMessage)) {
             // Câu trả lời FAQ cục bộ vẫn giữ, kèm bản tóm tắt yêu cầu đã điền sẵn lên đầu
             reply = draftSummary + NL + NL + "---" + NL + NL + reply;
@@ -333,7 +336,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
                 .sources(sources)
                 .needsHuman(orchestrationResult.needsHuman())
                 .ticketId(orchestrationResult.ticketId())
-                .modelUsed(orchestrationResult.modelUsed())
+                .modelUsed(shownModel)
                 .timestamp(now)
                 .build();
         memoryService.addMessage(session.getSessionId(), modelMsg);
@@ -354,7 +357,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
                 orchestrationResult.needsHuman(),
                 orchestrationResult.ticketId(),
                 command.sessionId() != null && !command.sessionId().isBlank() ? command.sessionId() : session.getSessionId(),
-                orchestrationResult.modelUsed(),
+                shownModel,
                 cards,
                 offerHandoff
         );
@@ -416,8 +419,55 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         return (double) inter.size() / union.size();
     }
 
+    private static final Pattern PRICE_FOLLOW_UP = Pattern.compile("\\b(gia|bao nhieu|chi phi|het nhieu|ton nhieu|nhieu tien)\\b");
+
+    /**
+     * "giá sửa bao nhiêu" ngay sau khi khách kể "cửa cuốn kêu to": hỏi giá của đúng thiết bị đó, không đổ cả bảng giá.
+     * Chỉ áp dụng cho câu hỏi giá ngắn chưa nêu thiết bị, không phải câu hỏi cọc.
+     */
+    static String withDeviceContext(String message, List<ChatMessage> history) {
+        String normalized = SymptomClassifier.normalize(message);
+        if (history == null || history.isEmpty() || normalized.contains("coc") || normalized.split(" ").length > 8) {
+            return message;
+        }
+        List<String> previous = new ArrayList<>();
+        for (int i = history.size() - 1; i >= 0 && previous.size() < 3; i--) {
+            ChatMessage m = history.get(i);
+            if ("user".equalsIgnoreCase(m.getRole()) && m.getContent() != null) {
+                previous.add(m.getContent());
+            }
+        }
+        boolean priceQuestion = PRICE_FOLLOW_UP.matcher(normalized).find();
+        // "thế còn vệ sinh" ngay sau "nạp ga thì bao nhiêu": vẫn là hỏi giá, chỉ đổi gói
+        boolean priceFollowUp = !priceQuestion && FOLLOW_UP_ITEM.matcher(normalized).find() && !previous.isEmpty()
+                && PRICE_FOLLOW_UP.matcher(SymptomClassifier.normalize(previous.get(0))).find();
+        if (!priceQuestion && !priceFollowUp) {
+            return message;
+        }
+        String asked = priceFollowUp ? message + " giá bao nhiêu" : message;
+        if (SymptomClassifier.classify(message).isPresent() && !priceFollowUp) {
+            return message;
+        }
+        // Lấy câu khách kể thiết bị/sự cố gần nhất (bỏ qua các câu chỉ hỏi giá)
+        for (String m : previous) {
+            if (SymptomClassifier.classify(m).isPresent() && !PRICE_FOLLOW_UP.matcher(SymptomClassifier.normalize(m)).find()) {
+                return asked + " " + m;
+            }
+        }
+        return asked;
+    }
+
+    private static final Pattern FOLLOW_UP_ITEM = Pattern.compile("^(the con|con|vay con|the|con cai|con goi)\\b");
+
+    /** Khách nêu ngân sách; "thợ báo giá 400k" hay "đã trả 300k cọc" là giá thợ báo/khoản đã trả, không phải ngân sách. */
+    private static boolean statesBudget(String message) {
+        String normalized = SymptomClassifier.normalize(message);
+        return SymptomClassifier.detectBudget(message).isPresent() && !normalized.contains("bao gia")
+                && !normalized.matches(".*\\b(da tra|da chuyen|da coc|coc roi|tra roi)\\b.*");
+    }
+
     private static final Pattern BOOKING_INTENT = Pattern.compile(
-            "\\b(dat tho|goi tho|can tho|tim tho|dang yeu cau|dat lich|muon sua|can sua|sua giup|sua dum|cho tho qua|tho qua|tho den)\\b");
+            "\\b(dat tho|goi tho|can tho|tim tho|dang yeu cau|dat lich|muon sua|can sua|sua giup|sua dum|cho tho qua|cho tho den|dat luon|chot luon|dat ngay)\\b");
 
     /** Câu trả lời dựng trực tiếp từ dữ liệu cá nhân kèm vết gọi tool (để hiện thẻ đơn hàng). */
     private record DataAnswer(LlmChatPort.ChatOrchestrationResult result, List<ToolCallRecorder.ToolTrace> traces) { }
@@ -444,7 +494,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         }
         return BOOKING_INTENT.matcher(SymptomClassifier.normalize(message)).find()
                 || SymptomClassifier.detectAreaCode(message).isPresent()
-                || SymptomClassifier.detectBudget(message).isPresent();
+                || statesBudget(message);
     }
 
     /**
@@ -474,7 +524,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
                 && (!localAnswer || SymptomClassifier.classify(message).isPresent());
         boolean wantsBooking = BOOKING_INTENT.matcher(normalizedMessage).find()
                 || SymptomClassifier.detectAreaCode(message).isPresent()
-                || SymptomClassifier.detectBudget(message).isPresent();
+                || statesBudget(message);
         if (!modelSuggestedPosting && !wantsBooking) {
             return null;
         }

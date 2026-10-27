@@ -48,6 +48,34 @@ class OfflinePersonalResponderTest {
     }
 
     @Test
+    @DisplayName("Hỏi đã cọc chưa: trả lời theo trạng thái thật (Đã chọn thợ = chưa cọc, Đã đặt cọc trở đi = đã cọc)")
+    void shouldTellWhetherDepositIsPaid() {
+        when(toolPort.executeTool(eq("get_repair_request_status"), anyMap(), any(), any(), any()))
+                .thenReturn(new ToolExecutionResult("{\"requestCode\":\"REQ-A\",\"status\":\"ASSIGNED\",\"depositText\":\"144.000 đ\"}", false))
+                .thenReturn(new ToolExecutionResult("{\"requestCode\":\"REQ-B\",\"status\":\"INSPECTING\",\"depositText\":\"90.000 đ\"}", false));
+
+        assertThat(responder.answer("đơn REQ-AAAA đã cọc chưa", 7L, "CUSTOMER").orElseThrow().reply())
+                .startsWith("Đơn này **chưa đặt cọc**").contains("144.000 đ");
+        assertThat(responder.answer("đơn REQ-BBBB đã cọc chưa", 7L, "CUSTOMER").orElseThrow().reply())
+                .startsWith("Đơn này **đã đặt cọc**").contains("90.000 đ");
+    }
+
+    @Test
+    @DisplayName("Thợ hỏi điểm đánh giá hoặc việc hôm nay: lấy hồ sơ thợ / lịch hẹn thật")
+    void shouldAnswerTechnicianRatingAndToday() {
+        when(toolPort.executeTool(eq("get_my_technician_status"), anyMap(), any(), any(), any()))
+                .thenReturn(new ToolExecutionResult("{\"fullName\":\"Lê Minh\",\"verificationStatus\":\"APPROVED\","
+                        + "\"verificationLabel\":\"Đã duyệt\",\"completedJobs\":12,\"avgRating\":\"4.8\"}", false));
+        when(toolPort.executeTool(eq("get_my_appointments"), anyMap(), any(), any(), any()))
+                .thenReturn(new ToolExecutionResult("{\"totalAppointments\":0,\"appointments\":[]}", false));
+
+        assertThat(responder.answer("đánh giá trung bình của tôi bao nhiêu", 9L, "TECHNICIAN").orElseThrow().reply())
+                .contains("4.8").contains("12");
+        assertThat(responder.answer("việc của tôi hôm nay", 9L, "TECHNICIAN")).isPresent();
+        verify(toolPort).executeTool(eq("get_my_appointments"), anyMap(), any(), any(), any());
+    }
+
+    @Test
     @DisplayName("Hỏi đổi thợ / hủy cho một đơn cụ thể thì trả lời thẳng được hay không theo trạng thái thật")
     void shouldAnswerSwitchAndCancelByStatus() {
         when(toolPort.executeTool(eq("get_repair_request_status"), anyMap(), any(), any(), any()))

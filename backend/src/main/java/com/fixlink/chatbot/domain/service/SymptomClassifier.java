@@ -57,11 +57,16 @@ public final class SymptomClassifier {
                             "rolling door", "khong mo duoc cua"))
     );
 
+    private static final Pattern NOT_LOSING = Pattern.compile(
+            " khong mat (?=(coc|tien|phi|gi|them|chi phi|bao nhieu|nhieu|lau|thoi gian|du lieu|tai khoan|cong|khong) )");
+
     private static final List<String> DANGER_KEYWORDS = List.of(
-            "bi chay", "chay khet", "mui khet", "khet", "boc chay", "boc khoi", "ra khoi", "xet lua", "toe lua",
+            // không dùng "bi chay"/"ra khoi": trùng với "bị chảy (nước)", "ra khỏi" sau khi bỏ dấu
+            "bi chay den", "chay den", "chay xem", "bi chay no", "chay khet", "mui khet", "khet", "boc chay", "boc khoi",
+            "co khoi", "xi khoi", "khoi den", "nhieu khoi", "xet lua", "toe lua",
             "phat no", "bi no", "no tung", "ro gas", "ro ga", "xi gas", "mui gas", "dien giat", "giat dien", "bi giat",
             "set dien", "xet dien", "phat lua", "chap chay", "ro dien",
-            "ngap nuoc", "nuoc ngap", "fire", "smoke", "burning", "gas leak", "sparks", "electric shock");
+            "ngap nuoc", "nuoc ngap", "tran ngap", "ngap nha", "ngap het", "fire", "smoke", "burning", "gas leak", "sparks", "electric shock");
 
     /** Cụm từ (đã bỏ dấu) → mã khu vực phục vụ trong dữ liệu master. */
     private static final Map<String, String> AREA_ALIASES = new LinkedHashMap<>();
@@ -88,7 +93,10 @@ public final class SymptomClassifier {
             Map.entry("ml", "may lanh"), Map.entry("dh", "dieu hoa"), Map.entry("tl", "tu lanh"), Map.entry("mg", "may giat"),
             Map.entry("sdt", "so dien thoai"), Map.entry("ib", "nhan tin"), Map.entry("ad", "admin"), Map.entry("tk", "tai khoan"),
             Map.entry("mk", "mat khau"), Map.entry("ntn", "nhu the nao"), Map.entry("r", "roi"), Map.entry("vs", "voi"),
-            Map.entry("bik", "biet"), Map.entry("bt", "biet"), Map.entry("lm", "lam"), Map.entry("e", "em"), Map.entry("a", "anh"));
+            Map.entry("bik", "biet"), Map.entry("bt", "biet"), Map.entry("lm", "lam"), Map.entry("e", "em"), Map.entry("a", "anh"),
+            Map.entry("nc", "nuoc"), Map.entry("trc", "truoc"), Map.entry("ng", "nguoi"), Map.entry("mn", "moi nguoi"),
+            Map.entry("pass", "mat khau"), Map.entry("pw", "mat khau"), Map.entry("password", "mat khau"),
+            Map.entry("acc", "tai khoan"), Map.entry("nick", "tai khoan"), Map.entry("ki", "ky"), Map.entry("nhiu", "nhieu"));
 
     /** Nghĩa tiếng Việt có dấu của các viết tắt dễ hiểu nhầm, để giải thích cho LLM. */
     private static final Map<String, String> ABBREVIATION_MEANINGS = Map.ofEntries(
@@ -104,7 +112,11 @@ public final class SymptomClassifier {
             "(\\d+(?:[.,]\\d+)?)\\s*(?:trieu|tr|cu)(?![a-z])\\s*(\\d)?(?!\\d)");
 
     public static Optional<CategoryMatch> classify(String rawText) {
-        String text = " " + normalize(rawText) + " ";
+        // "không mất cọc/tiền/phí" sau khi bỏ dấu trùng với triệu chứng "không mát" của máy lạnh
+        String text = NOT_LOSING.matcher(" " + normalize(rawText) + " ").replaceAll(" khong ton ");
+        if (rawText != null && Normalizer.normalize(rawText.toLowerCase(Locale.ROOT), Normalizer.Form.NFC).contains("bàn là")) {
+            text += "ban ui "; // "bàn là" có dấu; bỏ dấu thì trùng "bạn là" nên chỉ nhận khi khách gõ có dấu
+        }
         CategoryRule best = null;
         int bestScore = 0;
         for (CategoryRule rule : CATEGORY_RULES) {
@@ -129,8 +141,18 @@ public final class SymptomClassifier {
 
     public static boolean isDanger(String rawText) {
         String text = " " + normalize(rawText) + " ";
-        return DANGER_KEYWORDS.stream().anyMatch(kw -> text.contains(" " + kw + " "));
+        return DANGER_KEYWORDS.stream().anyMatch(kw -> text.contains(" " + kw + " ")) || mentionsFire(rawText);
     }
+
+    /**
+     * Câu gõ có dấu nói cháy/khói ("máy lạnh bị cháy", "ổ cắm có khói"): bỏ dấu thì "cháy" trùng "chảy", "khói" trùng
+     * "khỏi" nên phải xét trên chữ có dấu.
+     */
+    public static boolean mentionsFire(String rawText) {
+        return rawText != null && FIRE_WORDS.matcher(Normalizer.normalize(rawText.toLowerCase(Locale.ROOT), Normalizer.Form.NFC)).find();
+    }
+
+    private static final Pattern FIRE_WORDS = Pattern.compile("(cháy|khói|tóe lửa|tia lửa|bốc lửa|phát nổ|nổ tung)");
 
     private static final Map<String, String> AREA_LABELS = Map.of(
             "Q1", "Quận 1", "Q3", "Quận 3", "Q7", "Quận 7", "BINH_THANH", "Quận Bình Thạnh", "THU_DUC", "TP. Thủ Đức",

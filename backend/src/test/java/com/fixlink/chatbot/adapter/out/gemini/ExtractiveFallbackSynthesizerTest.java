@@ -3,6 +3,7 @@ package com.fixlink.chatbot.adapter.out.gemini;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fixlink.chatbot.application.port.out.LlmChatPort.ChatOrchestrationResult;
+import com.fixlink.chatbot.domain.service.SymptomClassifier;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,13 +44,100 @@ class ExtractiveFallbackSynthesizerTest {
                 ### Lịch hẹn (Nguồn: quy-dinh.md)
                 - Hủy lịch hẹn bắt buộc nhập lý do hủy lịch hẹn.
                 """;
-        ChatOrchestrationResult r = synthesizer.synthesize("Hủy lịch hẹn có cần lý do không?", rag);
+        ChatOrchestrationResult r = synthesizer.synthesize("Khi bỏ lịch hẹn có bắt buộc nhập lý do không?", rag);
         assertThat(r.modelUsed()).isEqualTo("local-synthesizer");
         assertThat(r.reply()).contains("Lịch hẹn").doesNotContain("CCCD").doesNotContain("Nguồn:");
     }
 
     private String reply(String q) {
         return synthesizer.synthesize(q, "").reply();
+    }
+
+    @Test
+    @DisplayName("Không nhầm chữ sau khi bỏ dấu: chảy/cháy, mất/mát, khỏi/khói; không bắt nhầm ý")
+    void shouldNotConfuseWordsWithoutDiacritics() {
+        assertThat(SymptomClassifier.isDanger("tủ lạnh bị chảy nước")).isFalse();
+        assertThat(SymptomClassifier.isDanger("đi ra khỏi nhà")).isFalse();
+        assertThat(SymptomClassifier.isDanger("ổ cắm bị cháy đen")).isTrue();
+        assertThat(SymptomClassifier.classify("đặt thợ rồi có hủy được không, mất cọc không")).isEmpty();
+        assertThat(SymptomClassifier.classify("máy lạnh không mát")).isPresent();
+        assertThat(reply("tủ lạnh bị chảy nước")).doesNotContain("nguy hiểm");
+        assertThat(reply("ổ cắm bị cháy đen")).contains("cầu dao");
+        assertThat(reply("sửa cái tủ lạnh tốn khoảng nhiêu tiền")).contains("200.000 đ");
+        assertThat(reply("giá vệ sinh 3 máy lạnh")).contains("450.000 đ");
+        assertThat(reply("nạp gas máy lạnh giá sao")).contains("250.000 đ");
+        assertThat(reply("tầm 200 nghìn thì làm được dịch vụ gì")).contains("không quá 200.000 đ");
+        assertThat(reply("thợ đến nhanh nhất bao lâu")).doesNotContain("thời gian xử lý ngắn nhất");
+    }
+
+    @Test
+    @DisplayName("Câu hỏi thường gặp mới: thanh toán, hóa đơn, tài khoản, giờ làm, ảnh, ngân sách, lịch hẹn, bảo mật")
+    void shouldAnswerCommonQuestionsPrecisely() {
+        assertThat(reply("thanh toán tiền mặt được không")).startsWith("Hiện FixLink **chỉ nhận thanh toán bằng mã QR");
+        assertThat(reply("có xuất hóa đơn đỏ không")).startsWith("**Hóa đơn trên FixLink:**");
+        assertThat(reply("đổi số điện thoại thế nào")).contains("/khach-hang").doesNotContain("hotline");
+        assertThat(reply("thợ có xem được số điện thoại khách không")).doesNotContain("hotline");
+        assertThat(reply("đã cọc rồi hủy có được hoàn tiền không")).startsWith("**Tiền cọc khi hủy đơn:**");
+        assertThat(reply("thợ tới khảo sát rồi báo giá khác thì sao")).startsWith("**Chi phí phát sinh");
+        assertThat(reply("chủ nhật có thợ không")).contains("lịch hẹn");
+        assertThat(reply("được đính kèm mấy ảnh")).contains("6 tệp");
+        assertThat(reply("ngân sách tối thiểu bao nhiêu")).contains("lớn hơn 0 đ");
+        assertThat(reply("cọc 30% của 333.000")).contains("99.900 đ");
+        assertThat(reply("giá 500 nghìn thì còn lại phải trả bao nhiêu")).contains("350.000 đ");
+        assertThat(reply("máy lạnh không mát, giá bao nhiêu và cọc bao nhiêu")).contains("250.000 đ").contains("30%");
+        assertThat(reply("gửi mã OTP cho bạn nhé: 123456")).contains("Đừng gửi mã OTP");
+        assertThat(reply("lịch hẹn ai đặt")).contains("Xác nhận lịch hẹn");
+        assertThat(reply("mình bận không có nhà thì sao")).contains("dời lịch hẹn");
+        assertThat(reply("sao giá thợ báo cao hơn bảng giá")).contains("giá khởi điểm tham khảo");
+        assertThat(reply("bị hack tài khoản")).contains("Quên mật khẩu");
+        assertThat(reply("đổi pass sao")).contains("/quen-mat-khau");
+        assertThat(reply("mất chìa khóa xe")).contains("chưa hỗ trợ");
+        assertThat(reply("10 chia 3")).contains("ngoài phạm vi");
+        assertThat(reply("làm bài toán 25 nhân 4 giúp mình")).contains("ngoài phạm vi");
+        assertThat(reply("ok")).startsWith("Dạ, mình đây");
+        assertThat(reply("thôi khỏi")).startsWith("Tạm biệt");
+        assertThat(reply("khởi động lại máy giặt thế nào")).doesNotStartWith("Tạm biệt");
+        assertThat(reply("yêu bạn")).contains("Trợ lý FixLink");
+        assertThat(synthesizer.directAnswer("😀")).isPresent();
+        assertThat(reply("máy lạnh nhà tôi bị cháy")).contains("cầu dao");
+        assertThat(reply("máy lạnh nhà tôi bị chảy nước")).doesNotContain("cầu dao");
+        assertThat(reply("đi ra khỏi nhà quên tắt máy lạnh")).doesNotContain("nguy hiểm");
+        assertThat(reply("dịch vụ nào dưới 2 trăm")).contains("dưới 200.000 đ").doesNotContain("Sửa máy giặt");
+        assertThat(reply("2 cái máy lạnh vệ sinh hết nhiêu")).contains("300.000 đ");
+        assertThat(reply("đăng nhập thợ ở đâu")).contains("/dang-nhap-tho");
+        assertThat(reply("quên tên đăng nhập")).contains("chưa có chức năng tự tra lại");
+        assertThat(reply("hồ sơ thợ bị từ chối")).contains("lý do");
+        assertThat(reply("đổi thợ thì tiền cọc sao")).contains("bảo lưu");
+        assertThat(reply("fixlink ơi")).startsWith("Xin chào");
+        assertThat(reply("cho mình hỏi chút")).startsWith("Xin chào");
+        assertThat(reply("vâng ạ")).startsWith("Dạ, mình đây");
+        assertThat(reply("cho mình hỏi giá sửa máy giặt")).contains("250.000 đ");
+        assertThat(reply("nếu thợ đến kiểm tra xong báo phải thay block thì mình có quyền từ chối không, có mất tiền khảo sát không"))
+                .startsWith("**Chi phí phát sinh").doesNotContain("giao dịch ngân hàng");
+        assertThat(reply("tôi là thợ điện lạnh ở Gò Vấp, muốn tham gia FixLink thì cần làm những bước gì và bao lâu thì nhận được việc"))
+                .doesNotContain("Các gói của nhóm");
+        assertThat(reply("tôi nên làm gì để được nhiều khách chọn hơn")).doesNotContain("chưa hiểu");
+        assertThat(reply("khách hàng nào được giảm giá")).contains("khuyến mãi");
+        assertThat(reply("tôi đã trả 300k cọc rồi")).doesNotContain("Với giá chốt **300.000 đ**");
+        assertThat(reply("thợ báo giá 400k cho máy lạnh có hợp lý không")).contains("giá khởi điểm tham khảo");
+        assertThat(reply("số điện thoại của tôi bị sai trong hồ sơ")).contains("/khach-hang");
+        assertThat(reply("cho mình hỏi hủy đơn có mất phí không")).startsWith("**Tiền cọc khi hủy đơn:**");
+        assertThat(reply("bạn là trợ lý gì")).contains("FixLink");
+        assertThat(reply("bàn là bị hỏng")).contains("Gia Dụng");
+        assertThat(reply("tôi muốn đặt 2 thợ cho 2 máy")).contains("một thợ");
+        assertThat(reply("vệ sinh 2 máy lạnh bao nhiêu")).contains("300.000 đ");
+        assertThat(reply("máy lạnh kêu rè rè")).doesNotContain("thấp nhất");
+        assertThat(reply("sửa máy giặt lồng đứng bao tiền")).contains("250.000 đ");
+        assertThat(reply("thông tắc bồn cầu giá")).doesNotContain("Các gói của các gói");
+        assertThat(reply("tôi muốn đổi khu vực làm việc")).contains("/tho/ho-so");
+        assertThat(reply("khách hủy thì tôi có được bồi thường không")).contains("chưa được công bố");
+        assertThat(reply("có tính phí đi lại không")).contains("chưa công bố phí đi lại");
+        assertThat(reply("hôm nay thứ mấy")).contains("ngoài phạm vi");
+        assertThat(reply("fixlink có bao nhiêu loại dịch vụ")).contains("4 nhóm");
+        assertThat(reply("có cần trả trước toàn bộ tiền không")).contains("30%");
+        assertThat(reply("fixlink có gửi tin nhắn xác nhận không")).contains("đặt lại mật khẩu");
+        assertThat(reply("máy giặt có thông báo lỗi E21")).doesNotContain("SMS");
+        assertThat(reply("sửa cửa cuốn mất bao lâu")).contains("~90 phút");
     }
 
     @Test
