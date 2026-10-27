@@ -260,11 +260,28 @@ export default function TechnicianDashboardPage() {
                   💰
                 </span>
               </dt>
-              <dd className="mt-3 font-display text-2xl font-bold text-slate-900">
+              <dd className={`mt-3 font-display text-2xl font-bold ${profile.walletBalance < 0 ? 'text-amber-600' : 'text-slate-900'}`}>
                 {formatCurrency(profile.walletBalance)}
               </dd>
             </div>
           </dl>
+
+          {/* CẢNH BÁO CÔNG NỢ VÍ ÂM THÂN THIỆN */}
+          {profile.walletBalance < 0 && (
+            <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 shadow-xs animate-fade-in">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">💡</span>
+                <div>
+                  <p className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                    Phí nền tảng tạm tính (Công nợ ví: {formatCurrency(profile.walletBalance)})
+                  </p>
+                  <p className="text-xs text-amber-900 mt-1 leading-relaxed">
+                    Bạn đang có số dư ví tạm âm do nhận tiền mặt trực tiếp từ khách hàng. Doanh thu từ các đơn hàng hoàn thành tiếp theo sẽ được tự động cấn trừ để cân bằng ví. Bạn vẫn có thể tiếp tục nhận việc bình thường!
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
 
           {/* Lọc riêng các công việc đang thực hiện (chưa hoàn thành và chưa hủy) */}

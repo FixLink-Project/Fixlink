@@ -81,6 +81,7 @@ export default function RepairRequestDetailPage() {
   const [autoFinalQR, setAutoFinalQR] = useState<PaymentResult | null>(null);
   const [loadingFinalQR, setLoadingFinalQR] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [showCashConfirmModal, setShowCashConfirmModal] = useState(false);
 
   // Kích hoạt bản nháp
   const [publishing, setPublishing] = useState(false);
@@ -1015,6 +1016,20 @@ export default function RepairRequestDetailPage() {
                     >
                       ✓ Tôi đã chuyển khoản phần còn lại thành công
                     </Button>
+                    <div className="relative flex py-1 items-center">
+                      <div className="flex-grow border-t border-slate-200"></div>
+                      <span className="flex-shrink mx-2 text-slate-400 text-[11px] font-semibold uppercase">Hoặc</span>
+                      <div className="flex-grow border-t border-slate-200"></div>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      fullWidth
+                      loading={confirmingPayment}
+                      onClick={() => setShowCashConfirmModal(true)}
+                      className="py-2.5 text-xs font-semibold text-emerald-800 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 shadow-xs"
+                    >
+                      💵 Tôi thanh toán tiền mặt trực tiếp cho thợ ({formatCurrency(autoFinalQR.amount)})
+                    </Button>
                   </div>
                 ) : (
                   <div className="text-center">
@@ -1539,6 +1554,64 @@ export default function RepairRequestDetailPage() {
             <div className="flex justify-end pt-2 border-t border-slate-100">
               <Button variant="secondary" onClick={() => setReviewTech(null)} className="text-xs py-1.5 px-4">
                 Đóng
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL XÁC NHẬN THANH TOÁN TIỀN MẶT CHO THỢ */}
+      {showCashConfirmModal && autoFinalQR && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">💵</span>
+                <h3 className="font-bold text-slate-900 text-base">
+                  Xác nhận gửi tiền mặt cho thợ
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCashConfirmModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-600">
+              <p>
+                Bạn đang chọn thanh toán trực tiếp số tiền còn lại bằng <strong>tiền mặt</strong> cho kỹ thuật viên:
+              </p>
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Kỹ thuật viên nhận:</span>
+                  <span className="font-bold text-slate-800">{detail.request.technicianName || 'Kỹ thuật viên'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Số tiền mặt cần gửi:</span>
+                  <span className="font-bold text-emerald-700 text-sm">{formatCurrency(autoFinalQR.amount)}</span>
+                </div>
+              </div>
+              <div className="rounded-xl bg-blue-50 border border-blue-100 p-3 text-[11px] text-blue-900 leading-relaxed">
+                ℹ️ Sau khi bạn xác nhận đã đưa tiền mặt cho thợ, hệ thống sẽ mở khóa ngay bước <strong>Nghiệm thu thiết bị & Đánh giá dịch vụ</strong> để kích hoạt bảo hành điện tử.
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button variant="secondary" onClick={() => setShowCashConfirmModal(false)} className="text-xs py-2 px-4">
+                Quay lại
+              </Button>
+              <Button
+                variant="primary"
+                loading={confirmingPayment}
+                onClick={async () => {
+                  setShowCashConfirmModal(false);
+                  await handleConfirmInlinePayment(autoFinalQR.paymentId);
+                }}
+                className="text-xs py-2 px-4 bg-emerald-600 hover:bg-emerald-700 font-bold"
+              >
+                Xác nhận đã gửi tiền mặt
               </Button>
             </div>
           </div>
