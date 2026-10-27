@@ -88,6 +88,14 @@ class ExtractiveFallbackSynthesizerTest {
         // Hỏi tất cả dịch vụ: đủ 4 nhóm, có giá, không lộ mã nội bộ
         assertThat(reply("gợi ý cho tôi tất cả dịch vụ hiện đang có")).contains("Sửa Chữa Điện Lạnh").contains("Sửa Chữa Điện Nước")
                 .contains("Sửa Điện Gia Dụng").contains("Sửa Khóa & Cửa Cuốn").contains("350.000 đ").doesNotContain("DIEN_LANH");
+        // Hỏi dịch vụ giá rẻ: xếp theo giá, không đổ cả danh sách theo nhóm
+        assertThat(reply("recomment cho tôi dịch vụ nào giá rẻ")).startsWith("**Các gói có giá khởi điểm thấp nhất**")
+                .contains("150.000 đ").doesNotContain("**1. Sửa Chữa Điện Lạnh**");
+        assertThat(reply("dịch vụ nào rẻ nhất")).startsWith("**Các gói có giá khởi điểm thấp nhất**");
+        assertThat(reply("có mã giảm giá không")).doesNotContain("Các gói có giá khởi điểm thấp nhất");
+        assertThat(reply("sao giá rẻ vậy có lừa đảo không")).doesNotContain("Các gói có giá khởi điểm thấp nhất");
+        assertThat(reply("sửa ở đâu giá rẻ")).startsWith("**Các gói có giá khởi điểm thấp nhất**");
+        assertThat(synthesizer.directAnswer("recomment cho tôi dịch vụ nào giá rẻ")).isPresent();
         // Những câu từng trả lời sai khi test thủ công
         assertThat(reply("ok cảm ơn nha")).startsWith("Không có gì");
         assertThat(reply("tạm biệt")).startsWith("Tạm biệt");

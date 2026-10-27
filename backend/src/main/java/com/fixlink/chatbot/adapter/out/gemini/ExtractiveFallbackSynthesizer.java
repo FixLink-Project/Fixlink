@@ -570,6 +570,31 @@ public class ExtractiveFallbackSynthesizer {
                     List.of("Cách đăng yêu cầu", "Tiền cọc tính thế nào?", "Đăng ký làm thợ"), List.of(LINK_POST), false)
     );
 
+    /** Hỏi dịch vụ giá rẻ: xếp gói theo giá thay vì đổ cả danh sách (từ khóa "dịch vụ nào" dài hơn "giá rẻ"). */
+    private static final Pattern CHEAP_QUESTION = Pattern.compile(" (gia re|re nhat|gia thap|gia mem|binh dan|re nhe) ");
+
+    private static final Intent CHEAP_SERVICES = new Intent(List.of(),
+            """
+            **Các gói có giá khởi điểm thấp nhất** trên FixLink (giá tham khảo · thời gian ước tính):
+
+            **150.000 đ**
+            - Vệ sinh máy lạnh treo tường (1.0–2.5 HP) · ~45 phút
+            - Mở khóa cửa nhà/khóa phòng cấp tốc 24/7 · thợ có mặt sau 15–30 phút
+
+            **180.000 đ**
+            - Thông nghẹt & xử lý rò rỉ đường ống nước · ~45 phút
+            - Sửa lò vi sóng không nóng/đánh lửa · ~40 phút
+
+            **200.000 đ**
+            - Kiểm tra & sửa tủ lạnh không lạnh/kêu to · ~60 phút
+            - Lắp đặt bồn cầu, lavabo, vòi hoa sen · ~60 phút
+            - Sửa bếp từ không nóng/chập nguồn báo lỗi · ~45 phút
+
+            Các gói còn lại: nạp ga máy lạnh và sửa máy giặt 250.000 đ, dò chập điện âm tường 300.000 đ, sửa cửa cuốn 350.000 đ.
+
+            Đây là giá khởi điểm; giá thực tế do thợ báo giá và **không vượt ngân sách bạn đặt**. Để tiết kiệm, bạn đặt ngân sách phù hợp rồi so sánh các báo giá và tự chọn thợ. Bạn đang cần sửa thiết bị nào?""",
+            List.of("Máy lạnh không mát", "Cách đăng yêu cầu", "Tiền cọc tính thế nào?"), List.of(LINK_POST), false);
+
     public ChatOrchestrationResult synthesize(String userMessage, String ragContext) {
         String query = normalize(userMessage != null ? userMessage : "");
         String padded = " " + query + " ";
@@ -760,6 +785,11 @@ public class ExtractiveFallbackSynthesizer {
                 best = intent;
                 bestScore = score;
             }
+        }
+        boolean asksServices = best == null || best.keywords().contains("tat ca dich vu")
+                || paddedNormalizedQuery.matches(".* (dich vu|goi|nao|gi|o dau) .*");
+        if (asksServices && CHEAP_QUESTION.matcher(paddedNormalizedQuery).find()) {
+            return Optional.of(CHEAP_SERVICES);
         }
         return Optional.ofNullable(best);
     }
