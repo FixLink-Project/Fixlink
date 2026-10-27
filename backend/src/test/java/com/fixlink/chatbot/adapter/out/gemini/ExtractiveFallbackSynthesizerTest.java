@@ -3,6 +3,7 @@ package com.fixlink.chatbot.adapter.out.gemini;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fixlink.chatbot.application.port.out.LlmChatPort.ChatOrchestrationResult;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -49,6 +50,64 @@ class ExtractiveFallbackSynthesizerTest {
 
     private String reply(String q) {
         return synthesizer.synthesize(q, "").reply();
+    }
+
+    @Test
+    @DisplayName("Câu hỏi về giá/thời gian các gói trả lời đúng ý: rẻ, đắt, khoảng giá, nhanh, lâu, theo nhóm, một gói")
+    void shouldAnswerServiceCatalogQuestions() {
+        String cheapest = "**Các gói có giá khởi điểm thấp nhất**";
+        String priciest = "**Các gói có giá khởi điểm cao nhất**";
+        // Rẻ nhất: 150.000 đ đứng đầu, không đổ cả danh sách theo nhóm
+        for (String q : List.of("recomment cho tôi dịch vụ nào giá rẻ", "dịch vụ nào rẻ nhất", "có gói nào giá mềm không",
+                "sửa ở đâu giá rẻ", "dich vu nao re nhat", "gói nào bình dân nhất")) {
+            assertThat(reply(q)).as(q).startsWith(cheapest).contains("**150.000 đ**")
+                    .doesNotContain("**1. Sửa Chữa Điện Lạnh**");
+        }
+        // Đắt nhất: cửa cuốn 350.000 đ đứng đầu
+        for (String q : List.of("recomment cho tôi dịch vụ nào giá đắt", "dịch vụ nào đắt nhất", "gói nào giá cao nhất",
+                "dịch vụ nào mắc nhất", "dich vu nao dat nhat")) {
+            String r = reply(q);
+            assertThat(r).as(q).startsWith(priciest).contains("**350.000 đ**").contains("Sửa cửa cuốn");
+            assertThat(r.indexOf("350.000 đ")).as(q).isLessThan(r.indexOf("300.000 đ"));
+        }
+        // Theo nhóm
+        assertThat(reply("gói rẻ nhất của điện nước")).contains("nhóm **Sửa Chữa Điện Nước**")
+                .contains("**Thông nghẹt & xử lý rò rỉ đường ống nước**: 180.000 đ").doesNotContain("máy lạnh");
+        assertThat(reply("dịch vụ điện lạnh nào đắt nhất")).contains("Nạp ga").contains("Sửa máy giặt").doesNotContain("cửa cuốn");
+        assertThat(reply("điện lạnh có những gói nào")).startsWith("**Các gói của nhóm Sửa Chữa Điện Lạnh**")
+                .contains("Vệ sinh máy lạnh").contains("Sửa máy giặt").doesNotContain("Bếp từ");
+        assertThat(reply("sửa máy lạnh giá bao nhiêu")).contains("Điện Lạnh").contains("150.000 đ").contains("250.000 đ");
+        assertThat(reply("vệ sinh máy lạnh bao nhiêu tiền")).startsWith("**Vệ sinh máy lạnh treo tường (1.0–2.5 HP)**")
+                .contains("150.000 đ").contains("~45 phút");
+        assertThat(reply("sửa cửa cuốn mất bao lâu")).contains("~90 phút");
+        // Khoảng giá
+        assertThat(reply("dịch vụ dưới 200k")).contains("dưới 200.000 đ").contains("Vệ sinh máy lạnh").contains("Sửa lò vi sóng")
+                .doesNotContain("sửa tủ lạnh").doesNotContain("Sửa cửa cuốn");
+        assertThat(reply("có gói nào dưới 200 nghìn không")).contains("dưới 200.000 đ").contains("Mở khóa");
+        assertThat(reply("dịch vụ trên 300.000")).contains("trên 300.000 đ").contains("Sửa cửa cuốn")
+                .doesNotContain("Dò tìm chập điện").doesNotContain("`Q1`");
+        assertThat(reply("gói nào từ 200k đến 250k")).contains("sửa tủ lạnh").contains("Nạp ga").doesNotContain("Mở khóa");
+        assertThat(reply("có dịch vụ nào dưới 100k không")).contains("chưa có gói nào").contains("150.000 đ");
+        // Thời gian
+        assertThat(reply("dịch vụ nào nhanh nhất")).startsWith("**Các gói có thời gian xử lý ngắn nhất**").contains("**~30 phút**")
+                .contains("Nạp ga");
+        assertThat(reply("dịch vụ nào lâu nhất")).startsWith("**Các gói có thời gian xử lý lâu nhất**").contains("**~90 phút**");
+        // Tư vấn chung: không bịa "tốt nhất"/"phổ biến nhất"
+        for (String q : List.of("dịch vụ nào tốt nhất", "dịch vụ nào phổ biến nhất", "nên chọn dịch vụ nào")) {
+            assertThat(reply(q)).as(q).contains("không xếp hạng").doesNotContain("**1. Sửa Chữa Điện Lạnh**");
+        }
+        // Không cướp chủ đề khác
+        assertThat(reply("có mã giảm giá không")).contains("khuyến mãi");
+        assertThat(reply("sao giá rẻ vậy có lừa đảo không")).doesNotContain(cheapest);
+        assertThat(reply("đặt cọc bao nhiêu")).doesNotContain(cheapest).contains("30%");
+        assertThat(reply("sửa laptop giá rẻ không")).contains("chưa hỗ trợ");
+        assertThat(reply("gợi ý cho tôi tất cả dịch vụ hiện đang có")).contains("**1. Sửa Chữa Điện Lạnh**");
+        assertThat(reply("bảng giá dịch vụ")).contains("Lắp bồn cầu").contains("350.000 đ");
+        assertThat(reply("thợ điện lạnh kiếm được bao nhiêu")).doesNotContain("Các gói của").contains("không trả lương cố định");
+        assertThat(reply("làm thợ có cần bằng cấp không")).doesNotContain("không trả lương cố định");
+        assertThat(reply("máy lạnh không mát")).doesNotContain(cheapest).doesNotContain(priciest);
+        assertThat(reply("có sửa tivi không")).startsWith("**Có**");
+        assertThat(synthesizer.directAnswer("dịch vụ nào đắt nhất")).isPresent();
     }
 
     @Test

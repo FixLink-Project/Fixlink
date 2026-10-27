@@ -1,6 +1,7 @@
 package com.fixlink.chatbot.adapter.out.gemini;
 
 import com.fixlink.chatbot.application.port.out.LlmChatPort.ChatOrchestrationResult;
+import com.fixlink.chatbot.domain.service.ServiceCatalog;
 import com.fixlink.chatbot.domain.service.SymptomClassifier;
 import java.text.Normalizer;
 import java.util.ArrayList;
@@ -132,6 +133,17 @@ public class ExtractiveFallbackSynthesizer {
 
                     Cần giải đáp chi tiết, mình có thể tạo **phiếu hỗ trợ** để bộ phận phụ trách liên hệ lại bạn.""",
                     List.of("Tạo phiếu hỗ trợ", "Tiền cọc tính thế nào?"), List.of(), false),
+
+            new Intent(List.of("tho kiem", "kiem duoc bao nhieu", "kiem bao nhieu", "thu nhap", "luong tho", "luong cua tho",
+                    "tho nhan duoc bao nhieu", "tho duoc tra", "tho nhan tien"),
+                    """
+                    FixLink **không trả lương cố định** cho thợ; thu nhập tùy số đơn và giá bạn báo:
+                    1. Thợ đã duyệt hồ sơ (KYC) gửi **báo giá** cho đơn đúng chuyên môn, khu vực; báo giá không vượt ngân sách khách đặt.
+                    2. Khách chọn báo giá của bạn → đó là **giá chốt**; chi phí phát sinh chỉ được tính khi khách duyệt.
+                    3. Thợ **nhận tiền khi khách đã thanh toán đủ** (cọc 30% + phần còn lại qua QR), chấm sao và hoàn tất nghiệm thu.
+
+                    Giá khởi điểm tham khảo các gói từ 150.000 đ đến 350.000 đ. Tỷ lệ **phí nền tảng / hoa hồng** hiện **chưa được công bố chính thức**.""",
+                    List.of("Đăng ký làm thợ cần gì?", "Phí nền tảng bao nhiêu?"), List.of(), false),
 
             new Intent(List.of("xem so dien thoai cua toi", "so dien thoai cua toi", "thong tin cua toi", "lo thong tin",
                     "bao mat thong tin", "thong tin ca nhan", "tho xem duoc", "xem duoc dia chi", "dia chi khach", "dia chi cua khach",
@@ -507,7 +519,8 @@ public class ExtractiveFallbackSynthesizer {
                     **Giá tham khảo khởi điểm một số gói dịch vụ:**
                     - Vệ sinh máy lạnh treo tường: 150.000 đ · Nạp ga máy lạnh: 250.000 đ
                     - Sửa tủ lạnh không lạnh/kêu to: 200.000 đ · Sửa máy giặt: 250.000 đ
-                    - Thông nghẹt, rò rỉ ống nước: 180.000 đ · Dò chập điện, nhảy CB: 300.000 đ
+                    - Thông nghẹt, rò rỉ ống nước: 180.000 đ · Lắp bồn cầu, lavabo, vòi sen: 200.000 đ
+                    - Dò chập điện, nhảy CB: 300.000 đ
                     - Sửa bếp từ: 200.000 đ · Sửa lò vi sóng: 180.000 đ
                     - Mở khóa cấp tốc: 150.000 đ · Sửa cửa cuốn: 350.000 đ
 
@@ -569,31 +582,6 @@ public class ExtractiveFallbackSynthesizer {
                     Thợ phù hợp gửi báo giá cạnh tranh, khách so sánh và chọn thợ, đặt cọc 30% qua mã QR được FixLink giữ bảo chứng, và thợ chỉ nhận tiền khi khách thanh toán đủ, đánh giá và nghiệm thu.""",
                     List.of("Cách đăng yêu cầu", "Tiền cọc tính thế nào?", "Đăng ký làm thợ"), List.of(LINK_POST), false)
     );
-
-    /** Hỏi dịch vụ giá rẻ: xếp gói theo giá thay vì đổ cả danh sách (từ khóa "dịch vụ nào" dài hơn "giá rẻ"). */
-    private static final Pattern CHEAP_QUESTION = Pattern.compile(" (gia re|re nhat|gia thap|gia mem|binh dan|re nhe) ");
-
-    private static final Intent CHEAP_SERVICES = new Intent(List.of(),
-            """
-            **Các gói có giá khởi điểm thấp nhất** trên FixLink (giá tham khảo · thời gian ước tính):
-
-            **150.000 đ**
-            - Vệ sinh máy lạnh treo tường (1.0–2.5 HP) · ~45 phút
-            - Mở khóa cửa nhà/khóa phòng cấp tốc 24/7 · thợ có mặt sau 15–30 phút
-
-            **180.000 đ**
-            - Thông nghẹt & xử lý rò rỉ đường ống nước · ~45 phút
-            - Sửa lò vi sóng không nóng/đánh lửa · ~40 phút
-
-            **200.000 đ**
-            - Kiểm tra & sửa tủ lạnh không lạnh/kêu to · ~60 phút
-            - Lắp đặt bồn cầu, lavabo, vòi hoa sen · ~60 phút
-            - Sửa bếp từ không nóng/chập nguồn báo lỗi · ~45 phút
-
-            Các gói còn lại: nạp ga máy lạnh và sửa máy giặt 250.000 đ, dò chập điện âm tường 300.000 đ, sửa cửa cuốn 350.000 đ.
-
-            Đây là giá khởi điểm; giá thực tế do thợ báo giá và **không vượt ngân sách bạn đặt**. Để tiết kiệm, bạn đặt ngân sách phù hợp rồi so sánh các báo giá và tự chọn thợ. Bạn đang cần sửa thiết bị nào?""",
-            List.of("Máy lạnh không mát", "Cách đăng yêu cầu", "Tiền cọc tính thế nào?"), List.of(LINK_POST), false);
 
     public ChatOrchestrationResult synthesize(String userMessage, String ragContext) {
         String query = normalize(userMessage != null ? userMessage : "");
@@ -685,8 +673,10 @@ public class ExtractiveFallbackSynthesizer {
         Optional<SymptomClassifier.CategoryMatch> device = SymptomClassifier.classify(userMessage);
         if (device.isPresent()) {
             SymptomClassifier.CategoryMatch match = device.get();
+            boolean asksSupported = padded.matches(".* co (sua|nhan sua|lam|ho tro sua) .*(khong|ko|k|hong) $");
             return new ChatOrchestrationResult(
-                    "Sự cố bạn mô tả thuộc danh mục **" + match.name() + "**.\n\n"
+                    (asksSupported ? "**Có**, FixLink nhận sửa thiết bị này qua danh mục **" + match.name() + "**.\n\n"
+                            : "Sự cố bạn mô tả thuộc danh mục **" + match.name() + "**.\n\n")
                             + "**Giá tham khảo khởi điểm:** " + REFERENCE_PRICES.getOrDefault(match.code(), "") + "\n\n"
                             + "Trên FixLink bạn đặt **ngân sách dự kiến**, các thợ gửi báo giá và bạn chọn thợ phù hợp; nếu thợ khảo sát phát hiện lỗi phát sinh, "
                             + "thợ phải gửi chi phí mới để bạn duyệt trước khi sửa. Bạn cho mình biết thêm **quận** và **khung giờ mong muốn** "
@@ -786,10 +776,14 @@ public class ExtractiveFallbackSynthesizer {
                 bestScore = score;
             }
         }
-        boolean asksServices = best == null || best.keywords().contains("tat ca dich vu")
-                || paddedNormalizedQuery.matches(".* (dich vu|goi|nao|gi|o dau) .*");
-        if (asksServices && CHEAP_QUESTION.matcher(paddedNormalizedQuery).find()) {
-            return Optional.of(CHEAP_SERVICES);
+        // Hỏi giá/thời gian các gói (rẻ nhất, đắt nhất, dưới 200k, gói của nhóm điện lạnh...): trả lời từ bảng gói thay vì
+        // đổ cả danh sách; thiết bị FixLink không nhận sửa (laptop, xe máy...) vẫn trả lời "chưa hỗ trợ"
+        if (best == null || !best.keywords().contains("laptop")) {
+            Optional<String> catalog = ServiceCatalog.answer(paddedNormalizedQuery);
+            if (catalog.isPresent()) {
+                return Optional.of(new Intent(List.of(), catalog.get(),
+                        List.of("Cách đăng yêu cầu", "Tiền cọc tính thế nào?", "Tất cả dịch vụ"), List.of(LINK_POST), false));
+            }
         }
         return Optional.ofNullable(best);
     }
