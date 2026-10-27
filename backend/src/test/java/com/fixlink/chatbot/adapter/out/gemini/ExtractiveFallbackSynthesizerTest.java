@@ -85,10 +85,27 @@ class ExtractiveFallbackSynthesizerTest {
         // Không nhận nhầm câu tiếng Việt không dấu là tiếng Anh, không hiểu "vật tư" là hóa đơn VAT
         assertThat(reply("toi can do lai may lanh")).doesNotContain("FixLink Assistant");
         assertThat(reply("giá công và vật tư tính sao")).doesNotContain("hóa đơn VAT");
+        // Hỏi tất cả dịch vụ: đủ 4 nhóm, có giá, không lộ mã nội bộ
+        assertThat(reply("gợi ý cho tôi tất cả dịch vụ hiện đang có")).contains("Sửa Chữa Điện Lạnh").contains("Sửa Chữa Điện Nước")
+                .contains("Sửa Điện Gia Dụng").contains("Sửa Khóa & Cửa Cuốn").contains("350.000 đ").doesNotContain("DIEN_LANH");
         // Có số tiền cụ thể thì tính luôn tiền cọc
         assertThat(reply("ngân sách 800 nghìn thì cọc bao nhiêu?")).contains("240.000 đ").contains("560.000 đ");
         // An toàn luôn ưu tiên dù câu có từ khóa khác
         assertThat(reply("thợ chưa đến mà ổ cắm bốc khói")).contains("114");
+    }
+
+    @Test
+    @DisplayName("Trích đoạn dạng bảng được chuyển thành danh sách, không in bảng vỡ định dạng hay mã nội bộ")
+    void shouldTurnTablesIntoBullets() {
+        String rag = """
+                ### Bảng tra cứu triệu chứng (Nguồn: bang-trieu-chung-danh-muc.md)
+                | Triệu chứng | Danh mục | Mã | Gói |
+                |---|---|---|---|
+                | Cửa cuốn bị kẹt nan, motor không chạy | **Sửa Khóa & Cửa Cuốn** | `KHOA_CUA` | Sửa chữa cửa cuốn |
+                """;
+        ChatOrchestrationResult r = synthesizer.synthesize("bảng tra cứu triệu chứng gồm những gì", rag);
+        assertThat(r.reply()).contains("- Cửa cuốn bị kẹt nan, motor không chạy → **Sửa Khóa & Cửa Cuốn** · Sửa chữa cửa cuốn")
+                .doesNotContain("KHOA_CUA").doesNotContain("|");
     }
 
     @Test

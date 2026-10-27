@@ -423,6 +423,34 @@ public class ExtractiveFallbackSynthesizer {
                     Mật khẩu khách hàng tối thiểu **6 ký tự** (nên dùng 8+ ký tự gồm chữ hoa, chữ thường, số, ký tự đặc biệt). Tài khoản thợ đăng ký riêng tại /dang-ky-tho với mật khẩu tối thiểu 8 ký tự, có chữ in hoa và ký tự đặc biệt.""",
                     List.of("Cách đăng yêu cầu", "Đăng ký làm thợ cần gì?"), List.of(LINK_REGISTER), false),
 
+            new Intent(List.of("tat ca dich vu", "dich vu hien co", "dich vu dang co", "cac dich vu", "danh sach dich vu",
+                    "nhung dich vu", "goi dich vu", "co dich vu gi", "dich vu nao", "liet ke dich vu", "goi y dich vu"),
+                    """
+                    **Các dịch vụ FixLink đang cung cấp** (giá khởi điểm tham khảo · thời gian ước tính):
+
+                    **1. Sửa Chữa Điện Lạnh**
+                    - Vệ sinh máy lạnh treo tường (1.0–2.5 HP): 150.000 đ · ~45 phút
+                    - Nạp ga máy lạnh R32/R410A trọn gói: 250.000 đ · ~30 phút
+                    - Kiểm tra & sửa tủ lạnh không lạnh/kêu to: 200.000 đ · ~60 phút
+                    - Sửa máy giặt không vắt/báo lỗi bo mạch: 250.000 đ · ~60 phút
+
+                    **2. Sửa Chữa Điện Nước**
+                    - Thông nghẹt & xử lý rò rỉ đường ống nước: 180.000 đ · ~45 phút
+                    - Lắp đặt bồn cầu, lavabo, vòi hoa sen: 200.000 đ · ~60 phút
+                    - Dò tìm chập điện âm tường & nhảy CB: 300.000 đ · ~90 phút
+
+                    **3. Sửa Điện Gia Dụng**
+                    - Sửa bếp từ không nóng/chập nguồn báo lỗi: 200.000 đ · ~45 phút
+                    - Sửa lò vi sóng không nóng/đánh lửa: 180.000 đ · ~40 phút
+                    - Máy hút mùi, nồi chiên không dầu, quạt điện: chưa có gói giá riêng, bạn đặt ngân sách khi đăng yêu cầu
+
+                    **4. Sửa Khóa & Cửa Cuốn**
+                    - Mở khóa cửa nhà/khóa phòng cấp tốc 24/7: 150.000 đ · thợ có mặt sau 15–30 phút
+                    - Sửa cửa cuốn kẹt nan/hỏng motor: 350.000 đ · ~90 phút
+
+                    Giá thực tế do các thợ báo giá (không vượt ngân sách bạn đặt) và bạn tự chọn thợ. Bạn đang cần sửa thiết bị nào?""",
+                    List.of("Máy lạnh không mát", "Cách đăng yêu cầu", "Tiền cọc tính thế nào?"), List.of(LINK_POST), false),
+
             new Intent(List.of("fixlink la gi", "gioi thieu", "fixlink lam gi", "fixlink sua", "dich vu gi", "danh muc"),
                     """
                     **FixLink** là nền tảng kết nối khách hàng có thiết bị gia dụng hư hỏng với **thợ đã xác minh danh tính (KYC)** tại TP.HCM, gồm 4 nhóm dịch vụ:
@@ -639,11 +667,30 @@ public class ExtractiveFallbackSynthesizer {
         String heading = lines[0].replaceAll("\\(Nguồn:[^)]*\\)", "").trim();
         sb.append("**").append(heading).append("**\n");
         int count = 0;
-        for (int i = 1; i < lines.length && count < 10; i++) {
+        boolean tableHeaderSkipped = false;
+        for (int i = 1; i < lines.length && count < 12; i++) {
             String line = lines[i].trim();
             if (line.isEmpty() || line.startsWith("#") || line.startsWith("---") || line.startsWith("```")
                     || line.startsWith("|---") || line.contains("Trợ lý cần")) {
                 continue;
+            }
+            if (line.startsWith("|")) {
+                // Bảng markdown hiển thị kém trong khung chat: hàng tiêu đề bỏ qua, mỗi hàng thành một gạch đầu dòng
+                if (!tableHeaderSkipped) {
+                    tableHeaderSkipped = true;
+                    continue;
+                }
+                List<String> cells = new ArrayList<>();
+                for (String cell : line.split("\\|")) {
+                    String c = cell.trim();
+                    if (!c.isEmpty() && !c.startsWith("`")) {
+                        cells.add(c);
+                    }
+                }
+                if (cells.isEmpty()) {
+                    continue;
+                }
+                line = "- " + cells.get(0) + (cells.size() > 1 ? " → " + String.join(" · ", cells.subList(1, cells.size())) : "");
             }
             sb.append(line).append("\n");
             count++;
