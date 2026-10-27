@@ -101,6 +101,25 @@ class OfflinePersonalResponderTest {
     }
 
     @Test
+    @DisplayName("Nhận ra câu hỏi về dữ liệu riêng và câu trả lời chỉ hứa 'đang kiểm tra' của AI")
+    void shouldDetectPersonalQuestionsAndEmptyPromises() {
+        assertThat(OfflinePersonalResponder.asksPersonalData("hiện tại tôi đã có bao nhiêu yêu cầu sửa chữa")).isTrue();
+        assertThat(OfflinePersonalResponder.asksPersonalData("đơn REQ-DEMO-0001 sao rồi")).isTrue();
+        assertThat(OfflinePersonalResponder.asksPersonalData("lịch hẹn của tôi khi nào")).isTrue();
+        assertThat(OfflinePersonalResponder.asksPersonalData("cách đăng yêu cầu sửa chữa")).isFalse();
+        assertThat(OfflinePersonalResponder.asksPersonalData("dời lịch hẹn thế nào")).isFalse();
+
+        assertThat(OfflinePersonalResponder.isEmptyPromise("Mình đang kiểm tra danh sách yêu cầu sửa chữa của bạn trên hệ thống nhé."))
+                .isTrue();
+        assertThat(OfflinePersonalResponder.isEmptyPromise("Bạn có **3** yêu cầu, đơn REQ-DEMO-0001 đang chờ xác nhận lịch hẹn."))
+                .isFalse();
+
+        ChatOrchestrationResult login = OfflinePersonalResponder.loginRequired();
+        assertThat(login.reply()).contains("đăng nhập");
+        assertThat(login.actions()).extracting(a -> a.get("url")).contains("/dang-nhap");
+    }
+
+    @Test
     @DisplayName("Khách vãng lai hoặc câu không hỏi dữ liệu cá nhân thì không gọi tool")
     void shouldSkipWhenNotPersonal() {
         assertThat(responder.answer("đơn của tôi đang thế nào?", null, "GUEST")).isEmpty();

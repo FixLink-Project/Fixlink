@@ -605,7 +605,7 @@ public class ExtractiveFallbackSynthesizer {
     }
 
     /** Cọc 30% làm tròn lên đến đồng, giống calculate_deposit và lúc khách chọn thợ. */
-    static String depositFor(long amount) {
+    public static String depositFor(long amount) {
         long deposit = (long) Math.ceil(amount * 0.3);
         return "Với giá chốt **" + vnd(amount) + "**: tiền cọc 30% = **" + vnd(deposit) + "**, phần còn lại = **"
                 + vnd(amount - deposit) + "** (nếu không có chi phí phát sinh).";

@@ -27,7 +27,9 @@ public class OfflinePersonalResponder {
 
     private static final Pattern REQUEST_CODE = Pattern.compile("\\bREQ-[A-Z0-9-]{4,}\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern MY_REQUESTS = Pattern.compile(
-            "\\b(don cua toi|don hang|cac don|may don|bao nhieu don|don nao|yeu cau cua toi|don dang|don cua minh|don minh)\\b");
+            "\\b(don cua toi|don hang|cac don|may don|bao nhieu don|don nao|yeu cau cua toi|don dang|don cua minh|don minh"
+                    + "|bao nhieu yeu cau|may yeu cau|yeu cau cua minh|yeu cau sua chua cua toi|toi da co|toi co bao nhieu"
+                    + "|danh sach don|danh sach yeu cau)\\b");
     private static final Pattern APPOINTMENTS = Pattern.compile("\\b(lich hen|lich khao sat|hen gio|lich sua)\\b");
     private static final Pattern QUOTES = Pattern.compile("\\b(bao gia|so sanh|chon tho nao)\\b");
     private static final Pattern TECH_PROFILE = Pattern.compile("\\b(ho so|duyet|kyc|xac minh|tai khoan tho)\\b");
@@ -83,6 +85,38 @@ public class OfflinePersonalResponder {
     public OfflinePersonalResponder(ChatbotToolPort toolPort, ObjectMapper objectMapper) {
         this.toolPort = toolPort;
         this.objectMapper = objectMapper;
+    }
+
+    /** Câu hỏi về dữ liệu riêng của người hỏi (đơn, mã đơn, lịch hẹn) — cần đăng nhập mới tra được. */
+    public static boolean asksPersonalData(String message) {
+        if (message == null) {
+            return false;
+        }
+        String text = SymptomClassifier.normalize(message);
+        return REQUEST_CODE.matcher(message).find() || MY_REQUESTS.matcher(text).find()
+                || (APPOINTMENTS.matcher(text).find() && text.matches(".*\\b(cua toi|cua minh|toi co|minh co)\\b.*"));
+    }
+
+    /** Khách vãng lai hỏi về đơn/lịch hẹn của mình: hướng dẫn đăng nhập thay vì để AI hứa "đang kiểm tra". */
+    public static ChatOrchestrationResult loginRequired() {
+        return new ChatOrchestrationResult(
+                "Để xem các yêu cầu sửa chữa, lịch hẹn và trạng thái đơn **của bạn**, bạn cần **đăng nhập** trước nhé "
+                        + "(khách hàng tại /dang-nhap, thợ tại /dang-nhap-tho). Đăng nhập xong, bạn hỏi lại mình sẽ tra ngay "
+                        + "số lượng đơn, trạng thái và bước tiếp theo của từng đơn.\n\nChưa có tài khoản? Đăng ký miễn phí tại /dang-ky.",
+                List.of("Cách đăng ký tài khoản", "Cách đăng yêu cầu sửa chữa"),
+                List.of(Map.of("type", "link", "label", "Đăng nhập", "url", "/dang-nhap"),
+                        Map.of("type", "link", "label", "Đăng ký", "url", "/dang-ky")),
+                false, null, "local-data");
+    }
+
+    /** AI chỉ hứa "đang kiểm tra / sẽ tra cứu" mà không đưa dữ liệu: câu trả lời rỗng, cần thay bằng dữ liệu thật. */
+    public static boolean isEmptyPromise(String reply) {
+        if (reply == null) {
+            return true;
+        }
+        String text = SymptomClassifier.normalize(reply);
+        return reply.length() < 220 && text.matches(".*\\b(dang|se|de minh) (kiem tra|tra cuu|xem|lay)\\b.*")
+                && !reply.matches("(?s).*\\d.*");
     }
 
     public Optional<ChatOrchestrationResult> answer(String message, Long userId, String role) {

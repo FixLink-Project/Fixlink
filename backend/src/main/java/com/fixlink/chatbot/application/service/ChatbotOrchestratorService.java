@@ -215,6 +215,10 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             // Câu tính toán nằm ngoài phạm vi: trả lời từ chối ngay, không gửi lên AI (model hay trả lời luôn)
             orchestrationResult = verifiedAnswers.synthesize(cleanMessage, "");
             toolTraces = List.of();
+        } else if (command.userId() == null && OfflinePersonalResponder.asksPersonalData(cleanMessage)) {
+            // Khách vãng lai hỏi về đơn/lịch hẹn của mình: chưa đăng nhập thì không tra được, hướng dẫn đăng nhập
+            orchestrationResult = OfflinePersonalResponder.loginRequired();
+            toolTraces = List.of();
         } else if (cached != null) {
             orchestrationResult = cached.result();
             toolTraces = cached.traces();
@@ -235,7 +239,9 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             } finally {
                 toolTraces = recorder.stop();
             }
-            if (orchestrationResult.modelUsed() != null && orchestrationResult.modelUsed().startsWith("local-")
+            boolean emptyPromise = toolTraces.isEmpty() && OfflinePersonalResponder.isEmptyPromise(orchestrationResult.reply())
+                    && OfflinePersonalResponder.asksPersonalData(cleanMessage);
+            if ((emptyPromise || orchestrationResult.modelUsed() != null && orchestrationResult.modelUsed().startsWith("local-"))
                     && command.userId() != null) {
                 // AI hết hạn mức: câu hỏi về đơn/lịch hẹn/hồ sơ vẫn được trả lời bằng dữ liệu thật
                 recorder.start();
@@ -269,6 +275,14 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
 
         String reply = groundingGuard.enforce(localizeRefusal(orchestrationResult.reply(), cleanMessage),
                 userConversation);
+        if ("local-faq".equals(orchestrationResult.modelUsed()) && reply.startsWith("**Chính sách cọc")
+                && SymptomClassifier.detectBudget(cleanMessage).isEmpty()) {
+            // "vậy tiền cọc là bao nhiêu?" sau khi khách đã nêu ngân sách ở lượt trước: tính luôn con số
+            Optional<Long> earlierBudget = SymptomClassifier.detectBudget(userConversation);
+            if (earlierBudget.isPresent() && earlierBudget.get() > 0) {
+                reply = ExtractiveFallbackSynthesizer.depositFor(earlierBudget.get()) + NL + NL + reply;
+            }
+        }
 
         List<ChatAction> actions = new ArrayList<>();
         if (orchestrationResult.actions() != null) {
@@ -286,7 +300,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         if (draftSummary != null && (modelUsed.equals("local-fallback") || modelUsed.equals("local-synthesizer"))) {
             // AI tạm quá tải nhưng đã đủ thông tin đặt thợ: trả bản tóm tắt cụ thể thay vì câu xin lỗi chung chung
             reply = draftSummary;
-        } else if (draftSummary != null && modelUsed.startsWith("local-") && describesBooking(cleanMessage, userConversation)) {
+        } else if (draftSummary != null && modelUsed.startsWith("local-") && describesBooking(cleanMessage)) {
             // Câu trả lời FAQ cục bộ vẫn giữ, kèm bản tóm tắt yêu cầu đã điền sẵn lên đầu
             reply = draftSummary + NL + NL + "---" + NL + NL + reply;
         }
@@ -390,23 +404,23 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             "\\b(dat tho|goi tho|can tho|tim tho|dang yeu cau|dat lich|muon sua|can sua|sua giup|sua dum|cho tho qua|tho qua|tho den)\\b");
 
     /**
-     * Gắn nút "Đăng yêu cầu với thông tin này" (form điền sẵn) khi khách đã mô tả thiết bị và có ý định
-     * đặt thợ, hoặc model đã gợi ý đăng yêu cầu. Làm bằng code để không phụ thuộc việc model nhớ gọi tool
-     * hay chép đúng đường dẫn dài.
-     */
-    /**
      * Khách đang mô tả yêu cầu đặt thợ (muốn đặt thợ, đã cho khu vực hoặc ngân sách) thì mới chèn bản tóm tắt
      * yêu cầu lên đầu câu trả lời cục bộ; câu chỉ hỏi giá hay hỏi bằng tiếng Anh thì giữ nguyên câu trả lời.
      */
-    private static boolean describesBooking(String message, String userConversation) {
+    private static boolean describesBooking(String message) {
         if (ExtractiveFallbackSynthesizer.looksEnglish(message)) {
             return false;
         }
         return BOOKING_INTENT.matcher(SymptomClassifier.normalize(message)).find()
-                || SymptomClassifier.detectAreaCode(userConversation).isPresent()
-                || SymptomClassifier.detectBudget(userConversation).isPresent();
+                || SymptomClassifier.detectAreaCode(message).isPresent()
+                || SymptomClassifier.detectBudget(message).isPresent();
     }
 
+    /**
+     * Gắn nút "Đăng yêu cầu với thông tin này" (form điền sẵn) khi khách đã mô tả thiết bị và có ý định
+     * đặt thợ, hoặc model đã gợi ý đăng yêu cầu. Làm bằng code để không phụ thuộc việc model nhớ gọi tool
+     * hay chép đúng đường dẫn dài. Câu lạc đề như "2+2=" thì không gắn.
+     */
     private String attachDraftRequestAction(List<ChatAction> actions, String message, String userConversation,
                                             List<ChatMessage> history) {
         boolean alreadyPrefilled = actions.stream()
@@ -415,7 +429,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             return null;
         }
         var category = SymptomClassifier.classify(userConversation);
-        if (category.isEmpty() || SymptomClassifier.isDanger(message)) {
+        if (category.isEmpty() || SymptomClassifier.isDanger(message) || ExtractiveFallbackSynthesizer.isArithmetic(message)) {
             return null;
         }
         String normalizedMessage = SymptomClassifier.normalize(message);
@@ -423,7 +437,8 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         var budget = SymptomClassifier.detectBudget(userConversation);
         boolean modelSuggestedPosting = actions.stream().anyMatch(a -> "/dang-yeu-cau".equals(a.getUrl()));
         boolean wantsBooking = BOOKING_INTENT.matcher(normalizedMessage).find()
-                || area.isPresent() || budget.isPresent();
+                || SymptomClassifier.detectAreaCode(message).isPresent()
+                || SymptomClassifier.detectBudget(message).isPresent();
         if (!modelSuggestedPosting && !wantsBooking) {
             return null;
         }
