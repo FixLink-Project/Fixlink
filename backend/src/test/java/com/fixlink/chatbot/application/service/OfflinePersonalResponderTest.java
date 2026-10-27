@@ -77,14 +77,17 @@ class OfflinePersonalResponderTest {
     void shouldListMyRequests() {
         when(toolPort.executeTool(eq("get_my_repair_requests"), anyMap(), any(), any(), any()))
                 .thenReturn(new ToolExecutionResult("""
-                        {"totalItems":2,"items":[
+                        {"totalItems":2,"countsByGroup":{"Chờ thợ nhận":1,"Đang thực hiện":1,"Hoàn thành":0,"Đã hủy":0},"items":[
                           {"requestCode":"REQ-DEMO-0011","title":"Sửa tủ lạnh","statusLabel":"Chờ khách nghiệm thu"},
                           {"requestCode":"REQ-DEMO-0001","title":"Sửa máy lạnh","statusLabel":"Đã chọn thợ"}]}
                         """, false));
 
         String reply = responder.answer("đơn của tôi đang thế nào rồi?", 7L, "CUSTOMER").orElseThrow().reply();
 
-        assertThat(reply).contains("**2** yêu cầu").contains("REQ-DEMO-0011").contains("Chờ khách nghiệm thu");
+        assertThat(reply).contains("tổng cộng **2** yêu cầu").contains("- Đang thực hiện: **1**")
+                .contains("REQ-DEMO-0011").contains("Chờ khách nghiệm thu");
+        assertThat(OfflinePersonalResponder.asksRequestOverview("hiện tại tôi đã có bao nhiêu yêu cầu sửa chữa")).isTrue();
+        assertThat(OfflinePersonalResponder.asksRequestOverview("đơn REQ-DEMO-0001 của tôi sao rồi")).isFalse();
     }
 
     @Test

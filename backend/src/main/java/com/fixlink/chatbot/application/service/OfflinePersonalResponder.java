@@ -97,6 +97,15 @@ public class OfflinePersonalResponder {
                 || (APPOINTMENTS.matcher(text).find() && text.matches(".*\\b(cua toi|cua minh|toi co|minh co)\\b.*"));
     }
 
+    /**
+     * Câu hỏi tổng quan về đơn của mình ("tôi có bao nhiêu đơn", "danh sách đơn của tôi"): trả lời thẳng từ dữ liệu,
+     * không cần AI — AI hay tra nhiều lần với bộ lọc khác nhau rồi trả lời lệch câu hỏi.
+     */
+    public static boolean asksRequestOverview(String message) {
+        return message != null && !REQUEST_CODE.matcher(message).find()
+                && MY_REQUESTS.matcher(SymptomClassifier.normalize(message)).find();
+    }
+
     /** Khách vãng lai hỏi về đơn/lịch hẹn của mình: hướng dẫn đăng nhập thay vì để AI hứa "đang kiểm tra". */
     public static ChatOrchestrationResult loginRequired() {
         return new ChatOrchestrationResult(
@@ -228,9 +237,18 @@ public class OfflinePersonalResponder {
         }
         StringBuilder sb = new StringBuilder();
         if (technician) {
-            sb.append("Các việc bạn đã được khách chọn:\n");
+            sb.append("Bạn có **").append(n.path("totalItems").asInt(items.size())).append("** việc đã được khách chọn");
         } else {
-            sb.append("Bạn có **").append(n.path("totalItems").asInt(items.size())).append("** yêu cầu, gần nhất:\n");
+            sb.append("Bạn hiện có tổng cộng **").append(n.path("totalItems").asInt(items.size())).append("** yêu cầu sửa chữa");
+        }
+        JsonNode groups = n.path("countsByGroup");
+        if (groups.isObject() && groups.size() > 0) {
+            sb.append(":\n");
+            groups.fields().forEachRemaining(g -> sb.append("- ").append(g.getKey()).append(": **")
+                    .append(g.getValue().asLong()).append("**\n"));
+            sb.append("\n**Gần nhất:**\n");
+        } else {
+            sb.append(", gần nhất:\n");
         }
         int i = 1;
         for (JsonNode it : items) {

@@ -141,7 +141,9 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                 Map.of("status", prop("STRING",
                         "Lọc theo trạng thái (OPEN, ASSIGNED, DEPOSIT_PAID, INSPECTING, AWAITING_COST_APPROVAL, IN_PROGRESS, "
                                 + "AWAITING_ACCEPTANCE, COMPLETED, CANCELLED, DRAFT) hoặc nhóm tab "
-                                + "(AWAITING_QUOTE = đang nhận báo giá, IN_PROGRESS = đang thực hiện). Bỏ trống để lấy tất cả.")),
+                                + "(AWAITING_QUOTE = đang nhận báo giá, IN_PROGRESS = đang thực hiện). Bỏ trống để lấy tất cả: kết quả có "
+                                + "totalItems (tổng số đơn) và countsByGroup (số đơn theo từng nhóm), đủ để trả lời 'có bao nhiêu đơn' "
+                                + "mà không cần gọi lại.")),
                 List.of()));
 
         Map<String, Object> statusProps = new LinkedHashMap<>();
@@ -514,6 +516,17 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("viewerRole", role.name());
         result.put("totalItems", statusFilter != null ? items.size() : page.totalItems());
+        if (statusArg == null || statusArg.isBlank()) {
+            // Đếm sẵn theo nhóm như các tab trên trang "Yêu cầu của tôi" để trả lời "có bao nhiêu đơn" trong một lần gọi
+            Map<String, Object> counts = new LinkedHashMap<>();
+            for (RequestTab group : List.of(RequestTab.AWAITING_QUOTE, RequestTab.IN_PROGRESS,
+                    RequestTab.COMPLETED, RequestTab.CANCELLED)) {
+                long count = repairRequestUseCase.listRequests(new RepairRequestQuery(
+                        1, 1, group.name(), null, "createdAt", "DESC", currentUserId, role)).totalItems();
+                counts.put(group.getLabel(), count);
+            }
+            result.put("countsByGroup", counts);
+        }
         result.put("shownItems", items.size());
         result.put("items", items);
         if (items.isEmpty()) {

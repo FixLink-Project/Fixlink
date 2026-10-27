@@ -211,6 +211,8 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         LlmChatPort.ChatOrchestrationResult orchestrationResult;
         List<ToolCallRecorder.ToolTrace> toolTraces;
         FaqAnswerCache.Entry cached = faqCache.lookup(cleanMessage, command.role(), history);
+        DataAnswer overview = command.userId() != null && OfflinePersonalResponder.asksRequestOverview(cleanMessage)
+                ? answerFromData(cleanMessage, command) : null;
         if (ExtractiveFallbackSynthesizer.isArithmetic(cleanMessage)) {
             // Câu tính toán nằm ngoài phạm vi: trả lời từ chối ngay, không gửi lên AI (model hay trả lời luôn)
             orchestrationResult = verifiedAnswers.synthesize(cleanMessage, "");
@@ -219,6 +221,9 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             // Khách vãng lai hỏi về đơn/lịch hẹn của mình: chưa đăng nhập thì không tra được, hướng dẫn đăng nhập
             orchestrationResult = OfflinePersonalResponder.loginRequired();
             toolTraces = List.of();
+        } else if (overview != null) {
+            orchestrationResult = overview.result();
+            toolTraces = overview.traces();
         } else if (cached != null) {
             orchestrationResult = cached.result();
             toolTraces = cached.traces();
@@ -402,6 +407,21 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
 
     private static final Pattern BOOKING_INTENT = Pattern.compile(
             "\\b(dat tho|goi tho|can tho|tim tho|dang yeu cau|dat lich|muon sua|can sua|sua giup|sua dum|cho tho qua|tho qua|tho den)\\b");
+
+    /** Câu trả lời dựng trực tiếp từ dữ liệu cá nhân kèm vết gọi tool (để hiện thẻ đơn hàng). */
+    private record DataAnswer(LlmChatPort.ChatOrchestrationResult result, List<ToolCallRecorder.ToolTrace> traces) { }
+
+    private DataAnswer answerFromData(String message, ChatCommand command) {
+        recorder.start();
+        Optional<LlmChatPort.ChatOrchestrationResult> answer;
+        List<ToolCallRecorder.ToolTrace> traces;
+        try {
+            answer = offlineResponder.answer(message, command.userId(), command.role());
+        } finally {
+            traces = recorder.stop();
+        }
+        return answer.map(a -> new DataAnswer(a, traces)).orElse(null);
+    }
 
     /**
      * Khách đang mô tả yêu cầu đặt thợ (muốn đặt thợ, đã cho khu vực hoặc ngân sách) thì mới chèn bản tóm tắt
