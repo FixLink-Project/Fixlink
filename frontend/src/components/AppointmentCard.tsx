@@ -3,7 +3,7 @@ import Alert from './Alert';
 import Button from './Button';
 import TextField from './TextField';
 import TextArea from './TextArea';
-import { ApiError, approveAppointment, cancelAppointment, completeAppointment, rejectAppointment, rescheduleAppointment } from '../lib/api';
+import { ApiError, approveAppointment, cancelAppointment, rejectAppointment, rescheduleAppointment } from '../lib/api';
 import type { Appointment } from '../lib/types';
 
 interface AppointmentCardProps {
@@ -14,13 +14,12 @@ interface AppointmentCardProps {
 
 export default function AppointmentCard({
   appointment: appt,
-  currentUserRole: _currentUserRole,
+  currentUserRole,
   onUpdated
 }: AppointmentCardProps) {
   // Modal states
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showCompleteModal, setShowCompleteModal] = useState(false);
 
   // Form states
   const [newDate, setNewDate] = useState(appt.scheduledDate || '');
@@ -29,7 +28,6 @@ export default function AppointmentCard({
   );
   const [rescheduleNotes, setRescheduleNotes] = useState('');
   const [cancelReason, setCancelReason] = useState('');
-  const [completeNotes, setCompleteNotes] = useState('');
 
   // Loading & error states
   const [submitting, setSubmitting] = useState(false);
@@ -149,22 +147,6 @@ export default function AppointmentCard({
     }
   }
 
-  async function handleComplete(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setActionError(null);
-    try {
-      await completeAppointment(appt.id, completeNotes.trim() || undefined);
-      setActionSuccess('Đã hoàn thành lịch hẹn!');
-      setShowCompleteModal(false);
-      onUpdated?.();
-    } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'Lỗi khi hoàn thành lịch hẹn.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   async function handleCancel(e: React.FormEvent) {
     e.preventDefault();
     if (!cancelReason.trim()) {
@@ -278,36 +260,54 @@ export default function AppointmentCard({
             🔒 Cuộc hẹn này đã ở trạng thái kết thúc ({appt.statusLabel || appt.status}), không thể thay đổi thêm.
           </span>
         ) : appt.status === 'PENDING_APPROVAL' ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="primary"
-              className="min-h-[36px] px-3.5 py-1 text-xs"
-              loading={submitting}
-              onClick={handleApprove}
-            >
-              ✓ Xác nhận lịch hẹn
-            </Button>
-            <Button
-              variant="danger"
-              className="min-h-[36px] px-3.5 py-1 text-xs"
-              onClick={() => {
-                setActionError(null);
-                setShowRejectModal(true);
-              }}
-            >
-              ✕ Từ chối
-            </Button>
-            <Button
-              variant="secondary"
-              className="min-h-[36px] px-3.5 py-1 text-xs"
-              onClick={() => {
-                setActionError(null);
-                setShowCancelModal(true);
-              }}
-            >
-              Hủy
-            </Button>
-          </div>
+          currentUserRole === 'CUSTOMER' || currentUserRole === 'ADMIN' ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="primary"
+                className="min-h-[36px] px-3.5 py-1 text-xs"
+                loading={submitting}
+                onClick={handleApprove}
+              >
+                ✓ Xác nhận lịch hẹn
+              </Button>
+              <Button
+                variant="danger"
+                className="min-h-[36px] px-3.5 py-1 text-xs"
+                onClick={() => {
+                  setActionError(null);
+                  setShowRejectModal(true);
+                }}
+              >
+                ✕ Từ chối
+              </Button>
+              <Button
+                variant="secondary"
+                className="min-h-[36px] px-3.5 py-1 text-xs"
+                onClick={() => {
+                  setActionError(null);
+                  setShowCancelModal(true);
+                }}
+              >
+                Hủy
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
+                <span>⏳</span> Đang chờ khách hàng xác nhận lịch hẹn
+              </span>
+              <Button
+                variant="secondary"
+                className="min-h-[36px] px-3.5 py-1 text-xs"
+                onClick={() => {
+                  setActionError(null);
+                  setShowCancelModal(true);
+                }}
+              >
+                Hủy lịch
+              </Button>
+            </div>
+          )
         ) : (
           <div className="flex flex-wrap items-center gap-2">
             {/* Đổi lịch hẹn */}
@@ -320,18 +320,6 @@ export default function AppointmentCard({
               }}
             >
               🔄 Đổi lịch hẹn
-            </Button>
-
-            {/* Hoàn thành cuộc hẹn */}
-            <Button
-              variant="primary"
-              className="min-h-[36px] px-3.5 py-1 text-xs"
-              onClick={() => {
-                setActionError(null);
-                setShowCompleteModal(true);
-              }}
-            >
-              ✓ Xác nhận hoàn thành
             </Button>
 
             {/* Hủy cuộc hẹn */}
@@ -402,54 +390,6 @@ export default function AppointmentCard({
                 </Button>
                 <Button type="submit" loading={submitting}>
                   Lưu thay đổi lịch hẹn
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Xác nhận hoàn thành (Complete) */}
-      {showCompleteModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-900 text-base">Xác nhận hoàn thành lịch hẹn</h3>
-              <button
-                type="button"
-                onClick={() => setShowCompleteModal(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-sm text-slate-600">
-              Bạn có chắc chắn muốn đánh dấu cuộc hẹn ngày <strong>{appt.scheduledDate}</strong> đã{' '}
-              <strong className="text-emerald-600">HOÀN THÀNH</strong>?
-            </p>
-
-            {actionError && <Alert tone="error">{actionError}</Alert>}
-
-            <form onSubmit={handleComplete} className="space-y-4">
-              <TextArea
-                label="Ghi chú kết quả (tùy chọn)"
-                value={completeNotes}
-                onChange={(e) => setCompleteNotes(e.target.value)}
-                placeholder="Ví dụ: Kỹ thuật viên đã kiểm tra và khắc phục xong..."
-                rows={3}
-              />
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <Button
-                  variant="secondary"
-                  type="button"
-                  onClick={() => setShowCompleteModal(false)}
-                >
-                  Quay lại
-                </Button>
-                <Button variant="primary" type="submit" loading={submitting}>
-                  Xác nhận Hoàn thành
                 </Button>
               </div>
             </form>

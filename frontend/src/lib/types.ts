@@ -160,6 +160,8 @@ export interface Quotation {
   acceptedAt?: string | null;
   /** Đánh dấu báo giá này là của chính thợ đang đăng nhập */
   isMine?: boolean;
+  /** Cho phép đổi sang báo giá này (khách hàng) */
+  isSwitchable?: boolean;
 }
 
 export interface WorkProgress {
@@ -308,5 +310,17 @@ export interface AdditionalCost {
   status: CostStatus;
   createdAt: string;
   approvedAt: string | null;
+  mediaUrls?: string[];
 }
+
+/**
+ * Chuẩn hóa User ID dạng số nguyên nhất quán từ cả kiểu số (Long) hoặc chuỗi (e.g. "usr_2").
+ */
+export function parseNumericUserId(id: string | number | undefined | null): number | null {
+  if (id == null) return null;
+  if (typeof id === 'number') return id;
+  const match = String(id).match(/\d+/);
+  return match ? parseInt(match[0], 10) : null;
+}
+
 

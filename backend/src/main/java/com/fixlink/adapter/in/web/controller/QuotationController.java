@@ -97,6 +97,18 @@ public class QuotationController {
         return ResponseEntity.ok(ApiResponse.success("Đã chọn thợ và chốt báo giá thành công", res));
     }
 
+    @PostMapping("/{quotationId}/switch")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(summary = "Khách hàng đổi sang thợ khác (từ báo giá đã nhận)")
+    public ResponseEntity<ApiResponse<AcceptQuotationResponse>> switchQuotation(
+            @PathVariable Long requestId,
+            @PathVariable Long quotationId,
+            @AuthenticationPrincipal UserPrincipal user
+    ) {
+        AcceptQuotationResponse res = quotationUseCase.switchTechnician(requestId, quotationId, user.getId());
+        return ResponseEntity.ok(ApiResponse.success("Đổi thợ thành công", res));
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyRole('CUSTOMER', 'TECHNICIAN', 'ADMIN')")
     @Operation(summary = "Xem danh sách báo giá của yêu cầu",

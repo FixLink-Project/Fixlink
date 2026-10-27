@@ -149,6 +149,14 @@ public class QuotationService implements QuotationUseCase {
                 : "Báo giá sửa chữa theo yêu cầu";
         BigDecimal priceMaterials = cmd.getPriceMaterialsVnd() != null ? cmd.getPriceMaterialsVnd() : BigDecimal.ZERO;
 
+        BigDecimal totalQuoted = (cmd.getPriceLaborVnd() != null ? cmd.getPriceLaborVnd() : BigDecimal.ZERO)
+                .add(priceMaterials);
+        if (request.getBudgetRef() != null && request.getBudgetRef().compareTo(BigDecimal.ZERO) > 0
+                && totalQuoted.compareTo(request.getBudgetRef()) > 0) {
+            throw new DomainException("PRICE_EXCEEDS_BUDGET",
+                    "Báo giá (" + totalQuoted + " VNĐ) không được vượt quá trần ngân sách (" + request.getBudgetRef() + " VNĐ)", 400);
+        }
+
         var existingOpt = quotationRepo.findByRequestIdAndTechnicianId(requestId, technicianId);
         QuotationJpaEntity entity;
         if (existingOpt.isPresent()) {
@@ -206,6 +214,14 @@ public class QuotationService implements QuotationUseCase {
                 ? cmd.getPriceMaterialsVnd()
                 : (entity.getPriceMaterialsVnd() != null ? entity.getPriceMaterialsVnd() : BigDecimal.ZERO);
 
+        BigDecimal totalQuoted = (cmd.getPriceLaborVnd() != null ? cmd.getPriceLaborVnd() : BigDecimal.ZERO)
+                .add(priceMaterials);
+        if (request.getBudgetRef() != null && request.getBudgetRef().compareTo(BigDecimal.ZERO) > 0
+                && totalQuoted.compareTo(request.getBudgetRef()) > 0) {
+            throw new DomainException("PRICE_EXCEEDS_BUDGET",
+                    "Báo giá (" + totalQuoted + " VNĐ) không được vượt quá trần ngân sách (" + request.getBudgetRef() + " VNĐ)", 400);
+        }
+
         entity.setSolution(solution);
         entity.setPriceLaborVnd(cmd.getPriceLaborVnd());
         entity.setPriceMaterialsVnd(priceMaterials);
@@ -250,8 +266,20 @@ public class QuotationService implements QuotationUseCase {
         boolean isTechnician = "TECHNICIAN".equals(role);
 
         if (isOwner || isAdmin) {
+            boolean canSwitch = List.of(
+                    RequestStatus.ASSIGNED,
+                    RequestStatus.DEPOSIT_PAID,
+                    RequestStatus.INSPECTING,
+                    RequestStatus.AWAITING_COST_APPROVAL
+            ).contains(request.getStatus());
+
             return quotationRepo.findByRequestIdOrderByCreatedAtDesc(requestId).stream()
-                    .map(this::toResponse)
+                    .map(q -> {
+                        QuotationResponse resp = toResponse(q);
+                        boolean isOtherTech = !q.getTechnicianId().equals(request.getTechnicianId());
+                        resp.setIsSwitchable(canSwitch && isOtherTech && q.getStatus() != QuotationStatus.WITHDRAWN);
+                        return resp;
+                    })
                     .toList();
         } else if (isTechnician) {
             List<QuotationJpaEntity> allQuotes = quotationRepo.findByRequestIdOrderByCreatedAtDesc(requestId);
@@ -350,6 +378,85 @@ public class QuotationService implements QuotationUseCase {
                 .agreedPrice(agreedPrice)
                 .depositAmount(deposit)
                 .status(RequestStatus.ASSIGNED)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public AcceptQuotationResponse switchTechnician(Long requestId, Long quotationId, Long customerId) {
+        RepairRequestJpaEntity request = findRequest(requestId);
+        if (!request.getCustomerId().equals(customerId)) {
+            throw new DomainException("ACCESS_DENIED", "Bạn không phải chủ yêu cầu này", 403);
+        }
+
+        // Nhóm trạng thái cho phép đổi thợ (chưa hoàn thành thi công)
+        List<RequestStatus> switchableStatuses = List.of(
+                RequestStatus.ASSIGNED,
+                RequestStatus.DEPOSIT_PAID,
+                RequestStatus.INSPECTING,
+                RequestStatus.AWAITING_COST_APPROVAL
+        );
+        if (!switchableStatuses.contains(request.getStatus())) {
+            throw new DomainException("INVALID_OPERATION",
+                    "Không thể đổi thợ khi đơn đang ở trạng thái: " + request.getStatus());
+        }
+
+        QuotationJpaEntity targetQuote = quotationRepo.findById(quotationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy báo giá của thợ muốn đổi"));
+        if (!targetQuote.getRequestId().equals(requestId)) {
+            throw new ResourceNotFoundException("Báo giá không thuộc yêu cầu này");
+        }
+        if (targetQuote.getTechnicianId().equals(request.getTechnicianId())) {
+            throw new DomainException("INVALID_OPERATION", "Thợ này đang là thợ phụ trách yêu cầu hiện tại");
+        }
+        if (targetQuote.getStatus() == QuotationStatus.WITHDRAWN) {
+            throw new DomainException("INVALID_OPERATION", "Báo giá này đã bị rút lại");
+        }
+
+        // Cập nhật báo giá của thợ cũ thành REJECTED (nếu có)
+        if (request.getSelectedQuotationId() != null) {
+            quotationRepo.findById(request.getSelectedQuotationId()).ifPresent(oldQuote -> {
+                oldQuote.setStatus(QuotationStatus.REJECTED);
+                oldQuote.setUpdatedBy(customerId);
+                quotationRepo.save(oldQuote);
+            });
+        }
+
+        // Cập nhật báo giá mới thành ACCEPTED
+        targetQuote.setStatus(QuotationStatus.ACCEPTED);
+        targetQuote.setAcceptedAt(LocalDateTime.now());
+        targetQuote.setUpdatedBy(customerId);
+        quotationRepo.save(targetQuote);
+
+        BigDecimal agreedPrice = (targetQuote.getPriceLaborVnd() != null ? targetQuote.getPriceLaborVnd() : BigDecimal.ZERO)
+                .add(targetQuote.getPriceMaterialsVnd() != null ? targetQuote.getPriceMaterialsVnd() : BigDecimal.ZERO);
+        BigDecimal deposit = agreedPrice.multiply(DEPOSIT_RATE).setScale(0, RoundingMode.CEILING);
+
+        RequestStatus oldStatus = request.getStatus();
+        // Nếu đã thanh toán cọc thì giữ ở DEPOSIT_PAID để thợ mới nhận việc và bắt đầu khảo sát
+        RequestStatus newStatus = (oldStatus == RequestStatus.ASSIGNED) ? RequestStatus.ASSIGNED : RequestStatus.DEPOSIT_PAID;
+
+        request.setSelectedQuotationId(quotationId);
+        request.setTechnicianId(targetQuote.getTechnicianId());
+        request.setAgreedPrice(agreedPrice);
+        request.setDepositAmount(deposit);
+        request.setStatus(newStatus);
+        request.setUpdatedBy(customerId);
+        requestRepo.save(request);
+
+        String techName = techProfileRepo.findById(targetQuote.getTechnicianId())
+                .map(TechnicianProfileJpaEntity::getFullName).orElse("Thợ mới");
+
+        repairRequestService.recordProgress(requestId, oldStatus, newStatus,
+                "Khách hàng đã đổi sang thợ " + techName, customerId);
+
+        return AcceptQuotationResponse.builder()
+                .requestId(requestId)
+                .selectedQuotationId(quotationId)
+                .technicianName(techName)
+                .agreedPrice(agreedPrice)
+                .depositAmount(deposit)
+                .status(newStatus)
                 .build();
     }
 

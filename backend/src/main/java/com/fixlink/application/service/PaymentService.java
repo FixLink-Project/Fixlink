@@ -8,6 +8,7 @@ import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.model.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -15,6 +16,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -39,11 +41,13 @@ public class PaymentService {
                     "Yêu cầu phải ở trạng thái đã giao thợ để tạo đặt cọc.", 409);
         }
 
-        paymentRepo.findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.DEPOSIT)
-                .ifPresent(p -> {
-                    throw new DomainException("DEPOSIT_EXISTS",
-                            "Đã có khoản đặt cọc cho yêu cầu này.", 409);
-                });
+        Optional<PaymentJpaEntity> existingDeposit = paymentRepo
+                .findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.DEPOSIT);
+        if (existingDeposit.isPresent()) {
+            PaymentJpaEntity payment = existingDeposit.get();
+            return new PaymentResult(payment.getId(), payment.getQrUrl(), payment.getAmount(),
+                    payment.getTransferContent(), vietQRService.getBankInfo());
+        }
 
         BigDecimal agreedPrice = request.getAgreedPrice();
         if (agreedPrice == null || agreedPrice.signum() <= 0) {
@@ -71,7 +75,7 @@ public class PaymentService {
                 transferContent, vietQRService.getBankInfo());
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PaymentResult createFinalPayment(Long requestId, Long userId) {
         RepairRequestJpaEntity request = findRequest(requestId);
         verifyCustomerOwnership(request, userId);
@@ -81,26 +85,24 @@ public class PaymentService {
                     "Yêu cầu phải ở trạng thái chờ nghiệm thu để tạo thanh toán tổng.", 409);
         }
 
-        PaymentJpaEntity deposit = paymentRepo
+        BigDecimal depositAmount = paymentRepo
                 .findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.DEPOSIT)
-                .orElseThrow(() -> new DomainException("DEPOSIT_NOT_FOUND",
-                        "Chưa đặt cọc cho yêu cầu này.", 409));
+                .filter(d -> d.getStatus() == PaymentStatus.CONFIRMED)
+                .map(PaymentJpaEntity::getAmount)
+                .orElse(request.getDepositAmount() != null ? request.getDepositAmount() : BigDecimal.ZERO);
 
-        if (deposit.getStatus() != PaymentStatus.CONFIRMED) {
-            throw new DomainException("DEPOSIT_NOT_CONFIRMED",
-                    "Khoản đặt cọc chưa được xác nhận.", 409);
+        Optional<PaymentJpaEntity> existingFinal = paymentRepo
+                .findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.FINAL);
+        if (existingFinal.isPresent()) {
+            PaymentJpaEntity payment = existingFinal.get();
+            return new PaymentResult(payment.getId(), payment.getQrUrl(), payment.getAmount(),
+                    payment.getTransferContent(), vietQRService.getBankInfo());
         }
-
-        paymentRepo.findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.FINAL)
-                .ifPresent(p -> {
-                    throw new DomainException("FINAL_PAYMENT_EXISTS",
-                            "Đã có khoản thanh toán tổng cho yêu cầu này.", 409);
-                });
 
         BigDecimal additionalTotal = additionalCostService.getApprovedTotalByRequest(requestId);
         BigDecimal finalAmount = request.getAgreedPrice()
                 .add(additionalTotal)
-                .subtract(deposit.getAmount());
+                .subtract(depositAmount);
 
         if (finalAmount.signum() < 0) {
             finalAmount = BigDecimal.ZERO;

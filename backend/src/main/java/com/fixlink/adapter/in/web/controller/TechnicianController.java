@@ -22,11 +22,14 @@ public class TechnicianController {
 
     private final TechnicianUseCase technicianUseCase;
     private final com.fixlink.application.port.in.TechnicianProfileUseCase technicianProfileUseCase;
+    private final com.fixlink.application.port.in.RepairRequestReviewUseCase reviewUseCase;
 
     public TechnicianController(TechnicianUseCase technicianUseCase,
-                                com.fixlink.application.port.in.TechnicianProfileUseCase technicianProfileUseCase) {
+                                com.fixlink.application.port.in.TechnicianProfileUseCase technicianProfileUseCase,
+                                com.fixlink.application.port.in.RepairRequestReviewUseCase reviewUseCase) {
         this.technicianUseCase = technicianUseCase;
         this.technicianProfileUseCase = technicianProfileUseCase;
+        this.reviewUseCase = reviewUseCase;
     }
 
     @GetMapping("/me/profile")
@@ -73,5 +76,14 @@ public class TechnicianController {
         Long targetUserId = principal.getId();
         List<TechnicianUseCase.RepairRequestDto> requests = technicianUseCase.getMyRepairRequests(targetUserId);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách yêu cầu sửa chữa thành công", requests));
+    }
+
+    @GetMapping("/{technicianId}/reviews")
+    @Operation(summary = "Xem danh sách đánh giá của thợ", description = "Lấy toàn bộ các bài đánh giá, điểm sao và phản hồi từ khách hàng cho kỹ thuật viên.")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTechnicianReviews(
+            @PathVariable Long technicianId
+    ) {
+        List<Map<String, Object>> reviews = reviewUseCase.getReviewsForTechnician(technicianId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đánh giá thành công", reviews));
     }
 }
