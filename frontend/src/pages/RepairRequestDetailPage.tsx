@@ -1622,16 +1622,14 @@ function QuotationCard({
                 <span className="text-blue-600 text-xs" title="Thợ đã xác minh eKYC">✓</span>
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                {q.avgRating != null && (
-                  <button
-                    type="button"
-                    onClick={() => onViewReviews?.(q.technicianId, q.technicianName ?? 'Thợ kỹ thuật', q.avgRating)}
-                    className="font-semibold text-amber-700 flex items-center gap-0.5 hover:underline cursor-pointer bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200"
-                    title="Bấm để xem đánh giá từ khách hàng"
-                  >
-                    ★ {q.avgRating.toFixed(1)}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => onViewReviews?.(q.technicianId, q.technicianName ?? 'Thợ kỹ thuật', q.avgRating)}
+                  className="font-semibold text-amber-700 flex items-center gap-0.5 hover:underline cursor-pointer bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200"
+                  title="Bấm để xem đánh giá từ khách hàng"
+                >
+                  ★ {q.avgRating != null ? q.avgRating.toFixed(1) : '5.0'}
+                </button>
                 {q.completedJobs != null && <span>• {q.completedJobs} đơn</span>}
                 {q.yearsExperience != null && <span>• {q.yearsExperience} năm kn</span>}
                 {onViewReviews && (
