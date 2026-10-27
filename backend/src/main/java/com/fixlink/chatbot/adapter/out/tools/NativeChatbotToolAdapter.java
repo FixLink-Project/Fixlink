@@ -19,6 +19,7 @@ import com.fixlink.chatbot.domain.model.SupportTicket;
 import com.fixlink.chatbot.domain.model.TicketPriority;
 import com.fixlink.chatbot.domain.service.RepairRequestDraftLink;
 import com.fixlink.chatbot.domain.service.SymptomClassifier;
+import com.fixlink.domain.model.AppointmentStatus;
 import com.fixlink.domain.model.RepairRequest;
 import com.fixlink.domain.model.RequestStatus;
 import com.fixlink.domain.model.RequestTab;
@@ -585,10 +586,18 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
 
         try {
             List<Map<String, Object>> appointments = new ArrayList<>();
+            boolean confirmed = false;
+            boolean pending = false;
             for (AppointmentResponse a : appointmentUseCase.getAppointmentsForRequest(req.getId(), currentUserId, role.name())) {
                 appointments.add(summarizeAppointment(a));
+                confirmed |= a.getStatus() == AppointmentStatus.CONFIRMED;
+                pending |= a.getStatus() == AppointmentStatus.PENDING_APPROVAL;
             }
             result.put("appointments", appointments);
+            if (req.getStatus() == RequestStatus.ASSIGNED) {
+                // Bước tiếp theo phải khớp lịch hẹn thật, không thì khách thấy "chờ thợ đề xuất lịch" dù lịch đã xác nhận
+                result.put("nextStep", assignedNextStep(role, confirmed, pending));
+            }
         } catch (Exception ignored) {
             // không có quyền / chưa có lịch hẹn — bỏ qua
         }
@@ -994,6 +1003,22 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
             case COMPLETED -> "Đơn đã hoàn tất, thanh toán đã được giải ngân cho thợ.";
             case CANCELLED -> "Đơn đã hủy, không thể thao tác tiếp. Có thể đăng yêu cầu mới tại /dang-yeu-cau.";
         };
+    }
+
+    /** Bước tiếp theo của đơn ASSIGNED theo tình trạng lịch hẹn khảo sát. */
+    static String assignedNextStep(Role role, boolean confirmed, boolean pending) {
+        boolean tech = role == Role.TECHNICIAN;
+        if (confirmed) {
+            return tech
+                    ? "Khách đã xác nhận lịch hẹn. Chờ khách thanh toán cọc 30% qua QR; đơn chuyển sang 'Đã đặt cọc' thì mới được bắt đầu khảo sát."
+                    : "Lịch hẹn đã được xác nhận. Vào chi tiết đơn, quét mã QR đặt cọc 30% và bấm xác nhận đã chuyển khoản để thợ đến khảo sát. Nếu chưa ưng thợ, bạn có thể bấm 'Đổi thợ khác'.";
+        }
+        if (pending) {
+            return tech
+                    ? "Bạn đã đề xuất lịch hẹn, đang chờ khách xác nhận. Khách xác nhận và thanh toán cọc 30% thì mới được bắt đầu khảo sát."
+                    : "Thợ đã đề xuất lịch hẹn: vào chi tiết đơn bấm 'Xác nhận lịch hẹn' (hoặc từ chối nếu không phù hợp), sau đó quét mã QR đặt cọc 30% và bấm xác nhận đã chuyển khoản.";
+        }
+        return nextStep(RequestStatus.ASSIGNED, role);
     }
 
     // ==================================================================================

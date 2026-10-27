@@ -63,7 +63,7 @@ chatbot:
     api-key-2: ${GROQ_API_KEY_2:}
     base-url: https://api.groq.com/openai/v1
     # Chuỗi failover: model đầu tiên là model chính. Ghi đè bằng GROQ_MODELS (phân tách bằng dấu phẩy).
-    models: ${GROQ_MODELS:openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b}
+    models: ${GROQ_MODELS:openai/gpt-oss-120b,qwen/qwen3.8-27b}
     timeout-seconds: 30
     total-budget-seconds: 60
     max-retries: 1
@@ -78,7 +78,7 @@ chatbot:
     max-tool-result-chars: 2000
     max-history-messages: 6
     max-history-message-chars: 600
-  # Cổng LiteLLM (litellm/config.yaml): Groq gpt-oss-120b → qwen3.8-27b → gpt-oss-20b khi hết hạn mức.
+  # Cổng LiteLLM (litellm/config.yaml): Groq gpt-oss-120b → qwen3.8-27b khi hết hạn mức.
   # Bỏ trống LITELLM_BASE_URL thì backend gọi thẳng Groq như cũ.
   litellm:
     base-url: ${LITELLM_BASE_URL:}

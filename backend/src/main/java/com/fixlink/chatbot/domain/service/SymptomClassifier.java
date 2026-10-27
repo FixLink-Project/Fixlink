@@ -31,7 +31,7 @@ public final class SymptomClassifier {
     private static final List<CategoryRule> CATEGORY_RULES = List.of(
             new CategoryRule("DIEN_LANH", "Sửa Chữa Điện Lạnh",
                     "Thiết bị làm lạnh, điều hòa, tủ lạnh, tủ đông, máy giặt thuộc chuyên ngành Điện lạnh.",
-                    List.of("tu lanh", "may lanh", "dieu hoa", "may dieu hoa", "tu dong", "tu mat", "may giat",
+                    List.of("tu lanh", "may lanh", "dieu hoa", "may dieu hoa", "tu dong", "tu mat", "may giat", "may giac",
                             "nap ga", "bom ga", "het ga", "xi ga", "ga lanh", "dong tuyet", "dong da", "khong lanh",
                             "khong mat", "dan lanh", "dan nong", "block", "may say", "ve sinh may lanh", "inverter",
                             "air conditioner", "fridge", "refrigerator", "washing machine", "aircon")),
@@ -47,7 +47,9 @@ public final class SymptomClassifier {
                     "Thiết bị điện gia dụng trong gia đình.",
                     List.of("bep tu", "bep hong ngoai", "bep dien", "lo vi song", "lo nuong", "noi chien", "noi com",
                             "may hut mui", "quat", "am sieu toc", "binh nong lanh", "may loc nuoc", "may xay",
-                            "ban la", "may hut bui", "tivi", "ti vi", "loa", "induction", "microwave", "air fryer", "fan")),
+                            // không dùng "ban la" (bàn là): trùng với "bạn là" sau khi bỏ dấu
+                            "ban ui", "ban la hoi", "may nuoc nong", "may nong lanh", "binh nuoc nong", "may hut bui", "tivi", "ti vi", "loa", "induction", "microwave",
+                            "air fryer")),
             new CategoryRule("KHOA_CUA", "Sửa Khóa & Cửa Cuốn",
                     "Sự cố khóa, chìa khóa và cửa cuốn.",
                     List.of("khoa cua", "o khoa", "mat chia", "chia khoa", "ket khoa", "khoa phong", "khoa van tay",
@@ -58,6 +60,7 @@ public final class SymptomClassifier {
     private static final List<String> DANGER_KEYWORDS = List.of(
             "bi chay", "chay khet", "mui khet", "khet", "boc chay", "boc khoi", "ra khoi", "xet lua", "toe lua",
             "phat no", "bi no", "no tung", "ro gas", "ro ga", "xi gas", "mui gas", "dien giat", "giat dien", "bi giat",
+            "set dien", "xet dien", "phat lua", "chap chay", "ro dien",
             "ngap nuoc", "nuoc ngap", "fire", "smoke", "burning", "gas leak", "sparks", "electric shock");
 
     /** Cụm từ (đã bỏ dấu) → mã khu vực phục vụ trong dữ liệu master. */

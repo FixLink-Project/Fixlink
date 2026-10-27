@@ -10,6 +10,14 @@ interface MessageBubbleProps {
   onRequestHandoff?: () => void;
 }
 
+/** Nhãn nguồn câu trả lời dễ hiểu cho người dùng thay cho tên kỹ thuật (local-faq, litellm/groq/...). */
+function sourceLabel(modelUsed: string): string {
+  if (modelUsed === 'local-faq') return 'Câu trả lời chuẩn';
+  if (modelUsed === 'local-data') return 'Dữ liệu FixLink';
+  if (modelUsed.startsWith('local-')) return 'Chế độ dự phòng';
+  return 'Trợ lý AI';
+}
+
 export default function MessageBubble({ message, onFeedback, onRequestHandoff }: MessageBubbleProps) {
   const isUser = message.sender === 'user';
   const [showSources, setShowSources] = useState(false);
@@ -272,8 +280,11 @@ export default function MessageBubble({ message, onFeedback, onRequestHandoff }:
           <div className="flex items-center gap-2">
             <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
             {message.modelUsed && (
-              <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-mono">
-                {message.modelUsed.replace('gemini-', '')}
+              <span
+                className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px]"
+                title={message.modelUsed}
+              >
+                {sourceLabel(message.modelUsed)}
               </span>
             )}
           </div>

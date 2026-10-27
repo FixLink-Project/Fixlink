@@ -10,6 +10,32 @@ class ReplyGroundingGuardTest {
     private final ReplyGroundingGuard guard = new ReplyGroundingGuard();
 
     @Test
+    @DisplayName("Bảng markdown do AI viết được đổi thành danh sách để không vỡ khung chat")
+    void shouldTurnTablesIntoBullets() {
+        String out = guard.enforce("""
+                Các việc phù hợp:
+                | Tiêu đề | Khu vực | Ngân sách |
+                |---|---|---|
+                | Sửa máy lạnh | Quận 1 | 450.000 đ |
+                | Thông tắc ống | Quận 3 | 300.000 đ |
+                Bạn muốn xem việc nào?""", "");
+        assertThat(out).doesNotContain("|").contains("- Sửa máy lạnh – Quận 1 · 450.000 đ")
+                .contains("- Thông tắc ống – Quận 3 · 300.000 đ").contains("Bạn muốn xem việc nào?")
+                .doesNotContain("Tiêu đề");
+    }
+
+    @Test
+    @DisplayName("Không lộ mã nội bộ: mã trạng thái/danh mục đổi sang tên tiếng Việt, mã đơn giữ nguyên")
+    void shouldHumanizeInternalCodes() {
+        String out = guard.enforce("Bạn có 3 yêu cầu đang sửa chữa (IN_PROGRESS). Đơn REQ-TEST-ASSIGNED ở trạng thái "
+                + "`ASSIGNED`, danh mục DIEN_LANH. Mình đã gọi get_my_repair_requests.", "");
+        assertThat(out).doesNotContain("IN_PROGRESS").doesNotContain("`ASSIGNED`").doesNotContain("DIEN_LANH")
+                .doesNotContain("get_my_repair_requests")
+                .contains("đang sửa chữa.").contains("REQ-TEST-ASSIGNED").contains("trạng thái Đã chọn thợ")
+                .contains("Sửa Chữa Điện Lạnh");
+    }
+
+    @Test
     @DisplayName("Xóa hotline, email, website do model tự bịa")
     void shouldRemoveInventedContacts() {
         String reply = "Gọi hotline 1900 8899 hoặc 0901234567, email cskh@fixlink.vn, xem thêm tại www.fixlink.vn";

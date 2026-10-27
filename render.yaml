@@ -37,7 +37,7 @@ services:
       - key: LITELLM_MASTER_KEY
         sync: false
 
-  # Cổng LiteLLM: Groq gpt-oss-120b → qwen3.8-27b → gpt-oss-20b khi hết hạn mức (cấu hình trong litellm/config.yaml)
+  # Cổng LiteLLM: Groq gpt-oss-120b → qwen3.8-27b khi hết hạn mức (cấu hình trong litellm/config.yaml)
   - type: web
     name: fixlink-litellm
     runtime: docker

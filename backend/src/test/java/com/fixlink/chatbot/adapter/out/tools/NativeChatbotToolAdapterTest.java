@@ -13,6 +13,7 @@ import com.fixlink.application.port.in.TechnicianUseCase;
 import com.fixlink.chatbot.adapter.out.rag.InMemoryRagIndex;
 import com.fixlink.chatbot.application.port.in.SupportTicketUseCase;
 import com.fixlink.chatbot.application.port.out.ChatbotToolPort;
+import com.fixlink.domain.model.Role;
 import com.fixlink.domain.model.ServiceCategory;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,19 @@ class NativeChatbotToolAdapterTest {
                 ragIndex,
                 objectMapper
         );
+    }
+
+    @Test
+    @DisplayName("Đơn đã chọn thợ: bước tiếp theo khớp tình trạng lịch hẹn")
+    void shouldMatchAssignedNextStepWithAppointment() {
+        assertThat(NativeChatbotToolAdapter.assignedNextStep(Role.CUSTOMER, true, false))
+                .contains("đã được xác nhận").contains("đặt cọc 30%").doesNotContain("Thợ sẽ đề xuất");
+        assertThat(NativeChatbotToolAdapter.assignedNextStep(Role.CUSTOMER, false, true))
+                .contains("Xác nhận lịch hẹn");
+        assertThat(NativeChatbotToolAdapter.assignedNextStep(Role.CUSTOMER, false, false))
+                .contains("Thợ sẽ đề xuất lịch hẹn");
+        assertThat(NativeChatbotToolAdapter.assignedNextStep(Role.TECHNICIAN, true, false))
+                .contains("Chờ khách thanh toán cọc");
     }
 
     @Test

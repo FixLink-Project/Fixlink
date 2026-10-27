@@ -5,7 +5,9 @@
 #
 #   fixlink-chat (Groq gpt-oss-120b)
 #     → fixlink-groq-qwen (Groq qwen3.8-27b, hạn mức riêng)
-#     → fixlink-groq-small (Groq gpt-oss-20b, hạn mức riêng)
+#
+# Không dùng gpt-oss-20b: khi test model này hay hiểu sai câu hỏi (máy giặt thành máy lạnh) và lộ mã nội bộ;
+# hai model mạnh cùng bận thì backend trả lời bằng câu trả lời chuẩn/dữ liệu thật, chính xác hơn model yếu.
 #
 # Mỗi model khai báo 2 lần (GROQ_API_KEY và GROQ_API_KEY_2): có key thứ hai của một tài khoản Groq khác
 # thì LiteLLM chia tải giữa 2 key, gấp đôi hạn mức/ngày; không có thì key 2 dùng lại key 1.
@@ -34,20 +36,9 @@ model_list:
       model: groq/qwen/qwen3.8-27b
       api_key: os.environ/GROQ_API_KEY_2
 
-  - model_name: fixlink-groq-small
-    litellm_params:
-      model: groq/openai/gpt-oss-20b
-      api_key: os.environ/GROQ_API_KEY
-      reasoning_effort: low
-  - model_name: fixlink-groq-small
-    litellm_params:
-      model: groq/openai/gpt-oss-20b
-      api_key: os.environ/GROQ_API_KEY_2
-      reasoning_effort: low
-
 router_settings:
   fallbacks:
-    - fixlink-chat: ["fixlink-groq-qwen", "fixlink-groq-small"]
+    - fixlink-chat: ["fixlink-groq-qwen"]
   # Model chạm hạn mức sẽ tạm nghỉ để request sau đi thẳng sang model dự phòng.
   # Hạn mức token/phút của Groq hồi lại nhanh nên chỉ nghỉ ngắn.
   allowed_fails: 1

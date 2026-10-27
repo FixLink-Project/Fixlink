@@ -23,10 +23,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -486,10 +488,28 @@ public class GroqChatAdapter implements LlmChatPort {
             if (schema.isObject() && !schema.has("properties")) {
                 ((ObjectNode) schema).putObject("properties");
             }
+            allowNullForOptional(schema);
             function.put("parameters", objectMapper.convertValue(schema, new TypeReference<Map<String, Object>>() { }));
             result.add(Map.of("type", "function", "function", function));
         }
         return result;
+    }
+
+    /**
+     * Model hay truyền null cho tham số không bắt buộc (ví dụ budget khi khách chưa nêu ngân sách); Groq kiểm tra schema
+     * chặt nên từ chối cả lượt gọi tool. Cho phép null với các tham số không nằm trong "required".
+     */
+    private void allowNullForOptional(JsonNode schema) {
+        if (!(schema instanceof ObjectNode obj) || !(obj.get("properties") instanceof ObjectNode props)) {
+            return;
+        }
+        Set<String> required = new HashSet<>();
+        obj.path("required").forEach(r -> required.add(r.asText()));
+        props.fields().forEachRemaining(e -> {
+            if (!required.contains(e.getKey()) && e.getValue() instanceof ObjectNode prop && prop.path("type").isTextual()) {
+                prop.set("type", objectMapper.createArrayNode().add(prop.get("type").asText()).add("null"));
+            }
+        });
     }
 
     private void lowercaseTypes(JsonNode node) {

@@ -46,8 +46,7 @@ public class ChatbotProperties {
         /** Chuỗi failover: model đầu tiên là model chính. */
         private List<String> models = new ArrayList<>(List.of(
                 "openai/gpt-oss-120b",
-                "qwen/qwen3.8-27b",
-                "openai/gpt-oss-20b"
+                "qwen/qwen3.8-27b"
         ));
         private int timeoutSeconds = 30;
         private int totalBudgetSeconds = 60;

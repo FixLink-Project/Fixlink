@@ -73,6 +73,25 @@ class OfflinePersonalResponderTest {
     }
 
     @Test
+    @DisplayName("Hỏi phần còn lại phải thanh toán của một đơn thì tính giá chốt − tiền cọc")
+    void shouldComputeRemainingPayment() {
+        when(toolPort.executeTool(eq("get_repair_request_status"), anyMap(), any(), any(), any()))
+                .thenReturn(new ToolExecutionResult(
+                        "{\"requestCode\":\"REQ-DEMO-0011\",\"status\":\"AWAITING_ACCEPTANCE\",\"statusLabel\":\"Chờ nghiệm thu\","
+                                + "\"agreedPriceText\":\"280.000 đ\",\"depositText\":\"84.000 đ\"}", false));
+
+        assertThat(responder.answer("đơn REQ-DEMO-0011 thanh toán phần còn lại bao nhiêu", 7L, "CUSTOMER").orElseThrow().reply())
+                .startsWith("Phần còn lại dự kiến của đơn này là **196.000 đ**");
+    }
+
+    @Test
+    @DisplayName("Thợ xin lời khuyên nhận việc thì không bị liệt kê việc đang mở")
+    void shouldNotListJobsWhenTechnicianAsksForAdvice() {
+        assertThat(responder.answer("làm sao để nhận được nhiều việc hơn", 9L, "TECHNICIAN")).isEmpty();
+        verify(toolPort, never()).executeTool(eq("find_matching_jobs"), anyMap(), any(), any(), any());
+    }
+
+    @Test
     @DisplayName("Hỏi danh sách đơn của tôi liệt kê mã đơn và trạng thái")
     void shouldListMyRequests() {
         when(toolPort.executeTool(eq("get_my_repair_requests"), anyMap(), any(), any(), any()))

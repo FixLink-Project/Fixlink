@@ -241,4 +241,20 @@ class GroqChatAdapterContractTest {
         assertThat(result.reply()).isEqualTo("Chào bạn!");
         assertThat(authHeaders).contains("Bearer gsk_test", "Bearer gsk_second");
     }
+
+    @Test
+    @DisplayName("Tham số không bắt buộc của tool cho phép null để Groq không từ chối lượt gọi (budget để trống)")
+    void shouldAllowNullForOptionalToolParameters() {
+        List<Map<String, Object>> tools = adapter.toOpenAiTools(List.of(Map.of(
+                "name", "prepare_repair_request",
+                "parameters", Map.of(
+                        "type", "OBJECT",
+                        "properties", Map.of(
+                                "title", Map.of("type", "STRING"),
+                                "budget", Map.of("type", "NUMBER")),
+                        "required", List.of("title")))));
+        JsonNode params = objectMapper.valueToTree(tools.get(0)).path("function").path("parameters").path("properties");
+        assertThat(params.path("title").path("type").asText()).isEqualTo("string");
+        assertThat(params.path("budget").path("type").toString()).isEqualTo("[\"number\",\"null\"]");
+    }
 }

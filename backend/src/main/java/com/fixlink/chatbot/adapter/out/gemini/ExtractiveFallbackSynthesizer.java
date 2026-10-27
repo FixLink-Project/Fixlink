@@ -51,7 +51,8 @@ public class ExtractiveFallbackSynthesizer {
     /** Thứ tự quan trọng: ý định an toàn khẩn cấp luôn được xét trước. */
     private static final List<Intent> INTENTS = List.of(
             new Intent(List.of("chay khet", "mui khet", "boc khoi", "boc chay", "ro gas", "ro ga", "mui gas", "xet lua",
-                    "toe lua", "dien giat", "giat dien", "phat no", "ngap nuoc"),
+                    "toe lua", "dien giat", "giat dien", "phat no", "ngap nuoc", "set dien", "xet dien", "phat lua",
+                    "chap chay", "ro dien", "bi giat"),
                     """
                     ⚠️ **Đây có thể là tình huống nguy hiểm. Hãy làm ngay:**
                     1. Ngắt cầu dao/aptomat tổng của nhà.
@@ -61,6 +62,86 @@ public class ExtractiveFallbackSynthesizer {
 
                     Tuyệt đối không tự sửa. Khi đã an toàn, bạn có thể đăng yêu cầu để thợ FixLink có chuyên môn đến xử lý.""",
                     List.of("Đăng yêu cầu sửa chữa", "Chọn danh mục nào cho sự cố điện?"), List.of(LINK_POST), false),
+
+            new Intent(List.of("nhan duoc nhieu viec", "nhieu viec hon", "tang co hoi", "duoc chon nhieu", "khach chon minh",
+                    "bi quyet nhan viec", "lam sao de duoc chon"),
+                    """
+                    **Mẹo để được khách chọn nhiều hơn:**
+                    1. Hoàn thiện **hồ sơ thợ** (/tho/ho-so): ảnh CCCD rõ nét, đúng chuyên môn và khu vực bạn thật sự làm được.
+                    2. Báo giá **hợp lý, không vượt ngân sách** khách đặt; ghi rõ **phương án sửa** và vật tư dự kiến.
+                    3. Báo giá sớm khi đơn vừa mở (đơn nhận báo giá tối đa 3 ngày).
+                    4. Đúng hẹn, làm kỹ để có **điểm đánh giá tốt** — khách so sánh điểm đánh giá và số việc đã làm khi chọn thợ.
+                    5. Bật trạng thái **Trực tuyến** khi sẵn sàng nhận việc.""",
+                    List.of("Có việc nào phù hợp với tôi?", "Báo giá vượt ngân sách được không?"), List.of(LINK_TECH_PROFILE), false),
+
+            new Intent(List.of("dao tao", "tay nghe", "chung chi", "bang cap", "kinh nghiem cua tho"),
+                    """
+                    FixLink **xác minh danh tính (KYC) và chuyên môn, khu vực** của thợ trước khi cho nhận việc. Thông tin về chương trình đào tạo hay chứng chỉ nghề hiện **chưa được công bố chính thức**.
+
+                    Khi chọn thợ, bạn xem được **điểm đánh giá thật** từ khách trước và **số việc đã hoàn thành** của từng thợ để so sánh.""",
+                    List.of("Làm sao biết thợ uy tín?", "Cách chọn thợ"), List.of(), false),
+
+            new Intent(List.of("hieu gi", "hang nao", "thuong hieu", "hang gi", "loai nao cung sua", "hieu nao"),
+                    """
+                    FixLink chưa công bố danh sách hãng/thương hiệu cụ thể; khả năng sửa phụ thuộc vào thợ nhận việc. Bạn ghi rõ **hãng, đời máy và hiện tượng** trong mô tả yêu cầu (kèm ảnh tem máy), các thợ phù hợp sẽ báo giá và phương án sửa để bạn chọn.""",
+                    List.of("Cách đăng yêu cầu", "Bảng giá dịch vụ"), List.of(LINK_POST), false),
+
+            new Intent(List.of("can dang nhap", "phai dang nhap", "dang nhap moi", "khong dang nhap", "chua dang nhap"),
+                    """
+                    - **Hỏi đáp, xem bảng giá, tư vấn sự cố**: không cần đăng nhập.
+                    - **Đăng yêu cầu, xem báo giá, chọn thợ, theo dõi đơn và lịch hẹn**: cần đăng nhập tài khoản khách hàng (/dang-nhap). Chưa có tài khoản thì đăng ký miễn phí tại /dang-ky.
+                    - Thợ đăng nhập tại /dang-nhap-tho.""",
+                    List.of("Cách đăng ký tài khoản", "Cách đăng yêu cầu"), List.of(LINK_LOGIN, LINK_REGISTER), false),
+
+            new Intent(List.of("uy tin", "tho co tot", "tin tuong", "dang tin cay", "chat luong tho", "fixlink co uy tin",
+                    "co dang tin", "tho co an toan"),
+                    """
+                    **Cách FixLink giúp bạn chọn được thợ uy tín:**
+                    1. Thợ đã **xác minh danh tính (KYC)** và chỉ nhận việc đúng chuyên môn, khu vực đã đăng ký.
+                    2. Khi so sánh báo giá, bạn xem được **điểm đánh giá thật** từ khách trước và **số việc đã hoàn thành** của từng thợ.
+                    3. **Tiền cọc được FixLink giữ bảo chứng**, thợ chỉ nhận tiền khi bạn nghiệm thu; phát sinh chi phí phải được bạn duyệt.
+                    4. Chưa ưng thợ trước khi sửa thì bạn **đổi thợ** được; có vấn đề thì tạo **phiếu hỗ trợ** để CSKH xử lý.""",
+                    List.of("Cách chọn thợ", "Tiền cọc tính thế nào?"), List.of(LINK_POST), false),
+
+            new Intent(List.of("tho bi tru", "khach huy thi tho", "khach huy don thi", "khach huy viec", "bi khach huy"),
+                    """
+                    Khi khách hủy đơn (chỉ được hủy trước khi thợ bắt đầu sửa), **tỷ lệ phạt hay bồi hoàn cho thợ hiện chưa được công bố chính thức**. Mọi tranh chấp liên quan đến tiền cọc do Admin thẩm định qua **phiếu hỗ trợ**.
+
+                    Thợ chỉ nhận tiền công khi khách hoàn tất nghiệm thu; nếu bị khách đổi sang thợ khác khi chưa sửa, thợ cũ không nhận khoản cọc.""",
+                    List.of("Tạo phiếu hỗ trợ", "Khi nào thợ được bắt đầu khảo sát?"), List.of(), false),
+
+            new Intent(List.of("cai tu", "tu a", "cai may", "may a", "cai do"),
+                    """
+                    Bạn nói rõ giúp mình **thiết bị nào** nhé (ví dụ tủ lạnh, tủ đông, máy lạnh, máy giặt...) và **hiện tượng** đang gặp (không lạnh, chảy nước, kêu to, không lên nguồn...), mình sẽ tư vấn đúng dịch vụ và giá tham khảo.""",
+                    List.of("Tủ lạnh không lạnh", "Tủ đông đóng tuyết", "Máy lạnh chảy nước"), List.of(), false),
+
+            new Intent(List.of("bao hanh bao lau", "thoi han bao hanh", "bao hanh may thang", "co bao hanh", "bao hanh the nao",
+                    "chinh sach bao hanh", "duoc bao hanh"),
+                    """
+                    **Bảo hành trên FixLink:**
+                    - Khi bạn hoàn tất nghiệm thu, hệ thống **kích hoạt bảo hành điện tử** cho đơn.
+                    - **Thời hạn bảo hành cụ thể theo từng dịch vụ hiện chưa được công bố chính thức.**
+                    - Sửa xong mà thiết bị hỏng lại: bạn tạo **phiếu hỗ trợ** kèm mã đơn, mô tả và ảnh/video để CSKH xử lý bảo hành.""",
+                    List.of("Tạo phiếu hỗ trợ", "Sửa xong vẫn hỏng thì sao?"), List.of(LINK_MY), false),
+
+            new Intent(List.of("phi nen tang", "thu phi", "hoa hong", "phi dich vu", "chiet khau cua tho", "fixlink lay bao nhieu",
+                    "fixlink an bao nhieu", "phi dang ky"),
+                    """
+                    - **Đăng ký tài khoản** khách hàng và thợ đều **miễn phí**.
+                    - **Tỷ lệ phí nền tảng / hoa hồng** trên mỗi đơn hiện **chưa được công bố chính thức**.
+
+                    Cần giải đáp chi tiết, mình có thể tạo **phiếu hỗ trợ** để bộ phận phụ trách liên hệ lại bạn.""",
+                    List.of("Tạo phiếu hỗ trợ", "Tiền cọc tính thế nào?"), List.of(), false),
+
+            new Intent(List.of("xem so dien thoai cua toi", "so dien thoai cua toi", "thong tin cua toi", "lo thong tin",
+                    "bao mat thong tin", "thong tin ca nhan", "tho xem duoc", "xem duoc dia chi", "dia chi khach", "dia chi cua khach",
+                    "dia chi cua toi"),
+                    """
+                    **Thông tin cá nhân của bạn trên FixLink:**
+                    - Chỉ thợ **đã được duyệt KYC, đúng chuyên môn và khu vực** mới xem được đơn đang mở để báo giá.
+                    - Thông tin liên hệ được dùng để **thợ phụ trách** (thợ bạn đã chọn) đến sửa chữa.
+                    - Khách hàng khác **không xem được** đơn của bạn, và Trợ lý không bao giờ hỏi mật khẩu hay mã OTP.""",
+                    List.of("Đổi số điện thoại thế nào?", "Quên mật khẩu"), List.of(), false),
 
             new Intent(List.of("chon tho roi", "da chon tho", "chon xong tho", "lam gi tiep", "buoc tiep theo", "sau khi chon",
                     "xac nhan lich", "ai xac nhan", "xac nhan lich hen"),
@@ -125,7 +206,9 @@ public class ExtractiveFallbackSynthesizer {
                     List.of("Quy định hủy đơn", "Cách đăng yêu cầu"), List.of(LINK_MY), false),
 
             new Intent(List.of("khong ai nhan", "chua co tho", "chua co bao gia", "chua ai bao gia", "khong co ai bao gia",
-                    "tu huy", "don het han", "bao lau co tho", "bao lau thi co", "bao lau", "khi nao co tho"),
+                    "tu huy", "don het han", "bao lau co tho", "toi nhanh", "den nhanh", "nhanh khong", "can gap", "tho gap",
+                    "toi nay", "ngay bay gio", "trong ngay", "khan cap",
+                    "bao gio den", "bao gio toi", "may gio toi", "co mat nhanh", "bao lau thi co", "bao lau", "khi nao co tho"),
                     """
                     **Thời gian có thợ:**
                     - Sau khi đăng, đơn **nhận báo giá tối đa 3 ngày**. FixLink **không cam kết** thời gian thợ có mặt chung cho mọi đơn; giờ cụ thể do bạn và thợ thống nhất qua lịch hẹn (riêng gói *Mở khóa cấp tốc 24/7* mô tả thợ có mặt sau 15–30 phút).
@@ -146,7 +229,8 @@ public class ExtractiveFallbackSynthesizer {
                     List.of("Thiết bị vẫn lỗi thì sao?", "Thanh toán phần còn lại thế nào?"), List.of(LINK_MY), false),
 
             new Intent(List.of("momo", "zalopay", "vnpay", "the tin dung", "the ngan hang", "tra gop", "hoa don", "hoa don vat", "xuat vat", "thue vat",
-                    "thanh toan bang", "thanh toan the nao", "thanh toan cach nao", "ma qr", "quet qr", "chuyen khoan", "vi dien tu"),
+                    "thanh toan bang", "thanh toan the nao", "thanh toan cach nao", "ma qr", "quet qr", "chuyen khoan", "vi dien tu",
+                    "tra bang gi", "tra tien bang", "thanh toan qua", "tra bang"),
                     """
                     **Thanh toán trên FixLink bằng mã QR chuyển khoản ngân hàng (VietQR)** hiện trong chi tiết đơn, gồm 2 đợt:
                     1. **Đặt cọc 30% giá chốt** – QR hiện sau khi bạn xác nhận lịch hẹn.
@@ -174,7 +258,7 @@ public class ExtractiveFallbackSynthesizer {
             new Intent(List.of("cho toi mat khau", "xin mat khau", "mat khau cua tai khoan", "mat khau cua nguoi", "biet mat khau",
                     "tai khoan cua nguoi khac", "thong tin khach hang khac", "thong tin cua nguoi khac", "so dien thoai cua tho"),
                     """
-                    Mình **không thể cung cấp** mật khẩu hay thông tin cá nhân của bất kỳ tài khoản nào — FixLink bảo mật dữ liệu người dùng và Trợ lý cũng không xem được mật khẩu.
+                    Mình **không thể cung cấp** mật khẩu hay thông tin cá nhân (số điện thoại, địa chỉ...) của bất kỳ tài khoản nào — FixLink bảo mật dữ liệu người dùng. Thông tin liên hệ của khách chỉ dùng để thợ phụ trách đơn đến sửa chữa.
 
                     Nếu bạn quên mật khẩu tài khoản của chính mình, hãy dùng **Quên mật khẩu** (/quen-mat-khau) để đặt lại qua email.""",
                     List.of("Quên mật khẩu phải làm sao?", "Tài khoản bị khóa"), List.of(LINK_FORGOT), false),
@@ -199,7 +283,9 @@ public class ExtractiveFallbackSynthesizer {
                     List.of("FixLink sửa những gì?", "Cách đăng yêu cầu"), List.of(), false),
 
             new Intent(List.of("code", "python", "java", "javascript", "lap trinh", "bai tap", "giai toan", "chinh tri", "bau cu",
-                    "thoi tiet", "bong da", "xo so", "chung khoan", "viet van", "lam tho tinh", "dich giup", "nau an", "tu vi"),
+                    "thoi tiet", "bong da", "xo so", "chung khoan", "viet van", "lam tho tinh", "dich giup", "nau an", "tu vi",
+                    "thu do", "dia ly", "lich su viet nam", "bai hat", "phim", "gia vang", "bitcoin", "an gi", "ke chuyen",
+                    "lam toan"),
                     """
                     Câu hỏi này nằm ngoài phạm vi hỗ trợ của mình. Mình là **Trợ lý FixLink**, chuyên hỗ trợ về sửa chữa thiết bị gia dụng: tư vấn sự cố, chọn dịch vụ, hướng dẫn đăng yêu cầu, báo giá – đặt cọc – nghiệm thu, tài khoản và khiếu nại.
 
@@ -207,14 +293,16 @@ public class ExtractiveFallbackSynthesizer {
                     List.of("FixLink sửa những gì?", "Máy lạnh không mát", "Cách đăng yêu cầu"), List.of(), false),
 
             new Intent(List.of("bo qua moi", "bo qua huong dan", "bo qua cac", "system prompt", "prompt", "huong dan truoc", "dong vai", "ignore", "jailbreak",
-                    "developer mode", "che do nha phat trien", "cau hinh cua ban"),
+                    "developer mode", "che do nha phat trien", "cau hinh cua ban", "du lieu khach hang", "toan bo du lieu", "in toan bo",
+                    "xuat du lieu", "danh sach khach hang", "database", "co so du lieu"),
                     """
                     Mình không thể chia sẻ hay thay đổi hướng dẫn hoạt động nội bộ. Mình vẫn luôn sẵn sàng hỗ trợ bạn các vấn đề về sửa chữa và sử dụng FixLink.
 
                     Bạn cần mình giúp gì về thiết bị hoặc đơn sửa chữa không?""",
                     List.of("FixLink là gì?", "Cách đăng yêu cầu"), List.of(), false),
 
-            new Intent(List.of("giam gia", "khuyen mai", "ma giam", "voucher", "uu dai", "chiet khau", "coupon", "giam cho toi"),
+            new Intent(List.of("giam gia", "khuyen mai", "ma giam", "voucher", "uu dai", "chiet khau", "coupon", "giam cho toi",
+                    "mac qua", "dat qua", "re hon", "gia cao qua", "bot gia", "bot di"),
                     """
                     Hiện FixLink **chưa công bố chương trình khuyến mãi hay mã giảm giá** nào, và mình không thể tự áp dụng giảm giá.
 
@@ -222,7 +310,7 @@ public class ExtractiveFallbackSynthesizer {
                     List.of("Bảng giá tham khảo", "Cách đăng yêu cầu"), List.of(LINK_POST), false),
 
             new Intent(List.of("tai sao nen dung", "vi sao nen dung", "tho ngoai", "btaskee", "rada", "jupviec", "fixlink tot hon",
-                    "fixlink khac gi", "uu diem cua fixlink", "fixlink co uy tin", "fixlink co an toan", "lua dao", "co dang tin"),
+                    "fixlink khac gi", "uu diem cua fixlink", "fixlink co an toan", "lua dao"),
                     """
                     Mình không so sánh hay nhận xét về đơn vị khác, nhưng có thể chia sẻ những điểm FixLink đảm bảo cho bạn:
                     1. Thợ đã **xác minh danh tính (KYC)**, chỉ nhận việc đúng chuyên môn và khu vực.
@@ -241,7 +329,7 @@ public class ExtractiveFallbackSynthesizer {
                     List.of("FixLink là gì?", "Gặp nhân viên hỗ trợ"), List.of(), false),
 
             new Intent(List.of("do ngu", "ngu the", "ngu vay", "ngu qua", "bot ngu", "may ngu", "dm", "dmm", "vcl", "vkl",
-                    "dit me", "cut di", "oc cho", "khon nan", "nhu cc", "vo dung", "tra loi nhu"),
+                    "dit me", "cut di", "oc cho", "khon nan", "nhu cc", "vo dung", "tra loi nhu", "ngu nhu", "nhu bo", "do dien", "ngu vl"),
                     """
                     Mình xin lỗi nếu câu trả lời trước chưa giúp được bạn. Bạn cho mình biết cụ thể bạn đang gặp vấn đề gì (thiết bị, đơn hàng hay tài khoản), mình sẽ hỗ trợ ngay.
 
@@ -276,7 +364,8 @@ public class ExtractiveFallbackSynthesizer {
                     List.of("Tạo phiếu hỗ trợ cho tôi", "Cách hủy đơn", "Lịch hẹn của tôi"), List.of(LINK_MY), false),
 
             new Intent(List.of("doi them tien", "doi them", "tinh them tien", "tien mat", "chuyen khoan rieng", "tra ngoai",
-                    "tra truc tiep cho tho", "dua them", "boi duong", "tien tip"),
+                    "tra truc tiep cho tho", "dua them", "boi duong", "tien tip",
+                    "tra tien cho tho", "tra luon cho tho", "dua tien cho tho", "tra tien truc tiep", "tra tien mat"),
                     """
                     **Bạn không trả tiền mặt hay chuyển khoản riêng cho thợ ngoài hệ thống.** Theo quy định FixLink:
                     1. Mọi chi phí phát sinh (kể cả tiền linh kiện) thợ phải **gửi đề xuất trên hệ thống**; đơn chuyển sang *Chờ duyệt chi phí phát sinh*.
@@ -287,7 +376,7 @@ public class ExtractiveFallbackSynthesizer {
                     List.of("Tạo phiếu hỗ trợ khẩn cấp", "Cách hủy đơn"), List.of(LINK_MY), false),
 
             new Intent(List.of("doi tho", "doi tho khac", "tho khac", "khong muon tho nay", "chi dinh tho", "thay tho",
-                    "doi nguoi khac"),
+                    "doi nguoi khac", "muon doi tho", "doi tho duoc", "doi duoc tho", "doi tho khong", "doi tho dc"),
                     """
                     Trên FixLink, **bạn tự chọn thợ** trong các báo giá nhận được (so sánh giá, phương án, điểm đánh giá, số việc đã làm) bằng nút **"Chọn thợ này"** khi đơn đang mở. Bạn **đổi được thợ** khi đơn chưa chuyển sang Đang sửa chữa:
                     1. Vào chi tiết đơn tại *Yêu cầu của tôi*, bấm **"Đổi thợ khác"** và chọn lý do.
@@ -299,7 +388,8 @@ public class ExtractiveFallbackSynthesizer {
 
             new Intent(List.of("bao hanh", "lai hong", "sua roi van hong", "sua xong lai", "khong hai long", "lam hong them",
                     "lam hu them", "boi thuong", "den bu", "khieu nai", "thai do", "lam vo", "lam be", "ai den", "lam hong do",
-                    "lam hu do", "lam tray", "mat do"),
+                    "lam hu do", "lam tray", "mat do", "van hong", "xong van hong", "sua roi lai", "lai hu", "van con loi",
+                    "sua khong duoc", "sua ko xong", "sua xong van"),
                     """
                     Mình rất tiếc về trải nghiệm này. Bạn làm như sau:
                     1. Nếu đơn đang **Chờ nghiệm thu**: **chưa thanh toán phần còn lại và chưa bấm Nghiệm thu** — tiền cọc vẫn được FixLink giữ bảo chứng, hãy yêu cầu thợ kiểm tra lại.
@@ -310,7 +400,8 @@ public class ExtractiveFallbackSynthesizer {
                     List.of("Tạo phiếu hỗ trợ cho tôi", "Đơn của tôi đang ở trạng thái nào?"), List.of(LINK_MY), true),
 
             new Intent(List.of("sua dien thoai", "dien thoai bi", "dien thoai hong", "iphone", "laptop", "may tinh", "macbook", "xe may", "o to", "xay nha", "son nha",
-                    "chong tham", "may in", "wifi"),
+                    "chong tham", "may in", "wifi", "son lai", "son tuong", "lat gach", "sua mai", "xay dung",
+                    "sua xe"),
                     """
                     Hiện FixLink **chưa hỗ trợ** nhóm thiết bị/dịch vụ này. FixLink chỉ có 4 danh mục:
                     1. **Điện lạnh** – máy lạnh, tủ lạnh, máy giặt.
@@ -338,7 +429,8 @@ public class ExtractiveFallbackSynthesizer {
                     Ví dụ: đơn 500.000 đ → cọc 150.000 đ, còn lại 350.000 đ. Tỷ lệ phí nền tảng/hoàn cọc chi tiết hiện đang được cập nhật; cần giải đáp riêng, mình có thể tạo phiếu hỗ trợ.""",
                     List.of("Hủy đơn có mất phí không?", "Thợ báo thêm tiền phát sinh thì sao?"), List.of(LINK_MY), false),
 
-            new Intent(List.of("huy don", "huy yeu cau", "huy viec", "muon huy", "cancel"),
+            new Intent(List.of("huy don", "huy yeu cau", "huy viec", "muon huy", "cancel", "huy duoc", "huy khong",
+                    "co huy", "huy bo", "huy ngang", "huy dc", "huy lich sua"),
                     """
                     **Quy định hủy yêu cầu sửa chữa:**
                     - Bạn **được hủy** khi đơn đang ở: Bản nháp, Đang nhận báo giá (OPEN), Đã chọn thợ (ASSIGNED), Đã đặt cọc (DEPOSIT_PAID), Đang khảo sát (INSPECTING), Chờ duyệt chi phí phát sinh.
@@ -377,6 +469,21 @@ public class ExtractiveFallbackSynthesizer {
                     3. Hồ sơ ở trạng thái **chờ duyệt (PENDING)**; Admin kiểm tra giấy tờ rồi duyệt (**APPROVED**) hoặc từ chối kèm lý do (**REJECTED**).
                     4. Chỉ thợ đã được duyệt mới **gửi báo giá** cho việc **đúng chuyên môn và khu vực** đã đăng ký; khách so sánh các báo giá và chọn thợ.""",
                     List.of("Thợ gửi báo giá thế nào?", "Khách chọn thợ dựa vào đâu?"), List.of(LINK_TECH_REG, LINK_TECH_PROFILE), false),
+
+            new Intent(List.of("quy trinh dat tho", "quy trinh su dung", "quy trinh fixlink", "quy trinh nhu the nao",
+                    "quy trinh ra sao", "cac buoc dat tho", "dat tho nhu the nao", "hoat dong ra sao", "su dung fixlink",
+                    "dung fixlink the nao", "dat tho the nao"),
+                    """
+                    **Quy trình đặt thợ trên FixLink:**
+                    1. **Đăng yêu cầu** (/dang-yeu-cau): chọn danh mục, mô tả sự cố, ảnh hiện trường, khu vực và **ngân sách dự kiến**.
+                    2. **Nhận báo giá** trong tối đa 3 ngày: thợ đã xác minh, đúng chuyên môn và khu vực gửi báo giá (không vượt ngân sách bạn đặt).
+                    3. **Chọn thợ**: so sánh giá, phương án, điểm đánh giá rồi bấm *Chọn thợ này*.
+                    4. **Xác nhận lịch hẹn** thợ đề xuất → **đặt cọc 30%** qua mã QR (FixLink giữ bảo chứng).
+                    5. Thợ **khảo sát và sửa**; phát sinh chi phí phải được bạn duyệt trước.
+                    6. Thợ báo xong → bạn **thanh toán phần còn lại qua QR**, **chấm sao + nhận xét** và nghiệm thu.
+
+                    Trước khi thợ bắt đầu sửa, bạn vẫn có thể **đổi thợ** hoặc **hủy đơn**.""",
+                    List.of("Tiền cọc tính thế nào?", "Cách đăng yêu cầu", "Đổi thợ được không?"), List.of(LINK_POST), false),
 
             new Intent(List.of("dang yeu cau", "tao yeu cau", "dat tho", "goi tho", "tim tho", "dat lich sua"),
                     """
@@ -480,6 +587,41 @@ public class ExtractiveFallbackSynthesizer {
             );
         }
 
+        if (THANKS.matcher(query).matches()) {
+            return new ChatOrchestrationResult(
+                    "Không có gì đâu bạn! Nếu cần thêm hỗ trợ về sửa chữa, đặt cọc hay đơn hàng, bạn cứ nhắn mình nhé.",
+                    List.of("Cách đăng yêu cầu sửa chữa", "Tiền cọc tính thế nào?"), List.of(), false, null, MODEL_INTENT);
+        }
+        if (GOODBYE.matcher(query).matches()) {
+            return new ChatOrchestrationResult(
+                    "Tạm biệt bạn! Chúc bạn một ngày tốt lành, cần hỗ trợ cứ quay lại nhắn FixLink nhé.",
+                    List.of(), List.of(), false, null, MODEL_INTENT);
+        }
+        if (IMPATIENT.matcher(query).matches()) {
+            return new ChatOrchestrationResult(
+                    "Xin lỗi để bạn phải chờ! Bạn cho mình biết đang cần gì (sửa thiết bị nào, hỏi về đơn hàng, đặt cọc hay tài khoản), "
+                            + "mình trả lời ngay nhé.",
+                    List.of("Máy lạnh không mát", "Tiền cọc tính thế nào?", "Gặp nhân viên hỗ trợ"), List.of(), false, null, MODEL_INTENT);
+        }
+        if (PASSWORD_REQUEST.matcher(query).find()) {
+            return new ChatOrchestrationResult(
+                    "Mình **không thể cung cấp** mật khẩu hay thông tin cá nhân của bất kỳ tài khoản nào — FixLink bảo mật "
+                            + "dữ liệu người dùng và Trợ lý cũng không xem được mật khẩu.\n\nNếu bạn quên mật khẩu tài khoản của "
+                            + "chính mình, hãy dùng **Quên mật khẩu** (/quen-mat-khau) để đặt lại qua email.",
+                    List.of("Quên mật khẩu phải làm sao?", "Tài khoản bị khóa"), List.of(LINK_FORGOT), false, null, MODEL_INTENT);
+        }
+        Optional<String> servedArea = SymptomClassifier.detectAreaCode(userMessage);
+        if (servedArea.isPresent() && (AREA_QUESTION.matcher(padded).find() || query.split(" ").length <= 5)
+                && SymptomClassifier.classify(userMessage).isEmpty()
+                && matchIntent(padded).isEmpty()) {
+            return new ChatOrchestrationResult(
+                    "**Có**, FixLink có thợ tại **" + SymptomClassifier.areaLabel(servedArea.get()) + "**. Các khu vực đang phục vụ "
+                            + "tại TP.HCM: Quận 1, Quận 3, Quận 7, Bình Thạnh, Tân Bình, Gò Vấp, Phú Nhuận và TP. Thủ Đức.\n\n"
+                            + "Bạn cho mình biết thiết bị đang gặp sự cố để mình hướng dẫn đăng yêu cầu nhé.",
+                    List.of("Máy lạnh không mát", "Cách đăng yêu cầu", "Bảng giá dịch vụ"), List.of(LINK_POST), false, null,
+                    MODEL_INTENT);
+        }
+
         if (isArithmetic(userMessage)) {
             return new ChatOrchestrationResult(
                     "Câu hỏi này nằm ngoài phạm vi hỗ trợ của mình. Mình là **Trợ lý FixLink**, chuyên hỗ trợ về sửa chữa "
@@ -563,6 +705,30 @@ public class ExtractiveFallbackSynthesizer {
     }
 
     /**
+     * Trả lời trực tiếp bằng câu trả lời chuẩn (không gọi AI) khi câu hỏi khớp rõ một chủ đề quy định đã kiểm duyệt:
+     * AI dù được đưa câu trả lời chuẩn vẫn hay tự thêm điều kiện, thời gian, kênh liên lạc không có thật. Câu dài nhiều ý,
+     * câu tiếng Anh và câu chỉ mô tả sự cố thiết bị vẫn để AI xử lý.
+     */
+    public Optional<ChatOrchestrationResult> directAnswer(String userMessage) {
+        if (userMessage == null || userMessage.isBlank() || looksEnglish(userMessage)) {
+            return Optional.empty();
+        }
+        String query = normalize(userMessage);
+        if (query.split(" ").length > MAX_DIRECT_WORDS) {
+            return Optional.empty();
+        }
+        boolean preCheck = isGreeting(query) || THANKS.matcher(query).matches() || GOODBYE.matcher(query).matches()
+                || IMPATIENT.matcher(query).matches() || PASSWORD_REQUEST.matcher(query).find() || isArithmetic(userMessage);
+        if (!preCheck && matchIntent(" " + query + " ").isEmpty()) {
+            return Optional.empty();
+        }
+        ChatOrchestrationResult result = synthesize(userMessage, "");
+        return MODEL_INTENT.equals(result.modelUsed()) ? Optional.of(result) : Optional.empty();
+    }
+
+    private static final int MAX_DIRECT_WORDS = 25;
+
+    /**
      * Câu trả lời chuẩn (đã đối chiếu nghiệp vụ) cho chủ đề của câu hỏi, nếu có. Orchestrator đưa nội
      * dung này vào prompt để LLM — kể cả model nhỏ — không nói sai các quy định quan trọng.
      */
@@ -616,7 +782,8 @@ public class ExtractiveFallbackSynthesizer {
     }
 
     private static final Set<String> ENGLISH_WORDS = Set.of("the", "how", "what", "much", "does", "is", "are", "you", "fix",
-            "cost", "price", "repair", "need", "please", "where", "when", "why", "your", "this", "with", "have", "for");
+            "cost", "price", "repair", "need", "please", "where", "when", "why", "your", "this", "with", "have", "for", "speak",
+            "english", "hello", "help", "there", "can");
 
     /** Câu không dấu tiếng Việt và có từ 2 từ chức năng tiếng Anh trở lên thì coi là tiếng Anh. */
     public static boolean looksEnglish(String raw) {
@@ -633,17 +800,35 @@ public class ExtractiveFallbackSynthesizer {
         return hits >= 2;
     }
 
+    private static final Pattern THANKS = Pattern.compile(
+            "^(ok |oke |okay |vang |da |uh |um )?(cam on|cam ơn|thank|thanks|thank you|tks|thanks ban|cam on nhieu)( .{0,25})?$");
+    private static final Pattern GOODBYE = Pattern.compile(
+            "^(thoi )?(tam biet|bye|bye bye|goodbye|hen gap lai|chao nhe|de mai|de sau|luc khac|de toi suy nghi|de minh suy nghi"
+                    + "|thoi de)( .{0,25})?$");
+    private static final Pattern IMPATIENT = Pattern.compile("^(tra loi )?(nhanh len|lau qua|cham qua|lau the|sao lau vay)( .{0,15})?$");
+    /** Xin mật khẩu (của mình hay người khác): Trợ lý không bao giờ cung cấp mật khẩu. */
+    private static final Pattern PASSWORD_REQUEST = Pattern.compile(
+            "mat khau (cua )?(tai khoan |tk )?\\S+ (la gi|la bao nhieu)|(cho|xin|gui|dua) (toi |minh |em )?(cai )?mat khau");
+    private static final Pattern AREA_QUESTION = Pattern.compile(
+            " (co|khong|ko|k|thi sao|phuc vu|o day|o do|co tho|nhan|lam) ");
+
     private boolean isGreeting(String query) {
         if (query.length() > 25) {
             return false;
         }
-        return query.matches("^(xin chao|chao|hi|hello|hey|alo|chao ban|chao shop|chao ad)( .*)?$");
+        // Gọi "bot", "ad ơi" chỉ tính là lời chào khi đứng riêng ("bot ngu" là chửi, "bớt đi" là mặc cả)
+        return query.matches("^(xin chao|chao|hi|hello|hey|alo|chao ban|chao shop|chao ad)( .*)?$")
+                || query.matches("^(e|em|ê)? ?(bot|ad|shop|admin)( oi| a| nhe)?$")
+                || query.matches("^(bot|ad|shop|admin) oi( .{0,20})?$");
     }
 
     /**
      * Chọn một mục ("### ...") trong ngữ cảnh RAG có nhiều từ khóa trùng với câu hỏi nhất.
      * Trả về null khi độ trùng quá thấp để tránh trả lời lạc đề.
      */
+    private static final double MIN_SECTION_SCORE = 0.6;
+    private static final int MIN_SECTION_OVERLAP = 3;
+
     private String pickBestSection(String query, String ragContext) {
         if (ragContext == null || ragContext.isBlank()) {
             return null;
@@ -655,6 +840,7 @@ public class ExtractiveFallbackSynthesizer {
 
         String best = null;
         double bestScore = 0;
+        int bestOverlap = 0;
         for (String section : ragContext.split("(?m)^### ")) {
             if (section.isBlank()) {
                 continue;
@@ -669,10 +855,13 @@ public class ExtractiveFallbackSynthesizer {
             double score = (double) overlap / queryTokens.size();
             if (score > bestScore) {
                 bestScore = score;
+                bestOverlap = overlap;
                 best = section;
             }
         }
-        if (best == null || bestScore < 0.34) {
+        // Chỉ trích khi khớp rất rõ; khớp lỏng (ví dụ chung chữ "yêu cầu", "sửa chữa") dễ ra đoạn lạc đề,
+        // khi đó nói chưa hiểu và gợi ý hỏi lại an toàn hơn.
+        if (best == null || bestScore < MIN_SECTION_SCORE || bestOverlap < MIN_SECTION_OVERLAP) {
             return null;
         }
         return formatSection(best);
@@ -691,6 +880,7 @@ public class ExtractiveFallbackSynthesizer {
                     || line.startsWith("|---") || line.contains("Trợ lý cần")) {
                 continue;
             }
+            line = line.replace("`[CẦN XÁC NHẬN]`", "chưa công bố").replace("[CẦN XÁC NHẬN]", "chưa công bố");
             if (line.startsWith("|")) {
                 // Bảng markdown hiển thị kém trong khung chat: hàng tiêu đề bỏ qua, mỗi hàng thành một gạch đầu dòng
                 if (!tableHeaderSkipped) {

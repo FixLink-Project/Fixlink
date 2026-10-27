@@ -9,8 +9,7 @@ Backend (Spring Boot)
    │  POST /chat/completions  model=fixlink-chat
    ▼
 LiteLLM :4000 ──► Groq gpt-oss-120b          (chính)
-              ├─► Groq qwen3.8-27b           (dự phòng 1, hạn mức riêng)
-              └─► Groq gpt-oss-20b           (dự phòng 2, hạn mức riêng)
+              └─► Groq qwen3.8-27b           (dự phòng, hạn mức riêng)
 
 LiteLLM không chạy / tất cả đều lỗi ──► backend gọi thẳng Groq ──► bộ trả lời cục bộ (kho tri thức)
 ```
@@ -55,8 +54,9 @@ Frontend trên Vercel **không** cần và **không được** chứa các key n
 ## Hạn mức miễn phí của Groq (quan trọng khi demo)
 
 Mỗi model Groq miễn phí giới hạn khoảng **200.000 token/ngày** cho mỗi tài khoản. Một câu hỏi tốn
-khoảng 4.000–5.000 token (gọi thêm tool thì nhiều hơn), nên 3 model cộng lại trả lời được khoảng
-**120 câu/ngày**.
+khoảng 4.000–5.000 token (gọi thêm tool thì nhiều hơn), nên 2 model trả lời được khoảng **80 câu AI/ngày**
+cho mỗi key. Câu hỏi về quy định có sẵn câu trả lời chuẩn và câu hỏi về đơn/lịch hẹn của người đã đăng nhập
+được trả lời trực tiếp từ hệ thống, **không tốn hạn mức AI**.
 
 - Thêm `GROQ_API_KEY_2` (tạo từ một tài khoản Google khác tại console.groq.com): LiteLLM chia tải
   giữa 2 key, **gấp đôi** hạn mức. Bỏ trống thì key 2 dùng lại key 1.

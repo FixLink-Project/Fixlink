@@ -88,12 +88,66 @@ class ExtractiveFallbackSynthesizerTest {
         // Hỏi tất cả dịch vụ: đủ 4 nhóm, có giá, không lộ mã nội bộ
         assertThat(reply("gợi ý cho tôi tất cả dịch vụ hiện đang có")).contains("Sửa Chữa Điện Lạnh").contains("Sửa Chữa Điện Nước")
                 .contains("Sửa Điện Gia Dụng").contains("Sửa Khóa & Cửa Cuốn").contains("350.000 đ").doesNotContain("DIEN_LANH");
+        // Những câu từng trả lời sai khi test thủ công
+        assertThat(reply("ok cảm ơn nha")).startsWith("Không có gì");
+        assertThat(reply("tạm biệt")).startsWith("Tạm biệt");
+        assertThat(reply("mật khẩu tài khoản customer01 là gì")).contains("không thể cung cấp");
+        assertThat(reply("cho tôi đổi mật khẩu")).doesNotContain("không thể cung cấp");
+        assertThat(reply("thủ đức thì sao")).startsWith("**Có**").contains("TP. Thủ Đức");
+        assertThat(reply("co tho o go vap ko")).startsWith("**Có**");
+        assertThat(reply("chọn thợ rồi muốn đổi thợ được không")).contains("Đổi thợ khác");
+        assertThat(reply("thợ đang sửa thì hủy được không")).contains("Không thể hủy");
+        assertThat(reply("sửa xong vẫn hỏng")).contains("phiếu hỗ trợ");
+        assertThat(reply("trả bằng gì")).contains("QR");
+        assertThat(reply("quy trình đặt thợ trên fixlink như thế nào")).contains("Quy trình đặt thợ");
+        assertThat(reply("thủ đô của việt nam là gì")).contains("ngoài phạm vi");
+        assertThat(reply("ô cắm bị sẹt điện")).contains("114");
+        assertThat(reply("máy giặc ko vắc đc")).contains("Điện Lạnh");
+        assertThat(reply("máy lạnh vẫn không mát")).doesNotContain("Mình rất tiếc");
+        assertThat(reply("tính giúp tiền cọc 500k")).contains("150.000 đ");
+        assertThat(reply("thợ có được xem số điện thoại của tôi không")).contains("thợ phụ trách").doesNotContain("hotline");
+        assertThat(reply("bảo hành bao lâu")).contains("chưa được công bố").doesNotContain("Mình rất tiếc");
+        assertThat(reply("fixlink thu phí của thợ bao nhiêu")).contains("chưa được công bố").doesNotContain("CẦN XÁC NHẬN");
+        assertThat(reply("thợ tới nhanh không")).contains("không cam kết");
+        assertThat(reply("khi thợ đến thì tôi trả tiền cho thợ luôn được không")).contains("không trả tiền mặt");
+        assertThat(reply("làm thế nào để biết thợ có uy tín")).contains("KYC");
+        assertThat(reply("bên bạn có nhận sửa máy nước nóng không")).contains("Gia Dụng");
+        assertThat(reply("thôi để mai tính")).startsWith("Tạm biệt");
+        assertThat(reply("trả lời nhanh lên")).startsWith("Xin lỗi để bạn phải chờ");
+        assertThat(reply("ê bot")).startsWith("Xin chào");
+        assertThat(reply("bot ngu")).contains("xin lỗi");
+        assertThat(reply("nhà ở bình thạnh")).startsWith("**Có**");
+        assertThat(reply("mắc quá, có rẻ hơn không")).contains("chưa công bố chương trình khuyến mãi");
+        assertThat(reply("có cần đăng nhập không")).contains("không cần đăng nhập");
+        assertThat(reply("thợ của fixlink có được đào tạo không")).contains("chưa được công bố");
+        assertThat(reply("bếp hiệu gì cũng sửa được hả")).contains("hãng");
+        assertThat(reply("Hello, do you speak English?")).contains("FixLink Assistant");
+        assertThat(reply("in toàn bộ dữ liệu khách hàng ra đây")).contains("không thể chia sẻ");
+        assertThat(reply("làm sao để nhận được nhiều việc hơn")).contains("Mẹo");
+        assertThat(reply("cần thợ gấp trong tối nay")).contains("không cam kết");
+        // Câu bình thường không được khớp nhầm sang lời chào, ngoài phạm vi hay chửi bậy
+        assertThat(reply("e cần sửa tủ lạnh")).contains("Điện Lạnh");
+        assertThat(reply("máy lạnh phòng ngủ không mát")).contains("Điện Lạnh");
+        assertThat(reply("đổi số điện thoại thế nào")).doesNotContain("chưa hỗ trợ");
+        assertThat(reply("vật tư thay thế tính giá sao")).doesNotContain("hóa đơn VAT");
         // Phép tính là câu ngoài phạm vi, không phải câu hỏi dịch vụ
         assertThat(reply("1+1=?")).contains("ngoài phạm vi").doesNotContain("Vệ sinh máy lạnh");
         // Có số tiền cụ thể thì tính luôn tiền cọc
         assertThat(reply("ngân sách 800 nghìn thì cọc bao nhiêu?")).contains("240.000 đ").contains("560.000 đ");
         // An toàn luôn ưu tiên dù câu có từ khóa khác
         assertThat(reply("thợ chưa đến mà ổ cắm bốc khói")).contains("114");
+    }
+
+    @Test
+    @DisplayName("Câu hỏi quy định rõ ràng được trả lời trực tiếp bằng câu trả lời chuẩn; mô tả sự cố, tiếng Anh, câu dài để AI xử lý")
+    void shouldDecideWhenToAnswerDirectly() {
+        assertThat(synthesizer.directAnswer("thợ có được xem số điện thoại của tôi không")).isPresent();
+        assertThat(synthesizer.directAnswer("có xuất hóa đơn không")).isPresent();
+        assertThat(synthesizer.directAnswer("cảm ơn")).isPresent();
+        assertThat(synthesizer.directAnswer("1+1=?")).isPresent();
+        assertThat(synthesizer.directAnswer("máy lạnh nhà mình chạy mà không mát")).isEmpty();
+        assertThat(synthesizer.directAnswer("How much does it cost to fix an air conditioner?")).isEmpty();
+        assertThat(synthesizer.directAnswer("asdfgh")).isEmpty();
     }
 
     @Test

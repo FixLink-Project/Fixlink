@@ -29,13 +29,20 @@ public class OfflinePersonalResponder {
     private static final Pattern MY_REQUESTS = Pattern.compile(
             "\\b(don cua toi|don hang|cac don|may don|bao nhieu don|don nao|yeu cau cua toi|don dang|don cua minh|don minh"
                     + "|bao nhieu yeu cau|may yeu cau|yeu cau cua minh|yeu cau sua chua cua toi|toi da co|toi co bao nhieu"
-                    + "|danh sach don|danh sach yeu cau)\\b");
+                    + "|danh sach don|danh sach yeu cau|don gan nhat|yeu cau gan nhat|don moi nhat|cac don da)\\b");
     private static final Pattern APPOINTMENTS = Pattern.compile("\\b(lich hen|lich khao sat|hen gio|lich sua)\\b");
     private static final Pattern QUOTES = Pattern.compile("\\b(bao gia|so sanh|chon tho nao)\\b");
     private static final Pattern TECH_PROFILE = Pattern.compile("\\b(ho so|duyet|kyc|xac minh|tai khoan tho)\\b");
     private static final Pattern TECH_JOBS = Pattern.compile("\\b(viec|cong viec|job|don moi|nhan viec)\\b");
     private static final Pattern SWITCH = Pattern.compile("\\b(doi tho|thay tho|tho khac)\\b");
     private static final Pattern CANCEL = Pattern.compile("\\b(huy|cancel)\\b");
+    private static final Pattern REMAINING = Pattern.compile("\\b(phan con lai|con lai|tat toan|tra not|thanh toan cuoi)\\b");
+    private static final Pattern ADVICE = Pattern.compile("\\b(lam sao|lam the nao|bi quyet|meo|cach nao|nhieu viec hon)\\b");
+    /** Người hỏi nói về dữ liệu của chính mình ("của tôi", "tôi có", "sắp tới"...). */
+    private static final Pattern MINE = Pattern.compile(
+            "\\b(cua toi|cua minh|cua em|toi co|minh co|em co|toi da|sap toi|hom nay|ngay mai|cua toi da|ho so toi|toi duoc)\\b");
+    /** Hỏi cách làm ("dời lịch hẹn thế nào") thì để câu trả lời chuẩn/AI hướng dẫn, không liệt kê dữ liệu. */
+    private static final Pattern HOW_TO = Pattern.compile("\\b(the nao|nhu the nao|lam sao|cach|duoc khong|o dau)\\b");
     private static final Pattern DEPOSIT = Pattern.compile("\\b(coc|dat coc|tien coc)\\b");
 
     /** Trạng thái được đổi thợ: theo QuotationService.switchTechnician. */
@@ -69,6 +76,30 @@ public class OfflinePersonalResponder {
         long deposit30 = (long) Math.ceil(Long.parseLong(digits) * 0.3);
         return "Tiền cọc dự kiến của đơn này là **" + String.format(Locale.ROOT, "%,d", deposit30).replace(',', '.')
                 + " đ** (30% giá chốt). Mã QR đặt cọc hiện trong chi tiết đơn sau khi bạn xác nhận lịch hẹn.";
+    }
+
+    /** Phần còn lại dự kiến = giá chốt − tiền cọc; số chính xác (gồm phát sinh đã duyệt) hiện trên mã QR thanh toán. */
+    static String remainingAnswer(JsonNode n) {
+        long price = digits(n.path("agreedPriceText").asText(""));
+        if (price <= 0) {
+            return "Đơn này **chưa có giá chốt** nên chưa tính được phần còn lại.";
+        }
+        long deposit = digits(n.path("depositText").asText(""));
+        if (deposit <= 0) {
+            deposit = (long) Math.ceil(price * 0.3);
+        }
+        return "Phần còn lại dự kiến của đơn này là **" + vnd(price - deposit) + "** (giá chốt " + vnd(price) + " − tiền cọc "
+                + vnd(deposit) + "), cộng thêm chi phí phát sinh đã duyệt nếu có. Số chính xác hiện trên **mã QR thanh toán** "
+                + "khi thợ báo hoàn thành.";
+    }
+
+    private static long digits(String text) {
+        String d = text.replaceAll("\\D", "");
+        return d.isEmpty() ? 0 : Long.parseLong(d);
+    }
+
+    private static String vnd(long amount) {
+        return String.format(Locale.ROOT, "%,d", amount).replace(',', '.') + " đ";
     }
 
     static String cancelAnswer(String status) {
@@ -149,6 +180,7 @@ public class OfflinePersonalResponder {
             boolean asksSwitch = SWITCH.matcher(text).find();
             boolean asksCancel = CANCEL.matcher(text).find();
             boolean asksDeposit = DEPOSIT.matcher(text).find();
+            boolean asksRemaining = REMAINING.matcher(text).find();
             return call("get_repair_request_status", Map.of("request_code", requestCode), userId, r)
                     .map(node -> {
                         String status = node.path("status").asText("");
@@ -157,25 +189,37 @@ public class OfflinePersonalResponder {
                             answer = switchAnswer(status) + "\n\n" + answer;
                         } else if (asksCancel) {
                             answer = cancelAnswer(status) + "\n\n" + answer;
+                        } else if (asksRemaining) {
+                            answer = remainingAnswer(node) + "\n\n" + answer;
                         } else if (asksDeposit) {
                             answer = depositAnswer(node) + "\n\n" + answer;
                         }
                         return reply(answer, List.of("Đổi thợ được không?", "Hủy đơn có mất cọc không?"));
                     });
         }
-        if (technician && TECH_PROFILE.matcher(text).find()) {
+        boolean mine = MINE.matcher(text).find();
+        if (technician && TECH_PROFILE.matcher(text).find() && mine && !ADVICE.matcher(text).find()) {
             return call("get_my_technician_status", Map.of(), userId, r)
                     .map(node -> reply(techProfileText(node), List.of("Có việc nào phù hợp với tôi?", "Thợ gửi báo giá thế nào?")));
         }
-        if (technician && TECH_JOBS.matcher(text).find() && !MY_REQUESTS.matcher(text).find()) {
+        boolean statusQuestion = STATUS_FILTERS.stream().anyMatch(f -> f.pattern().matcher(text).find());
+        // "làm sao để nhận nhiều việc hơn" là xin lời khuyên, không phải yêu cầu liệt kê việc
+        boolean asksAdvice = ADVICE.matcher(text).find();
+        if (technician && TECH_JOBS.matcher(text).find() && !MY_REQUESTS.matcher(text).find() && !statusQuestion && !asksAdvice) {
             return call("find_matching_jobs", Map.of(), userId, r)
                     .map(node -> reply(jobsText(node), List.of("Báo giá vượt ngân sách được không?", "Hồ sơ của tôi đã duyệt chưa?")));
         }
-        if (APPOINTMENTS.matcher(text).find()) {
+        if (APPOINTMENTS.matcher(text).find() && mine && !HOW_TO.matcher(text).find()) {
             return call("get_my_appointments", Map.of(), userId, r)
                     .map(node -> reply(appointmentsText(node), List.of("Dời lịch hẹn thế nào?", "Thợ không đến thì sao?")));
         }
-        if (MY_REQUESTS.matcher(text).find()) {
+        if (MY_REQUESTS.matcher(text).find() || (technician && statusQuestion && TECH_JOBS.matcher(text).find())) {
+            for (StatusFilter f : STATUS_FILTERS) {
+                if (f.pattern().matcher(text).find()) {
+                    return call("get_my_repair_requests", Map.of("status", f.status()), userId, r)
+                            .map(node -> reply(filteredText(node, f.label()), List.of("Tôi có bao nhiêu đơn?", "Lịch hẹn của tôi")));
+                }
+            }
             return call("get_my_repair_requests", Map.of(), userId, r)
                     .map(node -> reply(requestsText(node, technician), List.of("Đơn nào cần tôi thao tác?", "Đăng yêu cầu mới")));
         }
@@ -263,6 +307,50 @@ public class OfflinePersonalResponder {
         return sb.toString();
     }
 
+    /** "Đơn nào đang chờ tôi nghiệm thu": lọc theo đúng trạng thái khách hỏi. */
+    private record StatusFilter(Pattern pattern, String status, String label) { }
+
+    private static final List<StatusFilter> STATUS_FILTERS = List.of(
+            new StatusFilter(Pattern.compile("\\b(cho nghiem thu|can nghiem thu|nghiem thu)\\b"), "AWAITING_ACCEPTANCE", "chờ nghiệm thu"),
+            new StatusFilter(Pattern.compile("\\b(da chon tho|vua chon tho)\\b"), "ASSIGNED", "đã chọn thợ, chờ xác nhận lịch và đặt cọc"),
+            new StatusFilter(Pattern.compile("\\b(phat sinh|duyet chi phi)\\b"), "AWAITING_COST_APPROVAL", "chờ duyệt chi phí phát sinh"),
+            new StatusFilter(Pattern.compile("\\b(dang sua|dang thi cong)\\b"), "IN_PROGRESS", "đang sửa chữa"),
+            new StatusFilter(Pattern.compile("\\b(dang khao sat)\\b"), "INSPECTING", "đang khảo sát"),
+            new StatusFilter(Pattern.compile("\\b(da dat coc|da coc)\\b"), "DEPOSIT_PAID", "đã đặt cọc"),
+            new StatusFilter(Pattern.compile("\\b(chua dat coc|chua coc|can dat coc|cho dat coc)\\b"), "ASSIGNED",
+                    "đã chọn thợ, chờ xác nhận lịch và đặt cọc"),
+            new StatusFilter(Pattern.compile("\\b(dang tim tho|chua co tho|cho bao gia|dang nhan bao gia|chua chon tho)\\b"), "OPEN",
+                    "đang nhận báo giá"),
+            new StatusFilter(Pattern.compile("\\b(hoan thanh|da xong)\\b"), "COMPLETED", "đã hoàn thành"),
+            new StatusFilter(Pattern.compile("\\b(da huy|bi huy)\\b"), "CANCELLED", "đã hủy"),
+            new StatusFilter(Pattern.compile("\\b(ban nhap|luu nhap)\\b"), "DRAFT", "bản nháp"));
+
+    static String filteredText(JsonNode n, String label) {
+        JsonNode items = n.path("items");
+        if (!items.isArray() || items.isEmpty()) {
+            return "Hiện bạn **không có đơn nào " + label + "**.";
+        }
+        StringBuilder sb = new StringBuilder("Bạn có **").append(items.size()).append("** đơn ").append(label).append(":\n");
+        int i = 1;
+        for (JsonNode it : items) {
+            if (i > 8) {
+                break;
+            }
+            sb.append(i++).append(". **").append(it.path("requestCode").asText()).append("** – ").append(it.path("title").asText())
+                    .append("\n");
+        }
+        sb.append("\nHỏi mình mã đơn cụ thể để xem chi tiết và bước tiếp theo.");
+        return sb.toString();
+    }
+
+    /** "2026-11-01" + "15:30:00" → "15:30 01/11/2026". */
+    static String formatSchedule(String date, String time) {
+        String d = date != null && date.matches("\\d{4}-\\d{2}-\\d{2}")
+                ? date.substring(8, 10) + "/" + date.substring(5, 7) + "/" + date.substring(0, 4) : date;
+        String t = time != null && time.length() >= 5 ? time.substring(0, 5) : time;
+        return ((t != null ? t + " " : "") + (d != null ? d : "")).trim();
+    }
+
     static String appointmentsText(JsonNode n) {
         JsonNode items = n.path("appointments");
         if (!items.isArray() || items.isEmpty()) {
@@ -275,7 +363,7 @@ public class OfflinePersonalResponder {
                 break;
             }
             sb.append(i++).append(". **").append(a.path("requestCode").asText()).append("** – ")
-                    .append(a.path("scheduledDate").asText()).append(" ").append(a.path("scheduledTime").asText())
+                    .append(formatSchedule(a.path("scheduledDate").asText(""), a.path("scheduledTime").asText("")))
                     .append(": ").append(a.path("statusLabel").asText()).append("\n");
         }
         sb.append("\nLịch ở trạng thái *Chờ xác nhận* thì khách bấm **Xác nhận lịch hẹn** trong chi tiết đơn; "
