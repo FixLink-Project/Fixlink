@@ -6,4 +6,5 @@ import com.fixlink.adapter.in.web.dto.response.TechnicianProfileResponse;
 public interface TechnicianProfileUseCase {
     TechnicianProfileResponse getMyProfile(Long userId);
     TechnicianProfileResponse updateMyProfile(Long userId, UpdateTechnicianProfileRequest request);
+    TechnicianProfileResponse updateCategoriesByAdmin(Long technicianUserId, java.util.List<Long> categoryIds);
 }

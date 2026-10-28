@@ -678,7 +678,13 @@ export default function RepairRequestDetailPage() {
               />
             )}
             {req.agreedPrice > 0 && <Row label="Giá chốt" value={formatCurrency(req.agreedPrice)} highlight />}
-            {req.depositAmount > 0 && <Row label="Tiền đặt cọc (30%)" value={formatCurrency(req.depositAmount)} highlight />}
+            {req.depositAmount > 0 && (
+              <Row
+                label="Tiền cọc bảo chứng"
+                value={`${formatCurrency(req.depositAmount)} ${payments.some((p) => p.paymentType === 'DEPOSIT' && p.status === 'CONFIRMED') ? '(Đã thanh toán)' : '(Chờ cọc 30%)'}`}
+                highlight
+              />
+            )}
             {req.cancelReason && <Row label="Lý do hủy" value={req.cancelReason} />}
           </dl>
 
@@ -931,8 +937,9 @@ export default function RepairRequestDetailPage() {
 
         {/* Thanh toán tổng khi chờ nghiệm thu */}
         {req.status === 'AWAITING_ACCEPTANCE' && (() => {
-          const depositPaid = req.depositAmount > 0 ? req.depositAmount : Math.round(req.agreedPrice * 0.3);
-          const remaining = Math.max(0, req.agreedPrice + approvedCostTotal - depositPaid);
+          const confirmedDeposit = payments.find((p) => p.paymentType === 'DEPOSIT' && p.status === 'CONFIRMED');
+          const depositPaid = confirmedDeposit ? confirmedDeposit.amount : (req.depositAmount > 0 ? req.depositAmount : Math.round(req.agreedPrice * 0.3));
+          const remaining = autoFinalQR ? autoFinalQR.amount : Math.max(0, req.agreedPrice + approvedCostTotal - depositPaid);
           const finalPaymentItem = payments.find((p) => p.paymentType === 'FINAL');
           const finalPaid = remaining <= 0 || (finalPaymentItem ? finalPaymentItem.status === 'CONFIRMED' : false);
 
@@ -948,7 +955,7 @@ export default function RepairRequestDetailPage() {
                     <span className="font-medium text-slate-800">{formatCurrency(req.agreedPrice)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Đã đặt cọc (30%)</span>
+                    <span className="text-slate-500">Tiền cọc bảo chứng đã nộp</span>
                     <span className="font-medium text-emerald-700">-{formatCurrency(depositPaid)}</span>
                   </div>
                   {approvedCostTotal > 0 && (

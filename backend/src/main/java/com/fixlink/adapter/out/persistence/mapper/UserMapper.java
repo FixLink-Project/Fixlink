@@ -100,6 +100,7 @@ public class UserMapper {
         domain.setCompletedJobs(entity.getCompletedJobs());
         domain.setWalletBalance(entity.getWalletBalance());
         domain.setIsOnline(entity.getIsOnline());
+        domain.setCategoryIds(entity.getCategoryIds() != null ? new java.util.LinkedHashSet<>(entity.getCategoryIds()) : new java.util.LinkedHashSet<>());
         domain.setCreatedAt(entity.getCreatedAt());
         domain.setUpdatedAt(entity.getUpdatedAt());
         return domain;
@@ -130,6 +131,7 @@ public class UserMapper {
         entity.setCompletedJobs(domain.getCompletedJobs());
         entity.setWalletBalance(domain.getWalletBalance());
         entity.setIsOnline(domain.getIsOnline());
+        entity.setCategoryIds(domain.getCategoryIds() != null ? new java.util.LinkedHashSet<>(domain.getCategoryIds()) : new java.util.LinkedHashSet<>());
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setUpdatedAt(domain.getUpdatedAt());
         return entity;

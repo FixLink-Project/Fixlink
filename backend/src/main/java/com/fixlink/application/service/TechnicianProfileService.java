@@ -152,6 +152,31 @@ public class TechnicianProfileService implements TechnicianProfileUseCase {
         return mapToResponse(profile, categories, areas);
     }
 
+    @Override
+    @Transactional
+    public TechnicianProfileResponse updateCategoriesByAdmin(Long technicianUserId, List<Long> categoryIds) {
+        TechnicianProfileJpaEntity profile = technicianProfileRepository.findById(technicianUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ kỹ thuật viên"));
+
+        List<CategorySimpleResponse> categories = new ArrayList<>();
+        Set<Long> validCategoryIds = new LinkedHashSet<>();
+        if (categoryIds != null) {
+            for (Long catId : categoryIds) {
+                Optional<ServiceCategoryJpaEntity> catOpt = serviceCategoryRepository.findByIdAndDeletedAtIsNull(catId);
+                if (catOpt.isPresent() && Boolean.TRUE.equals(catOpt.get().getIsActive())) {
+                    validCategoryIds.add(catId);
+                    categories.add(new CategorySimpleResponse(catOpt.get().getId(), catOpt.get().getName(), catOpt.get().getIconUrl()));
+                }
+            }
+        }
+
+        profile.setCategoryIds(validCategoryIds);
+        profile.setUpdatedAt(LocalDateTime.now());
+        technicianProfileRepository.save(profile);
+
+        return mapToResponse(profile, categories, loadAreas(profile.getAreaIds()));
+    }
+
     private TechnicianProfileResponse mapToResponse(
             TechnicianProfileJpaEntity profile,
             List<CategorySimpleResponse> categories,

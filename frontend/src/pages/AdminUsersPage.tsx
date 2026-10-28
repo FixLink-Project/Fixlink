@@ -7,8 +7,8 @@ import DashboardLayout from '../components/DashboardLayout';
 import Pagination from '../components/Pagination';
 import StatusChip from '../components/StatusChip';
 import Tabs from '../components/Tabs';
-import { ApiError, api, formatCurrency } from '../lib/api';
-import type { PageMeta, Role, UserStatus, VerificationStatus } from '../lib/types';
+import { ApiError, api, fetchCategories, formatCurrency, updateTechnicianCategoriesByAdmin } from '../lib/api';
+import type { PageMeta, Role, ServiceCategory, UserStatus, VerificationStatus } from '../lib/types';
 
 interface TechnicianProfileBrief {
   fullName: string;
@@ -27,6 +27,7 @@ interface TechnicianProfileBrief {
   idCardFrontUrl?: string | null;
   idCardBackUrl?: string | null;
   bio?: string | null;
+  categoryIds?: number[];
 }
 
 interface CustomerProfileBrief {
@@ -111,6 +112,49 @@ export default function AdminUsersPage() {
   const [actionNote, setActionNote] = useState<string | null>(null);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+  const [savingCategories, setSavingCategories] = useState(false);
+  const [categorySaveSuccess, setCategorySaveSuccess] = useState(false);
+
+  useEffect(() => {
+    fetchCategories()
+      .then((res) => setCategories(res.data.filter((c) => c.isActive)))
+      .catch(() => setCategories([]));
+  }, []);
+
+  useEffect(() => {
+    if (detail?.technicianProfile?.categoryIds) {
+      setSelectedCategoryIds(detail.technicianProfile.categoryIds);
+    } else {
+      setSelectedCategoryIds([]);
+    }
+    setCategorySaveSuccess(false);
+  }, [detail]);
+
+  async function handleSaveCategories() {
+    if (!detail) return;
+    setSavingCategories(true);
+    setActionError(null);
+    try {
+      await updateTechnicianCategoriesByAdmin(detail.id, selectedCategoryIds);
+      setCategorySaveSuccess(true);
+      if (detail.technicianProfile) {
+        setDetail({
+          ...detail,
+          technicianProfile: {
+            ...detail.technicianProfile,
+            categoryIds: selectedCategoryIds
+          }
+        });
+      }
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Lỗi khi cập nhật chuyên môn');
+    } finally {
+      setSavingCategories(false);
+    }
+  }
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -689,12 +733,75 @@ export default function AdminUsersPage() {
 
                         {detail.technicianProfile.bio && (
                           <div className="p-3.5 rounded-xl border border-slate-100 bg-white sm:col-span-2">
-                            <span className="text-xs font-medium text-slate-400">Tiểu sử & Chuyên môn</span>
+                            <span className="text-xs font-medium text-slate-400">Tiểu sử & Giới thiệu</span>
                             <p className="text-sm text-slate-700 mt-1 leading-relaxed">
                               {detail.technicianProfile.bio}
                             </p>
                           </div>
                         )}
+
+                        {/* Thẩm định chuyên môn kỹ thuật thực tế (Phỏng vấn & cấp phép) */}
+                        <div className="rounded-xl border border-blue-200/80 bg-blue-50/40 p-4 space-y-3 sm:col-span-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                <span>🛠️ Chuyên môn sửa chữa được cấp phép</span>
+                                <span className="text-2xs font-bold uppercase tracking-wider text-brand bg-white px-2 py-0.5 rounded-full border border-blue-200">
+                                  Thẩm định tay nghề
+                                </span>
+                              </h4>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                Admin trực tiếp phỏng vấn / thẩm định tay nghề và phê duyệt các nhóm việc cho thợ.
+                              </p>
+                            </div>
+                            {categorySaveSuccess && (
+                              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 animate-in fade-in">
+                                ✓ Đã lưu chuyên môn thành công!
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                            {categories.map((cat) => {
+                              const isChecked = selectedCategoryIds.includes(cat.id);
+                              return (
+                                <label
+                                  key={cat.id}
+                                  className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
+                                    isChecked
+                                      ? 'bg-blue-50/90 border-brand text-brand shadow-xs'
+                                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      setCategorySaveSuccess(false);
+                                      if (e.target.checked) {
+                                        setSelectedCategoryIds([...selectedCategoryIds, cat.id]);
+                                      } else {
+                                        setSelectedCategoryIds(selectedCategoryIds.filter((id) => id !== cat.id));
+                                      }
+                                    }}
+                                  />
+                                  <span>{cat.name}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex justify-end pt-1">
+                            <Button
+                              type="button"
+                              loading={savingCategories}
+                              onClick={handleSaveCategories}
+                            >
+                              Lưu chuyên môn thợ
+                            </Button>
+                          </div>
+                        </div>
 
                         {/* Ảnh CCCD 2 mặt */}
                         {(detail.technicianProfile.idCardFrontUrl || detail.technicianProfile.idCardBackUrl) && (

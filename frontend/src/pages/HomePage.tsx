@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { fetchCategories } from '../lib/api';
 import { HOME_BY_ROLE, useAuth } from '../lib/auth';
 import type { ServiceCategory } from '../lib/types';
+import NotificationBell from '../components/NotificationBell';
 
 // Danh sách các thiết bị & sự cố phổ biến
 const POPULAR_SEARCHES = [
@@ -14,7 +15,7 @@ const POPULAR_SEARCHES = [
   'Sửa bo mạch Inverter'
 ];
 
-// Dịch vụ tiêu biểu với icon SVG chuẩn kỹ thuật
+// Dịch vụ tiêu biểu với icon SVG chuẩn kỹ thuật (Đồng bộ 4 danh mục chuẩn FixLink)
 const FEATURED_SERVICES = [
   {
     code: 'DIEN_LANH',
@@ -31,24 +32,24 @@ const FEATURED_SERVICES = [
     )
   },
   {
-    code: 'DIEN_TU',
-    name: 'Sửa Điện Tử & Nghe Nhìn',
-    devices: 'Smart TV, Amply, Dàn âm thanh, Màn hình',
-    commonIssues: 'Mất nguồn, chớp màn hình, mất tiếng, chập cháy bo',
-    price: 'Từ 200.000đ',
-    warranty: 'Bảo hành 90 ngày',
-    badge: 'Kỹ sư chuyên sâu',
+    code: 'DIEN_NUOC',
+    name: 'Sửa Chữa Điện Nước',
+    devices: 'Chập điện âm tường, Rò rỉ nước, Máy bơm, Bình nóng lạnh',
+    commonIssues: 'Nhảy Aptomat, rò rỉ điện, bục ống nước, hỏng rơ-le nhiệt',
+    price: 'Từ 150.000đ',
+    warranty: 'Bảo hành 30 ngày',
+    badge: 'An toàn tuyệt đối',
     icon: (
-      <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
       </svg>
     )
   },
   {
     code: 'DO_GIA_DUNG',
-    name: 'Thiết Bị Bếp & Gia Dụng',
-    devices: 'Bếp từ đôi, Lò vi sóng, Nồi cao tần, Robot hút bụi',
-    commonIssues: 'Không nhận nồi, chập mâm từ, hỏng cảm ứng, báo lỗi mạch',
+    name: 'Sửa Điện Gia Dụng',
+    devices: 'Bếp từ đôi, Lò vi sóng, Nồi cơm điện, Quạt hơi nước',
+    commonIssues: 'Không nhận nồi, chập mâm từ, hỏng cảm ứng, báo lỗi bo mạch',
     price: 'Từ 150.000đ',
     warranty: 'Bảo hành 60 ngày',
     badge: 'Linh kiện zin',
@@ -59,22 +60,8 @@ const FEATURED_SERVICES = [
     )
   },
   {
-    code: 'MAY_TINH',
-    name: 'Máy Tính & Thiết Bị Số',
-    devices: 'Laptop, PC văn phòng, Bộ nguồn, Màn hình máy tính',
-    commonIssues: 'Không lên nguồn, chập mạch, thay linh kiện, nâng cấp',
-    price: 'Từ 180.000đ',
-    warranty: 'Bảo hành 90 ngày',
-    badge: 'Lấy ngay trong ngày',
-    icon: (
-      <svg className="w-6 h-6 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-      </svg>
-    )
-  },
-  {
     code: 'KHOA_CUA',
-    name: 'Khóa Điện Tử & Cửa Cuốn',
+    name: 'Sửa Khóa & Cửa Cuốn',
     devices: 'Khóa cửa vân tay thông minh, Remote & motor cửa cuốn',
     commonIssues: 'Kẹt khóa, không nhận vân tay/thẻ, liệt điều khiển 24/7',
     price: 'Từ 150.000đ',
@@ -83,20 +70,6 @@ const FEATURED_SERVICES = [
     icon: (
       <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-      </svg>
-    )
-  },
-  {
-    code: 'DIEN_NUOC',
-    name: 'Sửa Chữa Điện Dân Dụng',
-    devices: 'Chập điện âm tường, Máy bơm nước, Bình nóng lạnh',
-    commonIssues: 'Nhảy Aptomat, rò rỉ điện, mất nước, hỏng rơ-le nhiệt',
-    price: 'Từ 150.000đ',
-    warranty: 'Bảo hành 30 ngày',
-    badge: 'An toàn tuyệt đối',
-    icon: (
-      <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
       </svg>
     )
   }
@@ -201,6 +174,7 @@ export default function HomePage() {
 
           {/* Right Action Buttons */}
           <div className="flex items-center gap-3">
+            {user && <NotificationBell />}
             {/* Đã đăng nhập thì hiện người dùng và lối về trang làm việc, không hiện nút "Đăng nhập". */}
             {user ? (
               <Link
@@ -369,7 +343,7 @@ export default function HomePage() {
         </div>
 
         {/* Featured Service Cards Grid */}
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURED_SERVICES.map((srv) => (
             <div
               key={srv.code}

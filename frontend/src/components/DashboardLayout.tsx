@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import StatusChip from './StatusChip';
+import NotificationBell from './NotificationBell';
 import { useAuth } from '../lib/auth';
 
 interface NavItem {
@@ -55,6 +56,7 @@ export default function DashboardLayout({
           </Link>
 
           <div className="flex items-center gap-3">
+            {user && <NotificationBell />}
             {user && (
               <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5">
                 <div className="h-7 w-7 rounded-full bg-brand-light flex items-center justify-center text-xs font-bold text-brand-strong">

@@ -323,4 +323,17 @@ export function parseNumericUserId(id: string | number | undefined | null): numb
   return match ? parseInt(match[0], 10) : null;
 }
 
+export interface NotificationItem {
+  id: number;
+  userId: number;
+  title: string;
+  message: string;
+  type: string;
+  referenceId?: string | null;
+  referenceUrl?: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+
 

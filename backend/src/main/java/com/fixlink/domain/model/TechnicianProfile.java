@@ -27,6 +27,7 @@ public class TechnicianProfile {
     private Integer completedJobs;
     private BigDecimal walletBalance;
     private Boolean isOnline;
+    private java.util.Set<Long> categoryIds = new java.util.HashSet<>();
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -219,6 +220,14 @@ public class TechnicianProfile {
 
     public void setSpecialization(String specialization) {
         this.specialization = specialization;
+    }
+
+    public java.util.Set<Long> getCategoryIds() {
+        return categoryIds;
+    }
+
+    public void setCategoryIds(java.util.Set<Long> categoryIds) {
+        this.categoryIds = categoryIds != null ? categoryIds : new java.util.HashSet<>();
     }
 
     public LocalDateTime getUpdatedAt() {

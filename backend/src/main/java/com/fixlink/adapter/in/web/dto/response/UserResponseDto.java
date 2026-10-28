@@ -61,6 +61,7 @@ public class UserResponseDto {
             tDto.setBio(user.getTechnicianProfile().getBio());
             tDto.setAddress(user.getTechnicianProfile().getAddress());
             tDto.setSpecialization(user.getTechnicianProfile().getSpecialization());
+            tDto.setCategoryIds(user.getTechnicianProfile().getCategoryIds());
             dto.setTechnicianProfile(tDto);
         }
 
@@ -98,5 +99,6 @@ public class UserResponseDto {
         private String idCardFrontUrl;
         private String idCardBackUrl;
         private String bio;
+        private java.util.Set<Long> categoryIds;
     }
 }
