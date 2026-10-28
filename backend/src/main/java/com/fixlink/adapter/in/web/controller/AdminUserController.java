@@ -30,11 +30,14 @@ public class AdminUserController {
 
     private final UserManagementUseCase userManagementUseCase;
     private final TechnicianVerificationUseCase technicianVerificationUseCase;
+    private final com.fixlink.application.port.in.TechnicianProfileUseCase technicianProfileUseCase;
 
     public AdminUserController(UserManagementUseCase userManagementUseCase,
-                               TechnicianVerificationUseCase technicianVerificationUseCase) {
+                               TechnicianVerificationUseCase technicianVerificationUseCase,
+                               com.fixlink.application.port.in.TechnicianProfileUseCase technicianProfileUseCase) {
         this.userManagementUseCase = userManagementUseCase;
         this.technicianVerificationUseCase = technicianVerificationUseCase;
+        this.technicianProfileUseCase = technicianProfileUseCase;
     }
 
     @GetMapping("/users")
@@ -125,6 +128,19 @@ public class AdminUserController {
         Long parsedUserId = parseUserId(userId);
         User user = userManagementUseCase.rejectUser(parsedUserId);
         return ResponseEntity.ok(ApiResponse.success("Từ chối tài khoản thành công", UserResponseDto.fromDomain(user)));
+    }
+
+    @PutMapping("/technicians/{userId}/categories")
+    @Operation(summary = "Admin cập nhật chuyên môn thợ", description = "Admin sau khi phỏng vấn/thẩm định tay nghề thực tế sẽ cập nhật danh mục được cấp phép cho thợ.")
+    public ResponseEntity<ApiResponse<UserResponseDto>> updateTechnicianCategories(
+            @PathVariable String userId,
+            @RequestBody java.util.Map<String, List<Long>> body
+    ) {
+        Long parsedUserId = parseUserId(userId);
+        List<Long> categoryIds = body.getOrDefault("categoryIds", List.of());
+        technicianProfileUseCase.updateCategoriesByAdmin(parsedUserId, categoryIds);
+        User user = userManagementUseCase.getUserById(parsedUserId);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật chuyên môn kỹ thuật viên thành công", UserResponseDto.fromDomain(user)));
     }
 
     private Long parseUserId(String userIdStr) {

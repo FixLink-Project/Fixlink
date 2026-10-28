@@ -5,6 +5,7 @@ import com.fixlink.adapter.out.persistence.entity.QuotationJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.RepairRequestJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.TechnicianProfileJpaEntity;
 import com.fixlink.adapter.out.persistence.repository.SpringDataAppointmentRepository;
+import com.fixlink.adapter.out.persistence.repository.SpringDataPaymentRepository;
 import com.fixlink.adapter.out.persistence.repository.SpringDataQuotationRepository;
 import com.fixlink.adapter.out.persistence.repository.SpringDataRepairRequestRepository;
 import com.fixlink.adapter.out.persistence.repository.SpringDataTechnicianProfileRepository;
@@ -43,7 +44,13 @@ class QuotationSwitchTechnicianAndBudgetTest {
     private SpringDataAppointmentRepository appointmentRepo;
 
     @Mock
+    private SpringDataPaymentRepository paymentRepo;
+
+    @Mock
     private RepairRequestService repairRequestService;
+
+    @Mock
+    private com.fixlink.application.port.in.NotificationUseCase notificationUseCase;
 
     @InjectMocks
     private QuotationService quotationService;

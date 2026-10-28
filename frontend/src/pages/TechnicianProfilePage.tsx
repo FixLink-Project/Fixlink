@@ -11,7 +11,7 @@ import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
 import { ApiError, api, fetchTechnicianReviews, toFieldErrors, type TechnicianReviewItem } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import type { ServiceArea, ServiceCategory, VerificationStatus } from '../lib/types';
+import type { ServiceArea, VerificationStatus } from '../lib/types';
 
 interface SimpleRef {
   id: number;
@@ -52,7 +52,6 @@ export default function TechnicianProfilePage() {
   const [tab, setTab] = useState<TabId>('CA_NHAN');
 
   const [profile, setProfile] = useState<TechnicianProfile | null>(null);
-  const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [areas, setAreas] = useState<ServiceArea[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -104,14 +103,12 @@ export default function TechnicianProfilePage() {
     let alive = true;
     (async () => {
       try {
-        const [profileRes, categoryRes, areaRes] = await Promise.all([
+        const [profileRes, areaRes] = await Promise.all([
           api.get<TechnicianProfile>('/technicians/me/profile'),
-          api.get<ServiceCategory[]>('/categories'),
           api.get<ServiceArea[]>('/areas')
         ]);
         if (!alive) return;
         applyProfile(profileRes.data);
-        setCategories(categoryRes.data.filter((c) => c.isActive));
         setAreas(areaRes.data);
         setStatus('ready');
       } catch (err) {
@@ -373,15 +370,41 @@ export default function TechnicianProfilePage() {
                   onChange={(e) => update('bio', e.target.value)}
                 />
 
-                <CheckboxGroup
-                  legend="Nhóm việc bạn nhận"
-                  options={categories.map((c) => ({ id: c.id, label: c.name }))}
-                  selected={categoryIds}
-                  onChange={(next) => {
-                    setCategoryIds(next);
-                    setSavedTab(null);
-                  }}
-                />
+                {/* Chuyên môn được cấp phép hành nghề - Chỉ đọc, do Admin thẩm định offline */}
+                <div className="space-y-3 rounded-2xl border border-slate-200/90 bg-slate-50/70 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-slate-900">
+                      Chuyên môn sửa chữa được cấp phép
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Đã qua phỏng vấn & thẩm định bởi Admin
+                    </span>
+                  </div>
+
+                  {profile.categories.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {profile.categories.map((c) => (
+                        <span
+                          key={c.id}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3.5 py-2 text-xs font-bold text-brand shadow-2xs"
+                        >
+                          🛠️ {c.name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                      ⚠️ Chưa có chuyên môn nào được phê duyệt. Vui lòng liên hệ Admin để phỏng vấn sát hạch.
+                    </div>
+                  )}
+
+                  <p className="text-xs text-slate-500 leading-relaxed pt-1">
+                    * Nhằm đảm bảo an toàn kỹ thuật cho khách hàng, danh mục chuyên môn được Ban quản trị FixLink trực tiếp phỏng vấn và cấp phép thực tế. Nếu bạn muốn mở rộng thêm chuyên môn sửa chữa mới, vui lòng liên hệ hotline <strong className="text-slate-700">1900 1234</strong> để đăng ký lịch sát hạch.
+                  </p>
+                </div>
 
                 <CheckboxGroup
                   legend="Khu vực bạn tới được"

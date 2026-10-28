@@ -3,6 +3,7 @@ package com.fixlink.application.service;
 import com.fixlink.adapter.in.web.dto.response.AcceptQuotationResponse;
 import com.fixlink.adapter.in.web.dto.response.QuotationResponse;
 import com.fixlink.adapter.out.persistence.entity.AppointmentJpaEntity;
+import com.fixlink.adapter.out.persistence.entity.PaymentJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.QuotationJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.RepairRequestJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.TechnicianProfileJpaEntity;
@@ -11,6 +12,8 @@ import com.fixlink.application.port.in.QuotationUseCase;
 import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.exception.ResourceNotFoundException;
 import com.fixlink.domain.model.AppointmentStatus;
+import com.fixlink.domain.model.PaymentStatus;
+import com.fixlink.domain.model.PaymentType;
 import com.fixlink.domain.model.QuotationStatus;
 import com.fixlink.domain.model.RequestStatus;
 import com.fixlink.domain.model.VerificationStatus;
@@ -34,7 +37,9 @@ public class QuotationService implements QuotationUseCase {
     private final SpringDataRepairRequestRepository requestRepo;
     private final SpringDataTechnicianProfileRepository techProfileRepo;
     private final SpringDataAppointmentRepository appointmentRepo;
+    private final SpringDataPaymentRepository paymentRepo;
     private final RepairRequestService repairRequestService;
+    private final com.fixlink.application.port.in.NotificationUseCase notificationUseCase;
 
     // ==================================================================================
     // MÔ HÌNH MỚI: "ai nhận trước được trước" (first-come-first-served)
@@ -106,6 +111,15 @@ public class QuotationService implements QuotationUseCase {
 
         repairRequestService.recordProgress(requestId, oldStatus, RequestStatus.ASSIGNED,
                 "Thợ đã nhận việc", technicianId);
+
+        notificationUseCase.sendNotification(
+                request.getCustomerId(),
+                "Thợ đã nhận yêu cầu sửa chữa",
+                "Thợ " + tech.getFullName() + " đã nhận yêu cầu #" + requestId + ". Vui lòng theo dõi lịch hẹn và thanh toán cọc bảo chứng.",
+                "JOB_ASSIGNED",
+                String.valueOf(requestId),
+                "/yeu-cau/" + requestId
+        );
 
         return AcceptQuotationResponse.builder()
                 .requestId(requestId)
@@ -190,6 +204,17 @@ public class QuotationService implements QuotationUseCase {
         }
 
         entity = quotationRepo.save(entity);
+
+        String techFullName = tech.getFullName() != null ? tech.getFullName() : "Thợ";
+        notificationUseCase.sendNotification(
+                request.getCustomerId(),
+                "Có báo giá mới từ thợ",
+                "Thợ " + techFullName + " vừa gửi báo giá " + formatVnd(totalQuoted) + " cho yêu cầu #" + requestId + ". Hãy xem và chốt thợ phù hợp!",
+                "QUOTATION_RECEIVED",
+                String.valueOf(requestId),
+                "/yeu-cau/" + requestId
+        );
+
         return toResponse(entity);
     }
 
@@ -374,6 +399,15 @@ public class QuotationService implements QuotationUseCase {
         repairRequestService.recordProgress(requestId, oldStatus, RequestStatus.ASSIGNED,
                 "Khách hàng đã chọn báo giá của thợ " + techName, customerId);
 
+        notificationUseCase.sendNotification(
+                chosen.getTechnicianId(),
+                "Khách hàng đã chốt bạn!",
+                "Khách hàng đã đồng ý giá " + formatVnd(agreedPrice) + " cho yêu cầu #" + requestId + ". Vui lòng phối hợp lịch hẹn và chuẩn bị đồ nghề.",
+                "QUOTATION_ACCEPTED",
+                String.valueOf(requestId),
+                "/tho/yeu-cau/" + requestId
+        );
+
         return AcceptQuotationResponse.builder()
                 .requestId(requestId)
                 .selectedQuotationId(quotationId)
@@ -442,7 +476,20 @@ public class QuotationService implements QuotationUseCase {
         request.setSelectedQuotationId(quotationId);
         request.setTechnicianId(targetQuote.getTechnicianId());
         request.setAgreedPrice(agreedPrice);
-        request.setDepositAmount(deposit);
+
+        // Rule Escrow: Nếu khách hàng đã từng thanh toán tiền cọc thành công (ở thợ trước), bảo lưu 100% số tiền cọc thực tế đó
+        BigDecimal actualPaidDeposit = paymentRepo
+                .findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.DEPOSIT)
+                .filter(p -> p.getStatus() == PaymentStatus.CONFIRMED)
+                .map(PaymentJpaEntity::getAmount)
+                .orElse(null);
+
+        if (actualPaidDeposit != null && actualPaidDeposit.signum() > 0) {
+            request.setDepositAmount(actualPaidDeposit);
+        } else {
+            request.setDepositAmount(deposit);
+        }
+
         request.setStatus(newStatus);
         request.setUpdatedBy(customerId);
         requestRepo.save(request);
@@ -463,6 +510,15 @@ public class QuotationService implements QuotationUseCase {
 
         repairRequestService.recordProgress(requestId, oldStatus, newStatus,
                 "Khách hàng đã đổi sang thợ " + techName, customerId);
+
+        notificationUseCase.sendNotification(
+                targetQuote.getTechnicianId(),
+                "Khách hàng đã chọn bạn thay thế!",
+                "Khách hàng đã chuyển sang chọn bạn cho yêu cầu #" + requestId + " với giá " + formatVnd(agreedPrice) + ". Vui lòng phối hợp lịch hẹn sớm nhất.",
+                "QUOTATION_ACCEPTED",
+                String.valueOf(requestId),
+                "/tho/yeu-cau/" + requestId
+        );
 
         return AcceptQuotationResponse.builder()
                 .requestId(requestId)
@@ -526,5 +582,10 @@ public class QuotationService implements QuotationUseCase {
                 .status(q.getStatus())
                 .createdAt(q.getCreatedAt())
                 .build();
+    }
+
+    private String formatVnd(BigDecimal amount) {
+        if (amount == null) return "0đ";
+        return String.format("%,dđ", amount.longValue());
     }
 }

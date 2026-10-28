@@ -30,6 +30,7 @@ public class PaymentService {
     private final SpringDataServiceCategoryRepository categoryRepo;
     private final AdditionalCostService additionalCostService;
     private final VietQRService vietQRService;
+    private final com.fixlink.application.port.in.NotificationUseCase notificationUseCase;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PaymentResult createDepositPayment(Long requestId, Long userId) {
@@ -146,6 +147,48 @@ public class PaymentService {
 
         BillJpaEntity bill = generateBill(payment, userId);
         updateRequestStatusAfterPayment(payment, userId);
+
+        String formattedAmount = payment.getAmount() != null ? String.format("%,dđ", payment.getAmount().longValue()) : "0đ";
+        if (payment.getPaymentType() == PaymentType.DEPOSIT) {
+            notificationUseCase.sendNotification(
+                    request.getCustomerId(),
+                    "Đặt cọc thành công!",
+                    "Bạn đã thanh toán cọc bảo chứng " + formattedAmount + " cho yêu cầu #" + request.getId() + ". Thợ sẽ đến sửa chữa theo lịch hẹn.",
+                    "DEPOSIT_PAID",
+                    String.valueOf(request.getId()),
+                    "/yeu-cau/" + request.getId()
+            );
+            if (request.getTechnicianId() != null) {
+                notificationUseCase.sendNotification(
+                        request.getTechnicianId(),
+                        "Khách hàng đã đặt cọc tiền bảo chứng!",
+                        "Khách hàng đã nộp cọc " + formattedAmount + " cho yêu cầu #" + request.getId() + ". Hãy chuẩn bị dụng cụ đến sửa chữa đúng hẹn!",
+                        "DEPOSIT_PAID",
+                        String.valueOf(request.getId()),
+                        "/tho/yeu-cau/" + request.getId()
+                );
+            }
+        } else if (payment.getPaymentType() == PaymentType.FINAL) {
+            notificationUseCase.sendNotification(
+                    request.getCustomerId(),
+                    "Thanh toán tổng thành công!",
+                    "Bạn đã thanh toán thành công " + formattedAmount + " cho yêu cầu #" + request.getId() + ". Hóa đơn điện tử " + bill.getBillNumber() + " đã được xuất.",
+                    "FINAL_PAYMENT_PAID",
+                    String.valueOf(request.getId()),
+                    "/yeu-cau/" + request.getId()
+            );
+            if (request.getTechnicianId() != null) {
+                notificationUseCase.sendNotification(
+                        request.getTechnicianId(),
+                        "Khách hàng đã thanh toán tổng!",
+                        "Khách hàng đã thanh toán " + formattedAmount + " cho yêu cầu #" + request.getId() + ". Tiền công đã được ghi nhận vào ví của bạn!",
+                        "FINAL_PAYMENT_PAID",
+                        String.valueOf(request.getId()),
+                        "/tho/yeu-cau/" + request.getId()
+                );
+            }
+        }
+
         return bill;
     }
 

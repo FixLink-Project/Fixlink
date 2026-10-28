@@ -13,7 +13,8 @@ import type {
   Quotation,
   RescheduleAppointmentPayload,
   ServiceArea,
-  ServiceCategory
+  ServiceCategory,
+  NotificationItem
 } from './types';
 import { clearSession, getSession, saveSession } from './session';
 
@@ -296,4 +297,29 @@ export function fetchAdditionalCosts(requestId: number): Promise<ApiResponse<Add
 export function getBillHtmlUrl(billId: number): string {
   return `${API_BASE_URL}/payments/bills/${billId}/html`;
 }
+
+// ── Notifications ──
+
+export function fetchNotifications(limit: number = 20): Promise<ApiResponse<NotificationItem[]>> {
+  return api.get<NotificationItem[]>(`/notifications?limit=${limit}`);
+}
+
+export function fetchUnreadNotificationCount(): Promise<ApiResponse<{ unreadCount: number }>> {
+  return api.get<{ unreadCount: number }>('/notifications/unread-count');
+}
+
+export function markNotificationRead(id: number): Promise<ApiResponse<void>> {
+  return api.patch<void>(`/notifications/${id}/read`);
+}
+
+export function markAllNotificationsRead(): Promise<ApiResponse<void>> {
+  return api.patch<void>('/notifications/read-all');
+}
+
+// ── Admin Technician Categories ──
+
+export function updateTechnicianCategoriesByAdmin(userId: string, categoryIds: number[]): Promise<ApiResponse<unknown>> {
+  return api.put(`/admin/technicians/${userId}/categories`, { categoryIds });
+}
+
 

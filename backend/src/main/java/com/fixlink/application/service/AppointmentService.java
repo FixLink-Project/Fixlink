@@ -38,6 +38,7 @@ public class AppointmentService implements AppointmentUseCase {
     private final SpringDataTechnicianProfileRepository techProfileRepo;
     private final SpringDataQuotationRepository quotationRepo;
     private final PaymentService paymentService;
+    private final com.fixlink.application.port.in.NotificationUseCase notificationUseCase;
 
     @Override
     @Transactional
@@ -107,6 +108,26 @@ public class AppointmentService implements AppointmentUseCase {
         log.info("Created appointment #{} (type: {}) for request #{} between customer #{} and technician #{}",
                 entity.getId(), apptType, request.getId(), customerId, technicianId);
 
+        if (isCustomer) {
+            notificationUseCase.sendNotification(
+                    technicianId,
+                    "Khách hàng đã hẹn lịch",
+                    "Khách hàng đã đề xuất lịch hẹn vào ngày " + entity.getScheduledDate() + " lúc " + entity.getScheduledTime() + " cho yêu cầu #" + request.getId() + ".",
+                    "APPOINTMENT_REQUESTED",
+                    String.valueOf(request.getId()),
+                    "/tho/yeu-cau/" + request.getId()
+            );
+        } else {
+            notificationUseCase.sendNotification(
+                    customerId,
+                    "Thợ đề xuất lịch hẹn",
+                    "Thợ đã đề xuất lịch hẹn vào ngày " + entity.getScheduledDate() + " lúc " + entity.getScheduledTime() + " cho yêu cầu #" + request.getId() + ". Hãy vào xem và xác nhận!",
+                    "APPOINTMENT_REQUESTED",
+                    String.valueOf(request.getId()),
+                    "/yeu-cau/" + request.getId()
+            );
+        }
+
         return toResponse(entity, request);
     }
 
@@ -150,6 +171,15 @@ public class AppointmentService implements AppointmentUseCase {
         } catch (Exception e) {
             log.info("Deposit payment auto-creation on appointment approval info: {}", e.getMessage());
         }
+
+        notificationUseCase.sendNotification(
+                appointment.getTechnicianId(),
+                "Lịch hẹn đã được xác nhận!",
+                "Khách hàng đã xác nhận lịch hẹn vào ngày " + appointment.getScheduledDate() + " lúc " + appointment.getScheduledTime() + ". Vui lòng đến đúng giờ!",
+                "APPOINTMENT_CONFIRMED",
+                String.valueOf(appointment.getRepairRequestId()),
+                "/tho/yeu-cau/" + appointment.getRepairRequestId()
+        );
 
         return toResponse(appointment);
     }

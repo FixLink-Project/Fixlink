@@ -72,6 +72,9 @@ class RepairRequestServiceTest {
     @Mock
     private RepairRequestMapper repairRequestMapper;
 
+    @Mock
+    private com.fixlink.application.port.in.NotificationUseCase notificationUseCase;
+
     @InjectMocks
     private RepairRequestService service;
 

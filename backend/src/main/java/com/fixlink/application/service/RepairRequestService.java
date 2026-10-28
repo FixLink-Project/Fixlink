@@ -73,6 +73,7 @@ public class RepairRequestService implements RepairRequestUseCase {
     private final SpringDataUserRepository userRepo;
     private final SpringDataPaymentRepository paymentRepo;
     private final PaymentService paymentService;
+    private final com.fixlink.application.port.in.NotificationUseCase notificationUseCase;
     private final RepairRequestMapper repairRequestMapper;
 
     // ==================================================================================
@@ -410,6 +411,36 @@ public class RepairRequestService implements RepairRequestUseCase {
         }
 
         recordProgress(saved.getId(), currentStatus, targetStatus, progressNote, command.actorId());
+
+        if (targetStatus == RequestStatus.AWAITING_ACCEPTANCE) {
+            notificationUseCase.sendNotification(
+                    saved.getCustomerId(),
+                    "Thợ đã hoàn thành sửa chữa!",
+                    "Thợ đã hoàn thành công việc cho yêu cầu #" + saved.getId() + ". Mời bạn kiểm tra thiết bị và nghiệm thu thanh toán.",
+                    "AWAITING_ACCEPTANCE",
+                    String.valueOf(saved.getId()),
+                    "/yeu-cau/" + saved.getId()
+            );
+        } else if (targetStatus == RequestStatus.COMPLETED) {
+            notificationUseCase.sendNotification(
+                    saved.getCustomerId(),
+                    "Nghiệm thu thành công!",
+                    "Yêu cầu sửa chữa #" + saved.getId() + " đã hoàn tất. Cảm ơn bạn đã tin dùng FixLink!",
+                    "REQUEST_COMPLETED",
+                    String.valueOf(saved.getId()),
+                    "/yeu-cau/" + saved.getId()
+            );
+            if (saved.getTechnicianId() != null) {
+                notificationUseCase.sendNotification(
+                        saved.getTechnicianId(),
+                        "Khách hàng đã nghiệm thu công việc!",
+                        "Yêu cầu sửa chữa #" + saved.getId() + " đã hoàn tất. Tiền công (sau khi trừ 10% hoa hồng sàn) đã được ghi nhận vào ví của bạn.",
+                        "REQUEST_COMPLETED",
+                        String.valueOf(saved.getId()),
+                        "/tho/yeu-cau/" + saved.getId()
+                );
+            }
+        }
 
         log.info(">>> Yêu cầu {} chuyển trạng thái {} -> {} bởi user {} ({}). Ghi chú: {}",
                 saved.getRequestCode(), currentStatus, targetStatus, command.actorId(), command.actorRole(),
