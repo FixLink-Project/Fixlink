@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Alert from '../components/Alert';
 import Card from '../components/Card';
 import DashboardLayout from '../components/DashboardLayout';
@@ -30,6 +30,8 @@ interface MonthlyStatistics {
   respondedJobs: number;
   completedJobValueVnd: number;
   averageCompletedOrderVnd: number;
+  platformRevenueVnd?: number;
+  platformFeeRatePercent?: number;
   requestedGmvVnd?: number;
   acceptedGmvVnd?: number;
   jobsWithQuotes: number;
@@ -347,7 +349,21 @@ export default function AdminStatisticsPage() {
               <Card className="h-full"><p className="text-sm font-semibold text-slate-500">Giá trị job hoàn thành</p><p className="mt-2 font-display text-2xl font-extrabold text-slate-900">{currency(stats.completedJobValueVnd)}</p><p className="mt-2 text-xs leading-5 text-slate-400">Tổng giá thỏa thuận của {number(stats.completedJobs)} job đã hoàn thành.</p></Card>
               <Card className="h-full"><p className="text-sm font-semibold text-slate-500">Giá trị trung bình / job</p><p className="mt-2 font-display text-2xl font-extrabold text-slate-900">{currency(stats.averageCompletedOrderVnd)}</p><p className="mt-2 text-xs leading-5 text-slate-400">Tính trên các job hoàn thành trong kỳ.</p></Card>
             </div>
-            <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-5"><div><p className="text-sm font-semibold text-slate-700">Doanh thu phí nền tảng</p><p className="mt-1 text-xs leading-5 text-slate-500">Chưa có dữ liệu giao dịch hoặc phí hoa hồng được ghi nhận trong hệ thống.</p></div><span className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold text-slate-500">Chưa có dữ liệu</span></div>
+            <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/70 to-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <div>
+                <p className="text-sm font-bold text-emerald-950 flex items-center gap-1.5">
+                  <span>💼</span> Doanh thu phí nền tảng FixLink (Hoa hồng 10%)
+                </p>
+                <p className="mt-1 text-xs leading-5 text-emerald-800">
+                  {stats.platformRevenueVnd != null && stats.platformRevenueVnd > 0
+                    ? `Đã thu từ ${number(stats.completedJobs)} đơn hoàn thành trong kỳ (trích 10% hoa hồng trên ${currency(stats.completedJobValueVnd)}).`
+                    : 'Tự động trích 10% hoa hồng nền tảng khi khách hàng nghiệm thu hoàn tất đơn.'}
+                </p>
+              </div>
+              <span className="shrink-0 rounded-xl bg-emerald-600 px-4 py-2 text-base font-extrabold text-white shadow-xs">
+                {currency(stats.platformRevenueVnd ?? Math.round((stats.completedJobValueVnd ?? 0) * 0.1))}
+              </span>
+            </div>
             <Card className="mt-5" title="Xu hướng giá trị trung bình / job" description="AOV của job hoàn thành trong 6 tháng gần nhất.">
               {aovTrend.some((point) => point.value > 0) ? (() => { const max = Math.max(1, ...aovTrend.map((point) => point.value)); const left = 42; const right = 588; const top = 20; const bottom = 190; const x = (index: number) => left + index * ((right - left) / Math.max(1, aovTrend.length - 1)); const y = (value: number) => bottom - (value / max) * (bottom - top); const points = aovTrend.map((point, index) => `${x(index)},${y(point.value)}`).join(' '); return <div className="pt-3"><svg viewBox="0 0 620 220" className="h-52 w-full" role="img" aria-label="Biểu đồ đường AOV sáu tháng" preserveAspectRatio="xMidYMid meet">{[0, 1, 2, 3].map((line) => { const lineY = top + line * ((bottom - top) / 3); return <g key={line}><line x1={left} x2={right} y1={lineY} y2={lineY} stroke="#e2e8f0" strokeDasharray="4 5"/><text x={left - 8} y={lineY + 4} textAnchor="end" fontSize="10" fill="#94a3b8">{number(Math.round(max * (3 - line) / 3 / 100000) * 100000)}</text></g>; })}<polyline points={points} fill="none" stroke="#7c3aed" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />{aovTrend.map((point, index) => <g key={point.month}><circle cx={x(index)} cy={y(point.value)} r="5" fill="white" stroke="#7c3aed" strokeWidth="3"><title>{new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' }).format(monthDate(point.month))}: {currency(point.value)}</title></circle></g>)}</svg><div className="grid grid-cols-3 gap-2 text-center text-xs text-slate-500 sm:grid-cols-6">{aovTrend.map((point) => <span key={point.month} className="whitespace-nowrap">{new Intl.DateTimeFormat('vi-VN', { month: 'short' }).format(monthDate(point.month))}<span className="block font-semibold tabular-nums text-slate-700">{number(point.value ? Math.round(point.value / 1000) : 0)}k ₫</span></span>)}</div></div>; })() : <p className="py-8 text-center text-sm text-slate-500">Chưa có job hoàn thành để tính AOV.</p>}
             </Card>

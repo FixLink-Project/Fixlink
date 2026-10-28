@@ -94,11 +94,12 @@ export default function TechnicianCompletedJobsPage() {
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Doanh thu trang hiện tại
+              Thực nhận về ví (90%)
             </span>
-            <p className="font-display font-bold text-2xl text-brand mt-2">
-              {formatCurrency(totalRevenue)}
+            <p className="font-display font-bold text-2xl text-emerald-600 mt-2">
+              {formatCurrency(Math.round(totalRevenue * 0.9))}
             </p>
+            <span className="text-[11px] text-slate-400 mt-0.5 block">Tổng giá trị: {formatCurrency(totalRevenue)} (đã trừ 10% phí sàn)</span>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">

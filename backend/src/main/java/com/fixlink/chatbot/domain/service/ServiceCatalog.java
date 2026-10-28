@@ -13,41 +13,22 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 11 gói dịch vụ FixLink (khớp V2__seed_master_data.sql) và câu trả lời cho câu hỏi về giá, thời gian các gói:
+ * Các gói dịch vụ FixLink (dữ liệu mới nhất từ database qua LiveCatalog) và câu trả lời cho câu hỏi về giá, thời gian các gói:
  * rẻ nhất, đắt nhất, nhanh nhất, lâu nhất, dưới/trên một mức giá, các gói của một nhóm, giá một gói cụ thể.
  * Nhận câu đã chuẩn hóa (không dấu, chữ thường) có khoảng trắng hai đầu.
  */
 public final class ServiceCatalog {
 
-    public record Item(String group, String name, long price, int minutes, String note, List<String> keywords) { }
+    public record Item(String code, String group, String name, long price, int minutes, String note, List<String> keywords) { }
 
-    private static final Map<String, String> GROUP_NAMES = new LinkedHashMap<>();
-
-    static {
-        GROUP_NAMES.put("DIEN_LANH", "Sửa Chữa Điện Lạnh");
-        GROUP_NAMES.put("DIEN_NUOC", "Sửa Chữa Điện Nước");
-        GROUP_NAMES.put("DO_GIA_DUNG", "Sửa Điện Gia Dụng");
-        GROUP_NAMES.put("KHOA_CUA", "Sửa Khóa & Cửa Cuốn");
+    /** Gói dịch vụ hiện tại (đọc từ database qua {@link LiveCatalog}). */
+    private static List<Item> items() {
+        return LiveCatalog.items();
     }
 
-    public static final List<Item> ITEMS = List.of(
-            new Item("DIEN_LANH", "Vệ sinh máy lạnh treo tường (1.0–2.5 HP)", 150_000, 45, null,
-                    List.of("ve sinh may lanh", "ve sinh dieu hoa", "bao duong may lanh")),
-            new Item("DIEN_LANH", "Nạp ga máy lạnh R32/R410A trọn gói", 250_000, 30, null,
-                    List.of("nap ga", "bom ga", "het ga", "nap gas", "bom gas", "het gas")),
-            new Item("DIEN_LANH", "Kiểm tra & sửa tủ lạnh không lạnh/kêu to", 200_000, 60, null, List.of("tu lanh")),
-            new Item("DIEN_LANH", "Sửa máy giặt không vắt/báo lỗi bo mạch", 250_000, 60, null, List.of("may giat")),
-            new Item("DIEN_NUOC", "Thông nghẹt & xử lý rò rỉ đường ống nước", 180_000, 45, null,
-                    List.of("ong nuoc", "thong nghet", "thong tac", "bon rua", "thong cong", "cong nghet", "nghet cong")),
-            new Item("DIEN_NUOC", "Lắp đặt bồn cầu, lavabo, vòi hoa sen", 200_000, 60, null,
-                    List.of("bon cau", "lavabo", "voi sen", "voi hoa sen", "thiet bi ve sinh")),
-            new Item("DIEN_NUOC", "Dò tìm chập điện âm tường & nhảy CB", 300_000, 90, null,
-                    List.of("chap dien", "nhay cb", "aptomat", "cau dao")),
-            new Item("DO_GIA_DUNG", "Sửa bếp từ không nóng/chập nguồn báo lỗi", 200_000, 45, null, List.of("bep tu")),
-            new Item("DO_GIA_DUNG", "Sửa lò vi sóng không nóng/đánh lửa", 180_000, 40, null, List.of("lo vi song")),
-            new Item("KHOA_CUA", "Mở khóa cửa nhà/khóa phòng cấp tốc 24/7", 150_000, 30, "thợ có mặt sau 15–30 phút",
-                    List.of("mo khoa", "khoa cua", "khoa phong", "mat chia")),
-            new Item("KHOA_CUA", "Sửa cửa cuốn kẹt nan/hỏng motor", 350_000, 90, null, List.of("cua cuon")));
+    private static String groupName(String code) {
+        return LiveCatalog.categoryName(code);
+    }
 
     /** Câu hỏi về đơn, cọc, báo giá của thợ, khuyến mãi... không phải câu hỏi về bảng giá gói dịch vụ. */
     private static final Pattern OTHER_TOPIC = Pattern.compile(" (coc|dat coc|giam gia|khuyen mai|voucher|ma giam|uu dai|"
@@ -93,7 +74,7 @@ public final class ServiceCatalog {
             return Optional.empty();
         }
         List<Item> scope = scopeFor(padded);
-        boolean narrowed = scope.size() < ITEMS.size();
+        boolean narrowed = scope.size() < items().size();
         String where = narrowed ? scopeLabel(scope) : "trên FixLink";
         boolean asksService = ASKS_SERVICE.matcher(padded).find() || narrowed;
 
@@ -113,6 +94,11 @@ public final class ServiceCatalog {
         if (NAMES_SERVICE.matcher(padded).find() && ADVICE.matcher(padded).find() && !narrowed) {
             return Optional.of(advice());
         }
+        // "máy lạnh bị chảy nước, gợi ý dịch vụ": khách đã nêu thiết bị/sự cố thì gợi ý đúng gói theo bảng triệu chứng
+        if (narrowed && SUGGEST.matcher(padded).find() && SymptomClassifier.classify(padded.strip()).isPresent()) {
+            // Triệu chứng ngoài bảng ("đèn nháy", "báo lỗi"): không liệt kê cả nhóm, để AI chẩn đoán
+            return suggestion(padded, scope);
+        }
         if (narrowed && (PRICE_QUESTION.matcher(padded).find() || (scope.size() == 1 && padded.contains(" bao lau "))
                 || (NAMES_SERVICE.matcher(padded).find() && LIST_QUESTION.matcher(padded).find()))) {
             return Optional.of(listing(scope, padded));
@@ -120,11 +106,63 @@ public final class ServiceCatalog {
         return Optional.empty();
     }
 
+    /** Xin gợi ý/tư vấn gói cho sự cố vừa kể. */
+    private static final Pattern SUGGEST = Pattern.compile(" (goi y|tu van|nen dung|nen chon|nen dat|can dich vu|dich vu nao|"
+            + "dich vu gi|goi nao|dich vu phu hop|goi phu hop|sua the nao|nen sua|chon dich vu|chon goi) ");
+    /** Máy lạnh không mát/hết ga → nạp ga; chảy nước, có mùi, bẩn → vệ sinh (theo bảng triệu chứng FixLink). */
+    private static final Pattern AC_GAS = Pattern.compile(" (khong mat|khong lanh|gio nong|thoi nong|het ga|thieu ga|xi ga|nap ga) ");
+    private static final Pattern AC_CLEAN = Pattern.compile(" (chay nuoc|ri nuoc|ro nuoc|nho nuoc|mui hoi|co mui|bam bui|ve sinh) ");
+
+    /**
+     * Chỉ gợi ý gói cố định khi triệu chứng có trong bảng triệu chứng FixLink (máy lạnh chảy nước/có mùi → vệ sinh,
+     * không mát/hết ga → nạp ga; thiết bị có đúng một gói). Triệu chứng ngoài bảng (đèn nháy, báo lỗi, tự tắt...) để AI chẩn đoán.
+     */
+    private static Optional<String> suggestion(String padded, List<Item> scope) {
+        List<Item> picks;
+        String reason = null;
+        boolean airConditioner = padded.contains(" may lanh ") || padded.contains(" dieu hoa ");
+        Optional<Item> cleanItem = LiveCatalog.item("VE_SINH_MAY_LANH");
+        Optional<Item> gasItem = LiveCatalog.item("NAP_GA_R32");
+        if (airConditioner && cleanItem.isPresent() && gasItem.isPresent()) {
+            Item clean = cleanItem.get();
+            Item gas = gasItem.get();
+            boolean gasSymptom = AC_GAS.matcher(padded).find();
+            boolean cleanSymptom = AC_CLEAN.matcher(padded).find();
+            if (cleanSymptom && !gasSymptom) {
+                picks = List.of(clean, gas);
+                reason = "Máy lạnh **chảy nước hoặc có mùi** thường do dàn lạnh bẩn, tắc đường thoát nước, nên gói phù hợp nhất là "
+                        + "**Vệ sinh máy lạnh**. Nếu thợ kiểm tra thấy thiếu ga thì mới cần **Nạp ga**.";
+            } else if (gasSymptom && !cleanSymptom) {
+                picks = List.of(gas, clean);
+                reason = "Máy lạnh **không mát, thổi gió nóng** thường do thiếu ga hoặc dàn bẩn: thợ kiểm tra rồi **nạp ga** hoặc "
+                        + "**vệ sinh** tùy nguyên nhân.";
+            } else if (gasSymptom) {
+                picks = List.of(clean, gas);
+            } else {
+                return Optional.empty();
+            }
+        } else if (scope.size() == 1) {
+            picks = scope;
+        } else {
+            return Optional.empty();
+        }
+        StringBuilder sb = new StringBuilder("**Gói dịch vụ gợi ý cho sự cố của bạn** (nhóm ")
+                .append(groupName(picks.get(0).group())).append("):\n");
+        picks.forEach(i -> sb.append(line(i)).append('\n'));
+        sb.append('\n');
+        if (reason != null) {
+            sb.append(reason).append("\n\n");
+        }
+        sb.append(PRICE_NOTE).append(" Nếu khi khảo sát phát hiện hư hỏng khác, thợ gửi chi phí phát sinh để bạn duyệt trước khi sửa. ")
+                .append("Bạn cho mình biết **quận** và **khung giờ mong muốn** để mình hướng dẫn đăng yêu cầu nhé.");
+        return Optional.of(sb.toString());
+    }
+
     /** Các gói câu hỏi nhắc tới: gói cụ thể ("vệ sinh máy lạnh"), nhóm ("điện lạnh") hoặc thiết bị; không nhắc thì cả 11 gói. */
     private static List<Item> scopeFor(String padded) {
         // "vệ sinh 3 máy lạnh", "sửa cái tủ lạnh": bỏ số lượng và từ chỉ loại trước khi so tên gói
         String text = ITEM_FILLER.matcher(padded).replaceAll(" ").replaceAll(" +", " ");
-        List<Item> items = ITEMS.stream()
+        List<Item> items = items().stream()
                 .filter(i -> i.keywords().stream().anyMatch(k -> text.contains(" " + k + " ") || allWords(text, k)))
                 .toList();
         if (!items.isEmpty()) {
@@ -143,10 +181,10 @@ public final class ServiceCatalog {
             group = SymptomClassifier.classify(padded.strip()).map(SymptomClassifier.CategoryMatch::code).orElse(null);
         }
         if (group == null) {
-            return ITEMS;
+            return items();
         }
         String code = group;
-        return ITEMS.stream().filter(i -> i.group().equals(code)).toList();
+        return items().stream().filter(i -> i.group().equals(code)).toList();
     }
 
     /** Tên gói dài ("vệ sinh máy lạnh") khớp cả khi khách đảo thứ tự: "máy lạnh vệ sinh hết nhiêu". */
@@ -157,15 +195,15 @@ public final class ServiceCatalog {
 
     private static String scopeLabel(List<Item> scope) {
         String group = scope.get(0).group();
-        boolean wholeGroup = scope.equals(ITEMS.stream().filter(i -> i.group().equals(group)).toList());
-        return wholeGroup ?"nhóm **" + GROUP_NAMES.get(group) + "**" : "các gói bạn hỏi";
+        boolean wholeGroup = scope.equals(items().stream().filter(i -> i.group().equals(group)).toList());
+        return wholeGroup ?"nhóm **" + groupName(group) + "**" : "các gói bạn hỏi";
     }
 
     private static String byPrice(List<Item> scope, boolean cheapest, String where) {
         Comparator<Item> order = Comparator.comparingLong(Item::price);
         List<Item> sorted = scope.stream().sorted(cheapest ? order : order.reversed()).toList();
         StringBuilder sb = new StringBuilder();
-        if (scope.size() == ITEMS.size()) {
+        if (scope.size() == items().size()) {
             sb.append(cheapest ? "**Các gói có giá khởi điểm thấp nhất** " : "**Các gói có giá khởi điểm cao nhất** ")
                     .append(where).append(" (giá tham khảo · thời gian ước tính):\n\n");
             Map<Long, List<Item>> tiers = tiers(sorted, Item::price);
@@ -277,7 +315,7 @@ public final class ServiceCatalog {
         StringBuilder sb = new StringBuilder();
         if (hits.isEmpty()) {
             Item nearest = scope.stream().min(Comparator.comparingLong(i -> Math.min(Math.abs(i.price() - low),
-                    Math.abs(i.price() - Math.min(high, 10_000_000L))))).orElse(ITEMS.get(0));
+                    Math.abs(i.price() - Math.min(high, 10_000_000L))))).orElse(items().get(0));
             sb.append("Hiện ").append(where).append(" **chưa có gói nào có giá khởi điểm ").append(label).append("**. ")
                     .append("Gói gần nhất là ").append(nearest.name()).append(": ").append(money(nearest.price())).append(".\n\n");
         } else {
@@ -293,7 +331,7 @@ public final class ServiceCatalog {
         StringBuilder sb = new StringBuilder();
         if (scope.size() == 1) {
             Item i = scope.get(0);
-            sb.append("**").append(i.name()).append("** (nhóm ").append(GROUP_NAMES.get(i.group())).append("): giá khởi điểm **")
+            sb.append("**").append(i.name()).append("** (nhóm ").append(groupName(i.group())).append("): giá khởi điểm **")
                     .append(money(i.price())).append("** · ").append(duration(i)).append(".\n\n");
             int qty = quantity(padded);
             if (qty > 1) {
@@ -305,8 +343,8 @@ public final class ServiceCatalog {
             sb.append(label.startsWith("nhóm") ? "**Các gói của " + label.replace("**", "") + "**" : "**Các gói phù hợp với câu hỏi của bạn**")
                     .append(" (giá khởi điểm · thời gian ước tính):\n");
             scope.stream().sorted(Comparator.comparingLong(Item::price)).forEach(i -> sb.append(line(i)).append('\n'));
-            if ("DO_GIA_DUNG".equals(scope.get(0).group()) && scope.size() == 2) {
-                sb.append("- Máy hút mùi, nồi chiên không dầu, quạt điện: chưa có gói giá riêng, bạn đặt ngân sách khi đăng yêu cầu\n");
+            if (label.startsWith("nhóm")) {
+                sb.append("- Thiết bị khác trong nhóm này: chưa có gói giá riêng, bạn đặt ngân sách khi đăng yêu cầu\n");
             }
             sb.append('\n');
         }
@@ -315,17 +353,17 @@ public final class ServiceCatalog {
     }
 
     private static String advice() {
-        return """
+        return LiveCatalog.resolve("""
                 FixLink **không xếp hạng dịch vụ nào "tốt nhất"** và hiện chưa công bố thống kê dịch vụ được dùng nhiều nhất: \
                 gói phù hợp là gói đúng với thiết bị và sự cố của bạn. Ví dụ:
-                - Máy lạnh chảy nước, có mùi, lâu chưa vệ sinh → Vệ sinh máy lạnh (150.000 đ)
-                - Máy lạnh chạy nhưng không mát → Nạp ga máy lạnh (250.000 đ), thợ sẽ kiểm tra trước
-                - Ống nước rò rỉ, bồn rửa nghẹt → Thông nghẹt & xử lý rò rỉ (180.000 đ)
-                - Nhảy CB, chập điện → Dò tìm chập điện & nhảy CB (300.000 đ)
-                - Bị khóa ngoài cửa → Mở khóa cấp tốc 24/7 (150.000 đ)
+                - Máy lạnh chảy nước, có mùi, lâu chưa vệ sinh → Vệ sinh máy lạnh ({{PRICE:VE_SINH_MAY_LANH}})
+                - Máy lạnh chạy nhưng không mát → Nạp ga máy lạnh ({{PRICE:NAP_GA_R32}}), thợ sẽ kiểm tra trước
+                - Ống nước rò rỉ, bồn rửa nghẹt → Thông nghẹt & xử lý rò rỉ ({{PRICE:SUA_ONG_NUOC}})
+                - Nhảy CB, chập điện → Dò tìm chập điện & nhảy CB ({{PRICE:SUA_CHAP_DIEN}})
+                - Bị khóa ngoài cửa → Mở khóa cấp tốc 24/7 ({{PRICE:MO_KHOA_CAP_TOC}})
 
                 Bạn mô tả thiết bị và hiện tượng, mình gợi ý đúng gói và hướng dẫn đăng yêu cầu nhé. Thợ đã xác minh danh tính (KYC) \
-                sẽ gửi báo giá, bạn so sánh đánh giá, giá và tự chọn thợ.""";
+                sẽ gửi báo giá, bạn so sánh đánh giá, giá và tự chọn thợ.""");
     }
 
     private static int quantity(String padded) {

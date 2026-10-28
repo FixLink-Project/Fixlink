@@ -7,6 +7,11 @@ import org.junit.jupiter.api.Test;
 
 class SymptomClassifierTest {
 
+    @org.junit.jupiter.api.BeforeEach
+    void resetLiveCatalog() {
+        com.fixlink.chatbot.domain.service.LiveCatalog.reset();
+    }
+
     @Test
     @DisplayName("Hiểu viết tắt: 'tl' là tủ lạnh (Điện lạnh), không phải tivi")
     void shouldClassifyAbbreviatedDevices() {

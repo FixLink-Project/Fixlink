@@ -20,6 +20,11 @@ import org.junit.jupiter.api.Test;
 
 class OfflinePersonalResponderTest {
 
+    @org.junit.jupiter.api.BeforeEach
+    void resetLiveCatalog() {
+        com.fixlink.chatbot.domain.service.LiveCatalog.reset();
+    }
+
     private ChatbotToolPort toolPort;
     private OfflinePersonalResponder responder;
 
@@ -48,6 +53,27 @@ class OfflinePersonalResponderTest {
     }
 
     @Test
+    @DisplayName("Quản trị viên hỏi số thợ đang hoạt động, hồ sơ chờ duyệt: trả lời bằng số liệu thật, đúng trọng tâm")
+    void shouldAnswerAdminStatistics() {
+        when(toolPort.executeTool(eq("get_admin_overview"), anyMap(), any(), any(), any()))
+                .thenReturn(new ToolExecutionResult("""
+                        {"technicians":{"total":5,"active":3,"pendingApproval":1,"pendingKyc":1,"blocked":0},
+                         "customers":{"total":7,"active":7,"blocked":0},"allUsers":13,"pendingApprovalAll":1,"pendingKycAll":1,
+                         "thisMonth":{"month":"2026-10","jobsCreated":29,"jobsAccepted":10,"completedJobs":4,"cancelledJobs":2,
+                         "quotesCreated":12,"activeTechnicians":3,"completedJobValueText":"1.200.000 đ","platformRevenueText":"120.000 đ",
+                         "averageRating":4.75,"reviewCount":4}}
+                        """, false));
+
+        assertThat(responder.answer("hiện tại có bao nhiêu thợ đang hoạt động", 1L, "ADMIN").orElseThrow().reply())
+                .startsWith("Hiện có **3** thợ **đang hoạt động** (trên tổng **5** tài khoản thợ)");
+        assertThat(responder.answer("có bao nhiêu hồ sơ chờ duyệt", 1L, "ADMIN").orElseThrow().reply())
+                .contains("**1** tài khoản **chờ duyệt KYC**");
+        assertThat(responder.answer("doanh thu tháng này", 1L, "ADMIN").orElseThrow().reply())
+                .contains("120.000 đ").contains("tháng 10/2026");
+        assertThat(responder.answer("duyệt hồ sơ thợ ở đâu", 1L, "ADMIN")).isEmpty();
+    }
+
+    @Test
     @DisplayName("Hỏi đã cọc chưa: trả lời theo trạng thái thật (Đã chọn thợ = chưa cọc, Đã đặt cọc trở đi = đã cọc)")
     void shouldTellWhetherDepositIsPaid() {
         when(toolPort.executeTool(eq("get_repair_request_status"), anyMap(), any(), any(), any()))
@@ -65,12 +91,15 @@ class OfflinePersonalResponderTest {
     void shouldAnswerTechnicianRatingAndToday() {
         when(toolPort.executeTool(eq("get_my_technician_status"), anyMap(), any(), any(), any()))
                 .thenReturn(new ToolExecutionResult("{\"fullName\":\"Lê Minh\",\"verificationStatus\":\"APPROVED\","
-                        + "\"verificationLabel\":\"Đã duyệt\",\"completedJobs\":12,\"avgRating\":\"4.8\"}", false));
+                        + "\"verificationLabel\":\"Đã duyệt\",\"completedJobs\":12,\"avgRating\":\"4.8\","
+                        + "\"walletBalanceText\":\"-45.000 đ\",\"walletNegative\":true}", false));
         when(toolPort.executeTool(eq("get_my_appointments"), anyMap(), any(), any(), any()))
                 .thenReturn(new ToolExecutionResult("{\"totalAppointments\":0,\"appointments\":[]}", false));
 
         assertThat(responder.answer("đánh giá trung bình của tôi bao nhiêu", 9L, "TECHNICIAN").orElseThrow().reply())
                 .contains("4.8").contains("12");
+        assertThat(responder.answer("số dư ví của tôi bao nhiêu", 9L, "TECHNICIAN").orElseThrow().reply())
+                .contains("-45.000 đ").contains("tạm âm");
         assertThat(responder.answer("việc của tôi hôm nay", 9L, "TECHNICIAN")).isPresent();
         verify(toolPort).executeTool(eq("get_my_appointments"), anyMap(), any(), any(), any());
     }

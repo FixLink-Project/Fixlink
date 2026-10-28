@@ -2,6 +2,7 @@ package com.fixlink.application.service;
 
 import com.fixlink.adapter.in.web.dto.response.AcceptQuotationResponse;
 import com.fixlink.adapter.in.web.dto.response.QuotationResponse;
+import com.fixlink.adapter.out.persistence.entity.AppointmentJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.QuotationJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.RepairRequestJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.TechnicianProfileJpaEntity;
@@ -9,6 +10,7 @@ import com.fixlink.adapter.out.persistence.repository.*;
 import com.fixlink.application.port.in.QuotationUseCase;
 import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.exception.ResourceNotFoundException;
+import com.fixlink.domain.model.AppointmentStatus;
 import com.fixlink.domain.model.QuotationStatus;
 import com.fixlink.domain.model.RequestStatus;
 import com.fixlink.domain.model.VerificationStatus;
@@ -31,6 +33,7 @@ public class QuotationService implements QuotationUseCase {
     private final SpringDataQuotationRepository quotationRepo;
     private final SpringDataRepairRequestRepository requestRepo;
     private final SpringDataTechnicianProfileRepository techProfileRepo;
+    private final SpringDataAppointmentRepository appointmentRepo;
     private final RepairRequestService repairRequestService;
 
     // ==================================================================================
@@ -446,6 +449,17 @@ public class QuotationService implements QuotationUseCase {
 
         String techName = techProfileRepo.findById(targetQuote.getTechnicianId())
                 .map(TechnicianProfileJpaEntity::getFullName).orElse("Thợ mới");
+
+        // Hủy toàn bộ lịch hẹn cũ chưa hoàn thành của thợ trước đó để tránh kẹt luồng và thợ mới tự ý khảo sát
+        List<AppointmentJpaEntity> oldAppointments = appointmentRepo.findByRepairRequestIdOrderByScheduledDateAscScheduledTimeAsc(requestId);
+        for (AppointmentJpaEntity appt : oldAppointments) {
+            if (appt.getStatus() != AppointmentStatus.COMPLETED && appt.getStatus() != AppointmentStatus.CANCELLED) {
+                appt.setStatus(AppointmentStatus.CANCELLED);
+                appt.setCancelReason("Hệ thống tự động hủy lịch cũ do khách hàng đổi sang kỹ thuật viên khác (" + techName + ")");
+                appt.setUpdatedBy(customerId);
+                appointmentRepo.save(appt);
+            }
+        }
 
         repairRequestService.recordProgress(requestId, oldStatus, newStatus,
                 "Khách hàng đã đổi sang thợ " + techName, customerId);

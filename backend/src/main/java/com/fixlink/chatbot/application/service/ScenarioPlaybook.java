@@ -1,5 +1,6 @@
 package com.fixlink.chatbot.application.service;
 
+import com.fixlink.chatbot.domain.service.LiveCatalog;
 import com.fixlink.chatbot.domain.service.SymptomClassifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -73,7 +74,8 @@ public class ScenarioPlaybook {
                     "tra ngoai", "tra truc tiep cho tho", "thay linh kien", "mua linh kien", "bao gia them", "len gia"),
                     "Chi phí phát sinh/thợ đòi thêm tiền. Quy định: thợ phải gửi đề xuất chi phí mới trên hệ thống (đơn sang Chờ duyệt chi phí phát sinh), "
                             + "khách xem giải trình rồi Đồng ý (khoản phát sinh cộng vào đợt thanh toán cuối, tiền cọc KHÔNG tính lại) hoặc không đồng ý thì bấm 'Từ chối giá & Đổi thợ khác' hoặc hủy đơn. "
-                            + "Thợ không được sửa phần phát sinh khi khách chưa đồng ý. Tuyệt đối không trả tiền mặt/chuyển khoản riêng ngoài hệ thống; "
+                            + "Thợ không được sửa phần phát sinh khi khách chưa đồng ý. Khách chỉ trả đúng số tiền hệ thống hiển thị: cọc qua QR; "
+                            + "phần còn lại trả QR hoặc tiền mặt cho thợ rồi bấm 'Xác nhận đã gửi tiền mặt'. Không trả thêm/chuyển khoản riêng ngoài hệ thống; "
                             + "bị ép trả ngoài → tạo phiếu hỗ trợ Critical."),
 
             new Scenario("change_technician", List.of("doi tho", "chon tho", "tho khac", "khong muon tho nay", "chi dinh tho", "tho quen",
@@ -124,7 +126,7 @@ public class ScenarioPlaybook {
             new Scenario("out_of_scope_device", List.of("sua dien thoai", "dien thoai bi", "dien thoai hong", "iphone", "samsung galaxy", "laptop", "may tinh", "pc", "macbook",
                     "xe may", "o to", "xe hoi", "xe dap", "dong ho", "camera", "may anh", "xay nha", "son nha", "chong tham", "op lat",
                     "may in", "router", "wifi", "game"),
-                    "Thiết bị/dịch vụ có thể nằm ngoài phạm vi. FixLink chỉ có 4 danh mục: Điện lạnh, Điện nước, Điện gia dụng, Khóa & Cửa cuốn. "
+                    "Thiết bị/dịch vụ có thể nằm ngoài phạm vi. FixLink hiện có {{CATEGORY_COUNT}} danh mục: {{CATEGORY_NAMES}}. Thiết bị thuộc một danh mục này thì ĐƯỢC hỗ trợ. "
                             + "Điện thoại, laptop/máy tính, xe, xây sửa nhà, sơn, chống thấm... KHÔNG thuộc phạm vi → nói rõ là FixLink chưa hỗ trợ. "
                             + "Thiết bị điện gia dụng khác chưa có gói riêng (tivi, loa, máy hút bụi...) → có thể đăng ở danh mục Điện gia dụng và tự đặt ngân sách, "
                             + "nhưng nói rõ không có gói giá tham khảo riêng."),
@@ -164,8 +166,9 @@ public class ScenarioPlaybook {
                     "khach huy don", "khach khong co nha", "khach bung", "khach khong tra tien", "khach doi giam gia", "danh gia thap",
                     "bi tu choi kyc", "ho so bi tu choi", "chua duoc duyet", "khong thay viec"),
                     "Câu hỏi nghiệp vụ của THỢ. Được nói: chỉ gửi báo giá khi KYC APPROVED, khớp chuyên môn + khu vực, đơn OPEN còn hạn; mỗi đơn một báo giá, sửa/rút khi còn chờ duyệt, thấy giá đối thủ ẩn danh; khách chọn thì các báo giá khác bị từ chối; được chọn phải đặt lịch hẹn trước khi khảo sát; "
-                            + "tiền công giải ngân vào ví khi khách nghiệm thu; phát sinh phải gửi đề xuất cho khách duyệt; khách vắng nhà → liên hệ khách, dời lịch "
-                            + "hoặc hủy lịch hẹn kèm lý do, cần thì tạo phiếu hỗ trợ. CHƯA công bố: tỷ lệ hoa hồng, cách rút tiền từ ví. "
+                            + "khi khách nghiệm thu, FixLink trích 10% phí nền tảng trên giá chốt và cộng 90% vào Ví FixLink của thợ (khách trả tiền mặt "
+                            + "thì ví có thể tạm âm, cấn trừ vào đơn sau); phát sinh phải gửi đề xuất cho khách duyệt, cần linh kiện thì hẹn lại ngày thi công; "
+                            + "khách vắng nhà → liên hệ khách, dời lịch hoặc hủy lịch hẹn kèm lý do, cần thì tạo phiếu hỗ trợ. CHƯA công bố: cách rút tiền từ ví. "
                             + "Thợ đã đăng nhập → gọi get_my_technician_status / find_matching_jobs để trả lời bằng dữ liệu thật. "
                             + "Muốn được chọn nhiều hơn: báo giá hợp lý, ghi rõ phương án, giữ điểm đánh giá tốt, đăng ký đúng chuyên môn và mở rộng khu vực hoạt động."),
 
@@ -210,7 +213,7 @@ public class ScenarioPlaybook {
             facts.append(". Dùng đúng danh mục này khi tư vấn và khi gọi prepare_repair_request.");
             result.add(facts.toString());
         });
-        return result;
+        return result.stream().map(LiveCatalog::resolve).toList();
     }
 
     /** Mã các kịch bản khớp với tin nhắn (dùng cho logic leo thang sang nhân viên). */
@@ -243,7 +246,7 @@ public class ScenarioPlaybook {
                     + "để tiếp tục đúng luồng tư vấn (không hỏi lại điều khách đã trả lời).");
         } else if (mentionsBroken && !mentionsDevice && result.size() < MAX_SCENARIOS + 1) {
             result.add("Khách báo hỏng nhưng CHƯA nói thiết bị. Đừng đoán. Hỏi ngắn: thiết bị nào bị hỏng và hiện tượng cụ thể; "
-                    + "gợi ý 4 nhóm FixLink hỗ trợ (Điện lạnh, Điện nước, Điện gia dụng, Khóa & Cửa cuốn) để khách chọn.");
+                    + "gợi ý {{CATEGORY_COUNT}} nhóm FixLink hỗ trợ ({{CATEGORY_NAMES}}) để khách chọn.");
         } else if (mentionsDevice && result.size() < MAX_SCENARIOS + 1) {
             result.add("Luồng TƯ VẤN ĐẶT THỢ: (1) nêu 2–4 nguyên nhân thường gặp + bước kiểm tra an toàn; (2) gọi suggest_category để chốt danh mục "
                     + "và list_services để báo giá tham khảo; (3) hỏi thông tin còn thiếu (tối đa 2 câu/lượt): hãng/model hoặc tuổi máy, quận, khung giờ mong muốn; "
@@ -252,7 +255,7 @@ public class ScenarioPlaybook {
             result.add("Câu hỏi quá ngắn hoặc chưa rõ ý. Không trả lời chung chung cho có: đoán ý gần nhất nếu hợp lý, đồng thời hỏi lại 1 câu "
                     + "và đưa 3–4 lựa chọn cụ thể (tư vấn sửa thiết bị, giá/cọc, đăng yêu cầu, tra cứu đơn/lịch hẹn, gặp nhân viên) qua suggestions.");
         }
-        return result;
+        return result.stream().map(LiveCatalog::resolve).toList();
     }
 
     private boolean isVague(String paddedText) {

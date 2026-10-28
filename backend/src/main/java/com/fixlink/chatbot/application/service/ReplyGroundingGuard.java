@@ -21,7 +21,7 @@ public class ReplyGroundingGuard {
     private static final Logger LOG = LoggerFactory.getLogger(ReplyGroundingGuard.class);
 
     /** Tỷ lệ có thật trong quy định FixLink: cọc 30%, tất toán 70%. */
-    private static final Set<String> KNOWN_PERCENTAGES = Set.of("30", "70", "100");
+    private static final Set<String> KNOWN_PERCENTAGES = Set.of("10", "30", "70", "90", "100");
 
     private static final Pattern PHONE = Pattern.compile(
             "(?<![\\d.])(?:\\+?84|0)(?:[\\s.-]?\\d){8,10}(?![\\d])|(?<!\\d)1[89]00(?:[\\s.-]?\\d){4,6}(?!\\d)");

@@ -1,15 +1,18 @@
 package com.fixlink.chatbot.adapter.out.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fixlink.application.port.in.AdminStatisticsUseCase;
 import com.fixlink.application.port.in.AppointmentUseCase;
 import com.fixlink.application.port.in.MasterDataUseCase;
 import com.fixlink.application.port.in.QuotationUseCase;
 import com.fixlink.application.port.in.RepairRequestUseCase;
 import com.fixlink.application.port.in.TechnicianUseCase;
+import com.fixlink.application.port.in.UserManagementUseCase;
 import com.fixlink.chatbot.adapter.out.rag.InMemoryRagIndex;
 import com.fixlink.chatbot.application.port.in.SupportTicketUseCase;
 import com.fixlink.chatbot.application.port.out.ChatbotToolPort;
@@ -28,6 +31,7 @@ class NativeChatbotToolAdapterTest {
     private TechnicianUseCase technicianUseCase;
     private AppointmentUseCase appointmentUseCase;
     private SupportTicketUseCase supportTicketUseCase;
+    private UserManagementUseCase userManagementUseCase;
     private InMemoryRagIndex ragIndex;
     private ObjectMapper objectMapper;
 
@@ -40,6 +44,7 @@ class NativeChatbotToolAdapterTest {
         technicianUseCase = mock(TechnicianUseCase.class);
         appointmentUseCase = mock(AppointmentUseCase.class);
         supportTicketUseCase = mock(SupportTicketUseCase.class);
+        userManagementUseCase = mock(UserManagementUseCase.class);
         ragIndex = mock(InMemoryRagIndex.class);
         objectMapper = new ObjectMapper();
 
@@ -50,6 +55,8 @@ class NativeChatbotToolAdapterTest {
                 appointmentUseCase,
                 supportTicketUseCase,
                 mock(QuotationUseCase.class),
+                userManagementUseCase,
+                mock(AdminStatisticsUseCase.class),
                 ragIndex,
                 objectMapper
         );
@@ -69,10 +76,35 @@ class NativeChatbotToolAdapterTest {
     }
 
     @Test
-    @DisplayName("Cung cấp đầy đủ định nghĩa 15 công cụ chuẩn Gemini API")
+    @DisplayName("Tổng quan quản trị: chỉ ADMIN xem được, đếm người dùng đúng theo vai trò và trạng thái")
+    void shouldGiveAdminOverviewOnlyToAdmin() throws Exception {
+        when(userManagementUseCase.getUsers(any())).thenAnswer(inv -> {
+            UserManagementUseCase.UserQuery q = inv.getArgument(0);
+            long total = switch (q.role() + "/" + q.status()) {
+                case "TECHNICIAN/ALL" -> 5;
+                case "TECHNICIAN/ACTIVE" -> 3;
+                case "TECHNICIAN/PENDING" -> 1;
+                case "CUSTOMER/ALL" -> 7;
+                default -> 0;
+            };
+            return new UserManagementUseCase.UserPageResult(List.of(), 1, 1, total, 1);
+        });
+
+        ChatbotToolPort.ToolExecutionResult denied = toolAdapter.executeTool("get_admin_overview", Map.of(), 2L, "CUSTOMER", null);
+        assertThat(denied.isError()).isTrue();
+
+        ChatbotToolPort.ToolExecutionResult ok = toolAdapter.executeTool("get_admin_overview", Map.of(), 1L, "ADMIN", null);
+        var node = objectMapper.readTree(ok.content());
+        assertThat(node.path("technicians").path("active").asLong()).isEqualTo(3);
+        assertThat(node.path("technicians").path("pendingKyc").asLong()).isEqualTo(1);
+        assertThat(node.path("customers").path("total").asLong()).isEqualTo(7);
+    }
+
+    @Test
+    @DisplayName("Cung cấp đầy đủ định nghĩa 16 công cụ chuẩn Gemini API")
     void shouldProvideAllToolDeclarations() {
         List<Map<String, Object>> tools = toolAdapter.getToolDeclarations();
-        assertThat(tools).hasSize(15);
+        assertThat(tools).hasSize(16);
 
         List<String> toolNames = tools.stream()
                 .map(t -> (String) t.get("name"))

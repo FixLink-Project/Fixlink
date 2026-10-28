@@ -62,8 +62,7 @@ export default function TechnicianDashboardPage() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [togglingOnline, setTogglingOnline] = useState(false);
-  const [onlineError, setOnlineError] = useState<string | null>(null);
+  // Đã gỡ bỏ toggle online theo luồng đấu giá mở
 
   const [matching, setMatching] = useState<RepairRequest[]>([]);
   const [matchingMeta, setMatchingMeta] = useState<PageMeta | null>(null);
@@ -187,26 +186,6 @@ export default function TechnicianDashboardPage() {
     loadMatching(1, '', '');
   };
 
-  async function handleToggleOnline() {
-    if (!profile) return;
-    setOnlineError(null);
-    setTogglingOnline(true);
-    try {
-      const res = await api.patch<TechnicianProfile>('/technicians/me/status/online', {
-        isOnline: !profile.isOnline
-      });
-      setProfile((current) => (current ? { ...current, isOnline: res.data.isOnline } : current));
-    } catch (err) {
-      setOnlineError(
-        err instanceof ApiError ? err.message : 'Không đổi được trạng thái. Thử lại sau.'
-      );
-    } finally {
-      setTogglingOnline(false);
-    }
-  }
-
-
-
   const approved = profile?.verificationStatus === 'APPROVED';
   const notice = profile ? VERIFICATION_NOTICE[profile.verificationStatus] : null;
   const missingCoverage =
@@ -216,7 +195,7 @@ export default function TechnicianDashboardPage() {
     <DashboardLayout
       nav={TECHNICIAN_NAV}
       title="Bảng điều khiển thợ"
-      description="Theo dõi trạng thái hồ sơ, bật tắt nhận việc và xem yêu cầu sửa chữa gửi tới bạn."
+      description="Theo dõi số dư ví, quản lý công việc đang thực hiện và tham gia đấu giá nhận việc mới."
       actions={profile && <StatusChip status={profile.verificationStatus} />}
     >
       {status === 'loading' && (
@@ -281,39 +260,29 @@ export default function TechnicianDashboardPage() {
                   💰
                 </span>
               </dt>
-              <dd className="mt-3 font-display text-2xl font-bold text-slate-900">
+              <dd className={`mt-3 font-display text-2xl font-bold ${profile.walletBalance < 0 ? 'text-amber-600' : 'text-slate-900'}`}>
                 {formatCurrency(profile.walletBalance)}
               </dd>
             </div>
           </dl>
 
-          <Card
-            title="Nhận yêu cầu sửa chữa"
-            description={
-              approved
-                ? 'Bật lên khi bạn đang rảnh. Tắt đi thì khách không nhìn thấy bạn nữa.'
-                : 'Mở khoá sau khi quản trị viên xác minh hồ sơ.'
-            }
-            actions={
-              <Button
-                variant={profile.isOnline ? 'secondary' : 'primary'}
-                loading={togglingOnline}
-                disabled={!approved}
-                onClick={handleToggleOnline}
-              >
-                {profile.isOnline ? '⏸ Tạm dừng nhận việc' : '▶ Bật nhận việc'}
-              </Button>
-            }
-          >
-            {onlineError && <Alert tone="error">{onlineError}</Alert>}
-            <p className="text-sm text-slate-600">
-              Trạng thái hiện tại:{' '}
-              <StatusChip
-                status={profile.isOnline ? 'ACTIVE' : 'INACTIVE'}
-                label={profile.isOnline ? 'Đang nhận việc' : 'Đang tạm dừng'}
-              />
-            </p>
-          </Card>
+          {/* CẢNH BÁO CÔNG NỢ VÍ ÂM THÂN THIỆN */}
+          {profile.walletBalance < 0 && (
+            <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 shadow-xs animate-fade-in">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">💡</span>
+                <div>
+                  <p className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                    Phí nền tảng tạm tính (Công nợ ví: {formatCurrency(profile.walletBalance)})
+                  </p>
+                  <p className="text-xs text-amber-900 mt-1 leading-relaxed">
+                    Bạn đang có số dư ví tạm âm do nhận tiền mặt trực tiếp từ khách hàng. Doanh thu từ các đơn hàng hoàn thành tiếp theo sẽ được tự động cấn trừ để cân bằng ví. Bạn vẫn có thể tiếp tục nhận việc bình thường!
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
 
           {/* Lọc riêng các công việc đang thực hiện (chưa hoàn thành và chưa hủy) */}
           {(() => {

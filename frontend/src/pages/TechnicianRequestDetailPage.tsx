@@ -52,6 +52,7 @@ export default function TechnicianRequestDetailPage() {
   const [newApptNotes, setNewApptNotes] = useState('');
   const [creatingAppt, setCreatingAppt] = useState(false);
   const [createApptError, setCreateApptError] = useState<string | null>(null);
+  const [showCancelledAppts, setShowCancelledAppts] = useState(false);
 
   // Thao tác vòng đời (Khảo sát, Sửa chữa, Nghiệm thu)
   const [updatingLifecycle, setUpdatingLifecycle] = useState(false);
@@ -62,6 +63,7 @@ export default function TechnicianRequestDetailPage() {
   const [extraCostReason, setExtraCostReason] = useState('');
   const [extraPartsCost, setExtraPartsCost] = useState<number>(150000);
   const [extraCostImages, setExtraCostImages] = useState<string[]>([]);
+  const [willRescheduleWithCost, setWillRescheduleWithCost] = useState(false);
 
   // Modal Hẹn lại ngày thi công (Luồng mới sau khảo sát: Cần chuẩn bị linh kiện/dụng cụ)
   const [showRescheduleRepairModal, setShowRescheduleRepairModal] = useState(false);
@@ -399,10 +401,11 @@ export default function TechnicianRequestDetailPage() {
           const isDeadlineExpired = req.applyDeadline ? new Date(req.applyDeadline).getTime() <= Date.now() : false;
 
           const activeAppointments = appointments.filter(
-            (a) => a.status !== 'CANCELLED' && a.status !== 'REJECTED'
+            (a) => a.technicianId === numericUserId && a.status !== 'CANCELLED' && a.status !== 'REJECTED'
           );
           const hasActiveAppointment = activeAppointments.length > 0;
           const latestAppt = activeAppointments[0];
+          const hasConfirmedAppointment = activeAppointments.some((a) => a.status === 'CONFIRMED');
 
           if (isAssignedToMe) {
             const isSwitchedOrder = detail.workProgress?.some(
@@ -579,6 +582,32 @@ export default function TechnicianRequestDetailPage() {
                             </Button>
                           </div>
                         </div>
+                      ) : !hasConfirmedAppointment ? (
+                        <div className="rounded-xl bg-amber-50/90 border border-amber-300 p-4 space-y-3">
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-xl">⏳</span>
+                            <div>
+                              <p className="text-xs font-bold text-amber-950">
+                                Lịch hẹn đang chờ khách hàng xác nhận ({latestAppt.scheduledTime?.slice(0, 5)} ngày {new Date(latestAppt.scheduledDate).toLocaleDateString('vi-VN')})
+                              </p>
+                              <p className="text-xs text-amber-900 mt-0.5 leading-relaxed">
+                                Bạn đã đề xuất lịch hẹn. Nút <strong>Bắt đầu khảo sát hiện trường</strong> sẽ tự động mở ngay sau khi khách hàng bấm đồng ý xác nhận cuộc hẹn này.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2.5">
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                setCreateApptError(null);
+                                setShowCreateApptModal(true);
+                              }}
+                              className="text-xs py-2 px-3 text-slate-700 bg-white"
+                            >
+                              📅 Đổi / Thêm lịch hẹn
+                            </Button>
+                          </div>
+                        </div>
                       ) : (
                         <div className="rounded-xl bg-teal-50/90 border border-teal-200/90 p-4 space-y-3">
                           <div className="flex items-start gap-2.5">
@@ -588,7 +617,7 @@ export default function TechnicianRequestDetailPage() {
                                 Khảo sát hiện trường (Đã có lịch hẹn & Đã cọc)
                               </p>
                               <p className="text-xs text-teal-800 mt-0.5 leading-relaxed">
-                                Lịch hẹn: <strong>{latestAppt.scheduledTime?.slice(0, 5)} ngày {new Date(latestAppt.scheduledDate).toLocaleDateString('vi-VN')}</strong>.
+                                Lịch hẹn đã được khách hàng xác nhận: <strong>{latestAppt.scheduledTime?.slice(0, 5)} ngày {new Date(latestAppt.scheduledDate).toLocaleDateString('vi-VN')}</strong>.
                                 Khi bạn đã có mặt tại nhà khách hàng theo lịch hẹn, hãy bấm bắt đầu khảo sát để ghi nhận mốc hiện trường.
                               </p>
                             </div>
@@ -713,6 +742,25 @@ export default function TechnicianRequestDetailPage() {
                             <span className="text-emerald-800 font-bold">{formatCurrency(remainingAfterAcceptance)}</span>
                           </div>
                         </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-amber-200/80">
+                          <span className="text-[11px] text-amber-900 italic">
+                            💡 Trong lúc chờ khách duyệt, bạn có thể thống nhất hẹn lại ngày thi công phù hợp.
+                          </span>
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setRescheduleRepairReason('Cần chuẩn bị linh kiện đã duyệt và hẹn lại ngày thi công');
+                              setNewRepairDate(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+                              setNewRepairTime('09:00');
+                              setRescheduleRepairNote('');
+                              setShowRescheduleRepairModal(true);
+                            }}
+                            className="text-xs py-1.5 px-3 border-amber-300 text-amber-900 bg-white hover:bg-amber-100 shadow-xs"
+                          >
+                            📅 Hẹn lại ngày thi công mới
+                          </Button>
+                        </div>
                       </div>
                     );
                   })()}
@@ -730,16 +778,31 @@ export default function TechnicianRequestDetailPage() {
                           </p>
                         </div>
                       </div>
-                      <Button
-                        variant="primary"
-                        onClick={() => {
-                          setAcceptanceNote('Đã hoàn thành sửa chữa, chạy thử nghiệm thiết bị hoạt động tốt và bàn giao.');
-                          setShowAcceptanceModal(true);
-                        }}
-                        className="w-full sm:w-auto text-xs py-2 px-4 shadow-sm bg-indigo-600 hover:bg-indigo-700"
-                      >
-                        📋 Báo cáo hoàn thành & Mời nghiệm thu
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            setAcceptanceNote('Đã hoàn thành sửa chữa, chạy thử nghiệm thiết bị hoạt động tốt và bàn giao.');
+                            setShowAcceptanceModal(true);
+                          }}
+                          className="text-xs py-2 px-4 shadow-sm bg-indigo-600 hover:bg-indigo-700"
+                        >
+                          📋 Báo cáo hoàn thành & Mời nghiệm thu
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setRescheduleRepairReason('Cần chuẩn bị linh kiện đã duyệt và hẹn lại ngày thi công');
+                            setNewRepairDate(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+                            setNewRepairTime('09:00');
+                            setRescheduleRepairNote('');
+                            setShowRescheduleRepairModal(true);
+                          }}
+                          className="text-xs py-2 px-4 border-indigo-300 text-indigo-900 bg-white hover:bg-indigo-50 shadow-xs"
+                        >
+                          📅 Hẹn lại ngày thi công (Chuẩn bị đồ nghề / linh kiện)
+                        </Button>
+                      </div>
                     </div>
                   )}
 
@@ -1041,22 +1104,30 @@ export default function TechnicianRequestDetailPage() {
 
           if (myQuote && myQuote.status === 'REJECTED') {
             return (
-              <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-5 shadow-sm space-y-3">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">ℹ️</span>
-                  <div>
-                    <h3 className="font-display font-bold text-amber-950 text-base">
-                      Đơn hàng đã được chuyển giao cho kỹ thuật viên khác
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-5 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🛠️</span>
+                    <h3 className="font-display font-bold text-slate-800 text-sm">
+                      Tiến độ đơn hàng: <span className="text-blue-700 font-bold">Đang xử lý</span>
                     </h3>
-                    <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-                      Khách hàng đã lựa chọn đổi sang kỹ thuật viên khác để tiếp tục xử lý công việc (do không thống nhất được chi phí phát sinh hoặc thay đổi kế hoạch).
-                    </p>
                   </div>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                    Đang xử lý
+                  </span>
                 </div>
-                <div className="rounded-xl bg-white border border-amber-200 p-3.5 text-xs text-slate-700 space-y-1.5 leading-relaxed">
-                  <p className="font-semibold text-slate-900">• Báo giá của bạn đã chính thức kết thúc tại đơn hàng này.</p>
-                  <p>• Nếu bạn đã tháo máy kiểm tra tại hiện trường, vui lòng hỗ trợ khách hàng lắp ráp lại nguyên trạng thiết bị.</p>
-                  <p>• Bạn có thể quay lại <strong>Sàn việc</strong> để tiếp tục nhận và nộp báo giá cho các đơn sửa chữa mới trong khu vực.</p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Đơn hàng đang trong tiến trình triển khai thực hiện. Báo giá của bạn ({formatCurrency(myQuote.totalPrice || myQuote.priceLaborVnd || 0)}) đã được ghi nhận trong hệ thống.
+                </p>
+                <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-500">
+                    Bạn có thể quay lại sàn việc để nộp báo giá cho các đơn mới trong khu vực.
+                  </span>
+                  <Link to="/tho">
+                    <Button variant="secondary" className="text-xs py-1 px-3">
+                      Quay lại sàn việc
+                    </Button>
+                  </Link>
                 </div>
               </div>
             );
@@ -1071,57 +1142,95 @@ export default function TechnicianRequestDetailPage() {
           );
         })()}
 
-        {/* Lịch hẹn làm việc / khảo sát (Chỉ hiển thị khi đã chốt thợ, ẩn hoàn toàn khi đang đấu giá) */}
+        {/* Lịch hẹn làm việc / khảo sát (Chỉ hiển thị cho thợ phụ trách, ẩn khi đang đấu giá hoặc thợ khác xem) */}
         {(() => {
           const numericUserId = parseNumericUserId(user?.id);
           const isAssignedToOther = detail.request.technicianId && numericUserId && detail.request.technicianId !== numericUserId;
           const isOpenForBidding = req.status === 'OPEN' || req.status === 'BIDDING_OPEN';
 
-          // Khi đang đấu giá: ẨN HOÀN TOÀN khối đặt lịch hẹn
-          if (isOpenForBidding) return null;
+          // Khi đang đấu giá hoặc đơn do thợ khác phụ trách: Ẩn hoàn toàn khối lịch hẹn để tránh gây rối
+          if (isOpenForBidding || isAssignedToOther) return null;
 
           return (
             <Card
               title="Lịch hẹn khảo sát & thi công"
               description="Quản lý vòng đời trạng thái cuộc hẹn giữa bạn và khách hàng."
               actions={
-                !isAssignedToOther ? (
-                  <Button
-                    variant="primary"
-                    className="min-h-[36px] px-3.5 py-1 text-xs"
-                    onClick={() => {
-                      setCreateApptError(null);
-                      setShowCreateApptModal(true);
-                    }}
-                  >
-                    + Đặt lịch hẹn mới
-                  </Button>
-                ) : undefined
+                <Button
+                  variant="primary"
+                  className="min-h-[36px] px-3.5 py-1 text-xs"
+                  onClick={() => {
+                    setCreateApptError(null);
+                    setShowCreateApptModal(true);
+                  }}
+                >
+                  + Đặt lịch hẹn mới
+                </Button>
               }
             >
-              {isAssignedToOther && (
-                <div className="mb-3 rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
-                  ⚠️ Đơn hàng này đang được phụ trách bởi một kỹ thuật viên khác. Bạn đang xem với quyền chỉ đọc.
-                </div>
-              )}
               {appointments.length === 0 ? (
                 <div className="py-6 text-center text-slate-500 text-sm">
-                  {isAssignedToOther
-                    ? 'Chưa có lịch hẹn nào được thiết lập cho đơn này.'
-                    : 'Chưa có lịch hẹn nào được thiết lập cho đơn này. Bấm nút + Đặt lịch hẹn mới để hẹn thời gian tới nhà khách hàng.'}
+                  Chưa có lịch hẹn nào được thiết lập cho đơn này. Bấm nút + Đặt lịch hẹn mới để hẹn thời gian tới nhà khách hàng.
                 </div>
-              ) : (
-                <div className="space-y-4 my-2">
-                  {appointments.map((appt) => (
-                    <AppointmentCard
-                      key={appt.id}
-                      appointment={appt}
-                      currentUserRole="TECHNICIAN"
-                      onUpdated={loadDetail}
-                    />
-                  ))}
-                </div>
-              )}
+              ) : (() => {
+                const activeList = appointments.filter((a) => a.status !== 'CANCELLED' && a.status !== 'REJECTED');
+                const cancelledList = appointments.filter((a) => a.status === 'CANCELLED' || a.status === 'REJECTED');
+
+                return (
+                  <div className="space-y-4 my-2">
+                    {activeList.length === 0 && (
+                      <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span>ℹ️</span>
+                          <span>Hiện chưa có lịch hẹn mới nào đang chờ. Bạn có thể bấm <strong>+ Đặt lịch hẹn mới</strong> ở góc trên để hẹn ngày khảo sát/thi công với khách.</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeList.map((appt) => (
+                      <AppointmentCard
+                        key={appt.id}
+                        appointment={appt}
+                        currentUserRole="TECHNICIAN"
+                        requestStatus={detail.request.status}
+                        onUpdated={loadDetail}
+                      />
+                    ))}
+
+                    {cancelledList.length > 0 && (
+                      <div className="pt-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setShowCancelledAppts(!showCancelledAppts)}
+                          className="flex items-center justify-between w-full p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors text-xs font-semibold"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span>📋</span>
+                            <span>Lịch hẹn cũ đã hủy ({cancelledList.length})</span>
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            {showCancelledAppts ? '▲ Thu gọn' : '▼ Xem chi tiết'}
+                          </span>
+                        </button>
+
+                        {showCancelledAppts && (
+                          <div className="mt-3 space-y-3 pl-2 border-l-2 border-slate-200">
+                            {cancelledList.map((appt) => (
+                              <AppointmentCard
+                                key={appt.id}
+                                appointment={appt}
+                                currentUserRole="TECHNICIAN"
+                                requestStatus={detail.request.status}
+                                onUpdated={loadDetail}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </Card>
           );
         })()}
@@ -1269,7 +1378,7 @@ export default function TechnicianRequestDetailPage() {
       {/* Modal Báo giá phát sinh khi Khảo sát */}
       {showCostApprovalModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-scale-in max-h-[88vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-900 text-base flex items-center gap-1.5">
                 <span>⚠️</span> Báo giá phát sinh sau khảo sát
@@ -1291,6 +1400,21 @@ export default function TechnicianRequestDetailPage() {
                     await attachRequestMedia(detail.request.id, extraCostImages);
                   } catch (err) {
                     console.warn('Attach media warning:', err);
+                  }
+                }
+                if (willRescheduleWithCost && newRepairDate) {
+                  try {
+                    const numericUserId = parseNumericUserId(user?.id) ?? undefined;
+                    await createAppointment({
+                      repairRequestId: detail.request.id,
+                      technicianId: numericUserId,
+                      appointmentType: 'REPAIR',
+                      scheduledDate: newRepairDate,
+                      scheduledTime: newRepairTime.length === 5 ? `${newRepairTime}:00` : newRepairTime,
+                      notes: `Lịch thi công sau khảo sát: Cần mua/chuẩn bị linh kiện phát sinh (${extraCostReason || 'Linh kiện thay thế'}).`
+                    });
+                  } catch (err) {
+                    console.warn('Create appointment on surcharge warning:', err);
                   }
                 }
                 const calculatedTotal = (req.agreedPrice || req.budgetRef || 0) + extraPartsCost;
@@ -1341,6 +1465,64 @@ export default function TechnicianRequestDetailPage() {
                 </div>
               </div>
 
+              {/* Tùy chọn hẹn ngày thi công sau khi khảo sát phát hiện hư hỏng */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="block text-xs font-semibold text-slate-800">
+                  Kế hoạch thi công thay thế linh kiện:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setWillRescheduleWithCost(false)}
+                    className={`p-2.5 rounded-xl border text-xs font-medium text-left transition-all ${
+                      !willRescheduleWithCost
+                        ? 'border-brand bg-blue-50/70 text-blue-900 ring-1 ring-brand'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    ⚡ Sửa ngay sau khi duyệt
+                    <span className="block text-[11px] text-slate-500 font-normal mt-0.5">Có sẵn đồ nghề & phụ tùng</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWillRescheduleWithCost(true);
+                      if (!newRepairDate) {
+                        setNewRepairDate(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl border text-xs font-medium text-left transition-all ${
+                      willRescheduleWithCost
+                        ? 'border-indigo-400 bg-indigo-50/70 text-indigo-900 ring-1 ring-indigo-400'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    📅 Hẹn ngày thi công mới
+                    <span className="block text-[11px] text-slate-500 font-normal mt-0.5">Cần đặt hàng linh kiện</span>
+                  </button>
+                </div>
+
+                {willRescheduleWithCost && (
+                  <div className="grid grid-cols-2 gap-2.5 bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100 mt-2">
+                    <TextField
+                      label="Ngày hẹn mới *"
+                      type="date"
+                      min={new Date().toISOString().split('T')[0]}
+                      value={newRepairDate}
+                      onChange={(e) => setNewRepairDate(e.target.value)}
+                      required={willRescheduleWithCost}
+                    />
+                    <TextField
+                      label="Giờ hẹn mới *"
+                      type="time"
+                      value={newRepairTime}
+                      onChange={(e) => setNewRepairTime(e.target.value)}
+                      required={willRescheduleWithCost}
+                    />
+                  </div>
+                )}
+              </div>
+
               <div>
                 <MultiImageUploadField
                   label="Ảnh chụp linh kiện hỏng / bằng chứng phát sinh"
@@ -1351,7 +1533,7 @@ export default function TechnicianRequestDetailPage() {
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 sticky bottom-0 bg-white/95 backdrop-blur-xs pb-1 mt-3">
                 <Button variant="secondary" type="button" onClick={() => setShowCostApprovalModal(false)}>
                   Hủy
                 </Button>
@@ -1367,7 +1549,7 @@ export default function TechnicianRequestDetailPage() {
       {/* Modal Báo cáo hoàn thành & Mời nghiệm thu */}
       {showAcceptanceModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-in max-h-[88vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-900 text-base flex items-center gap-1.5">
                 <span>📋</span> Báo cáo hoàn thành & Mời nghiệm thu

@@ -252,6 +252,8 @@ public class AdminStatisticsService implements AdminStatisticsUseCase {
         result.put("techniciansQuoting", techniciansQuoting);
         result.put("customersReceivingQuotes", customersReceivingQuotes);
         result.put("appointmentsCreated", appointmentsCreated);
+        BigDecimal platformRevenue = completedValue.multiply(new BigDecimal("0.10")).setScale(0, java.math.RoundingMode.HALF_UP);
+
         result.put("customersBooking", customersBooking);
         result.put("techniciansBooked", techniciansBooked);
         result.put("progressUpdates", progressUpdates);
@@ -259,6 +261,8 @@ public class AdminStatisticsService implements AdminStatisticsUseCase {
         result.put("completedJobs", completedJobs);
         result.put("completedJobValueVnd", completedValue);
         result.put("averageCompletedOrderVnd", averageCompletedOrder);
+        result.put("platformRevenueVnd", platformRevenue);
+        result.put("platformFeeRatePercent", 10);
         result.put("requestedGmvVnd", requestedGmv);
         result.put("acceptedGmvVnd", acceptedGmv);
         result.put("acceptedJobsInCohort", acceptedJobsInCohort);
@@ -273,7 +277,7 @@ public class AdminStatisticsService implements AdminStatisticsUseCase {
         result.put("categoryBreakdown", categoryBreakdown);
         result.put("areaBreakdown", areaBreakdown);
         result.put("dailyTrend", dailyTrend);
-        result.put("financialMetricNote", "Giá trị hoàn thành dùng giá đã thỏa thuận; hệ thống chưa lưu giao dịch thanh toán hoặc phí hoa hồng.");
+        result.put("financialMetricNote", "Doanh thu phí nền tảng tính theo tỷ lệ 10% hoa hồng trên tổng giá trị các đơn hoàn thành.");
         result.put("qualityMetricNote", "Đã ghi nhận đánh giá theo job; hệ thống chưa có hồ sơ khiếu nại hoặc hoàn tiền gắn với yêu cầu.");
         result.put("averageRating", monthlyAverageRating);
         result.put("reviewCount", monthlyReviewCount);

@@ -119,6 +119,8 @@ public class SecurityConfig {
                         // Phân quyền theo vai trò
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/staff/**").hasAnyRole("STAFF", "ADMIN")
+                        // Đánh giá thợ: Cho phép khách hàng xem đánh giá trước khi chọn thợ
+                        .requestMatchers(HttpMethod.GET, "/api/v1/technicians/*/reviews").hasAnyRole("CUSTOMER", "TECHNICIAN", "STAFF", "ADMIN")
                         .requestMatchers("/api/v1/technicians/**").hasAnyRole("TECHNICIAN", "ADMIN")
                         // Quyền đọc hồ sơ của người khác còn được siết thêm một lớp nữa
                         // ở CustomerProfileService: khách chỉ xem được hồ sơ chính mình.

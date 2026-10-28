@@ -24,10 +24,10 @@ Nguyên tắc chung: trả lời đúng quy định đang có, không hứa đi�
 - Tạo phiếu hỗ trợ: **Critical** nếu gian lận, mất tài sản hoặc tranh chấp tiền; **High** nếu hư hỏng hoặc thái độ.
 - Chính sách bồi thường cụ thể chưa được công bố; CSKH sẽ thẩm định từng trường hợp.
 
-## 4. Thợ đòi thêm tiền, đòi trả tiền mặt hoặc chuyển khoản riêng
+## 4. Thợ đòi thêm tiền hoặc chuyển khoản riêng ngoài hệ thống
 - Mọi chi phí phát sinh phải được thợ **gửi đề xuất trên hệ thống** → đơn sang **Chờ duyệt chi phí phát sinh**.
 - Khách xem giải trình: **Đồng ý** thì khoản phát sinh được cộng vào đợt thanh toán cuối (tiền cọc **không** tính lại); **không đồng ý** thì bấm "Từ chối giá & Đổi thợ khác" hoặc hủy đơn.
-- **Không trả tiền mặt/chuyển khoản riêng ngoài hệ thống.** Bị ép trả ngoài → phiếu hỗ trợ **Critical**.
+- **Chỉ trả đúng số tiền hệ thống hiển thị.** Phần còn lại được trả tiền mặt cho thợ nếu khách chọn và bấm xác nhận trên hệ thống; mọi khoản đòi thêm, chuyển khoản riêng ngoài hệ thống thì không trả. Bị ép trả ngoài → phiếu hỗ trợ **Critical**.
 
 ## 5. Muốn chọn hoặc đổi thợ
 - **Chọn thợ:** khách tự chọn trong các báo giá đã nhận (so sánh giá, phương án, điểm đánh giá, số việc đã làm) bằng nút **"Chọn thợ này"** khi đơn đang `OPEN`. Không thể chỉ định trước một thợ cụ thể khi chưa có báo giá của thợ đó.
@@ -49,7 +49,7 @@ Nguyên tắc chung: trả lời đúng quy định đang có, không hứa đi�
 - Thợ đến nơi mà khách vắng: liên hệ khách, dời lịch hoặc hủy lịch hẹn kèm lý do; cần thì tạo phiếu hỗ trợ.
 
 ## 8. Thanh toán, hoàn tiền, hóa đơn
-- Được xác nhận: thanh toán bằng **mã QR chuyển khoản ngân hàng** trong chi tiết đơn. Đợt 1 cọc 30% giá chốt (sau khi khách xác nhận lịch hẹn); đợt 2 phần còn lại = giá chốt + phát sinh đã duyệt − cọc (khi thợ báo hoàn thành). Mỗi lần thanh toán có hóa đơn điện tử in/xuất PDF. Tiền giải ngân cho thợ khi nghiệm thu.
+- Được xác nhận: đợt 1 cọc 30% giá chốt bằng **mã QR chuyển khoản ngân hàng** (sau khi khách xác nhận lịch hẹn); đợt 2 phần còn lại = giá chốt + phát sinh đã duyệt − cọc (khi thợ báo hoàn thành), trả bằng mã QR hoặc tiền mặt trực tiếp cho thợ (xác nhận trên hệ thống). Mỗi lần thanh toán có hóa đơn điện tử in/xuất PDF. Khi đơn hoàn thành, FixLink trích 10% phí nền tảng trên giá chốt, thợ nhận 90% vào Ví FixLink.
 - **Chưa công bố**: ví điện tử, thẻ, trả góp, tỷ lệ hoàn cọc khi hủy, hóa đơn VAT.
 - Trợ lý không xem được giao dịch ngân hàng. Nghi bị trừ tiền sai → tạo phiếu hỗ trợ **Critical** kèm mã đơn, thời điểm, số tiền.
 
@@ -75,7 +75,7 @@ Nguyên tắc chung: trả lời đúng quy định đang có, không hứa đi�
 - Muốn làm thợ: đăng ký tại `/dang-ky-tho`.
 
 ## 14. Câu hỏi của thợ về thu nhập
-- Tiền công giải ngân vào ví khi khách nghiệm thu. **Tỷ lệ hoa hồng và cách rút tiền từ ví chưa công bố.**
+- Khi khách hoàn tất nghiệm thu, FixLink trích **10% phí nền tảng** trên giá chốt và cộng **90%** vào **Ví FixLink** của thợ (xem số dư trên bảng điều khiển /tho). Nhận tiền mặt trực tiếp từ khách thì ví có thể tạm âm (công nợ phí nền tảng), được cấn trừ vào các đơn sau. **Cách rút tiền từ ví chưa công bố.**
 - Muốn được chọn nhiều hơn: đăng ký đúng chuyên môn, mở rộng khu vực hoạt động, báo giá hợp lý và rõ phương án, giữ điểm đánh giá tốt.
 
 ## 15. Khách muốn tự sửa

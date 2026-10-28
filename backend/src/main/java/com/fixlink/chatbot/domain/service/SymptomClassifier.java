@@ -31,7 +31,7 @@ public final class SymptomClassifier {
     private static final List<CategoryRule> CATEGORY_RULES = List.of(
             new CategoryRule("DIEN_LANH", "Sửa Chữa Điện Lạnh",
                     "Thiết bị làm lạnh, điều hòa, tủ lạnh, tủ đông, máy giặt thuộc chuyên ngành Điện lạnh.",
-                    List.of("tu lanh", "may lanh", "dieu hoa", "may dieu hoa", "tu dong", "tu mat", "may giat", "may giac",
+                    List.of("tu lanh", "may lanh", "dieu hoa", "may dieu hoa", "tu cap dong", "tu mat", "may giat", "may giac",
                             "nap ga", "bom ga", "het ga", "xi ga", "ga lanh", "dong tuyet", "dong da", "khong lanh",
                             "khong mat", "dan lanh", "dan nong", "block", "may say", "ve sinh may lanh", "inverter",
                             "air conditioner", "fridge", "refrigerator", "washing machine", "aircon")),
@@ -40,22 +40,24 @@ public final class SymptomClassifier {
                     List.of("ong nuoc", "vo ong", "ro ri nuoc", "ri nuoc", "nghet", "tac nghet", "bi tac", "tac bon cau",
                             "bon cau", "lavabo", "voi nuoc", "voi sen", "voi rua", "sen tam", "bon rua", "may bom",
                             "bon nuoc", "nuoc yeu", "mat nuoc", "tham nuoc", "tham dot",
-                            "chap dien", "nhay cb", "nhay aptomat", "aptomat", "cau dao", "cau chi", "mat dien", "o cam",
-                            "cong tac", "ro dien", "dien giat", "day dien", "bong den", "den khong sang", "pipe", "leak",
+                            "chap dien", "nhay cb", "nhay aptomat", "aptomat", "cau dao", "cau chi", "mat dien", "o cam", "ro dien", "dien giat", "day dien", "dien trong nha", "dien nha", "he thong dien", "duong dien", "bong den", "den khong sang", "pipe", "leak",
                             "toilet", "circuit breaker", "short circuit", "power outage")),
             new CategoryRule("DO_GIA_DUNG", "Sửa Điện Gia Dụng",
                     "Thiết bị điện gia dụng trong gia đình.",
                     List.of("bep tu", "bep hong ngoai", "bep dien", "lo vi song", "lo nuong", "noi chien", "noi com",
                             "may hut mui", "quat", "am sieu toc", "binh nong lanh", "may loc nuoc", "may xay",
                             // không dùng "ban la" (bàn là): trùng với "bạn là" sau khi bỏ dấu
-                            "ban ui", "ban la hoi", "may nuoc nong", "may nong lanh", "binh nuoc nong", "may hut bui", "tivi", "ti vi", "loa", "induction", "microwave",
+                            "ban ui", "ban la hoi", "may nuoc nong", "may nong lanh", "binh nuoc nong", "may hut bui", "tivi", "ti vi", "induction", "microwave",
                             "air fryer")),
             new CategoryRule("KHOA_CUA", "Sửa Khóa & Cửa Cuốn",
                     "Sự cố khóa, chìa khóa và cửa cuốn.",
                     List.of("khoa cua", "o khoa", "mat chia", "chia khoa", "ket khoa", "khoa phong", "khoa van tay",
-                            "khoa thong minh", "cua cuon", "ket nan", "motor cua", "remote cua", "lock", "key",
+                            "khoa thong minh", "cua cuon", "ket nan", "khoa ngoai cua", "bi khoa ngoai", "khoa trai cua", "motor cua", "remote cua", "lock", "key",
                             "rolling door", "khong mo duoc cua"))
     );
+
+    private static final Map<String, String> DIACRITIC_ONLY = Map.of(
+            "bàn là", "ban ui", "tủ đông", "tu cap dong", "công tắc", "o cam", "loa", "may hut bui");
 
     private static final Pattern NOT_LOSING = Pattern.compile(
             " khong mat (?=(coc|tien|phi|gi|them|chi phi|bao nhieu|nhieu|lau|thoi gian|du lieu|tai khoan|cong|khong) )");
@@ -64,7 +66,7 @@ public final class SymptomClassifier {
             // không dùng "bi chay"/"ra khoi": trùng với "bị chảy (nước)", "ra khỏi" sau khi bỏ dấu
             "bi chay den", "chay den", "chay xem", "bi chay no", "chay khet", "mui khet", "khet", "boc chay", "boc khoi",
             "co khoi", "xi khoi", "khoi den", "nhieu khoi", "xet lua", "toe lua",
-            "phat no", "bi no", "no tung", "ro gas", "ro ga", "xi gas", "mui gas", "dien giat", "giat dien", "bi giat",
+            "phat no", "no tung", "ro gas", "ro ga", "xi gas", "mui gas", "dien giat", "giat dien", "bi giat",
             "set dien", "xet dien", "phat lua", "chap chay", "ro dien",
             "ngap nuoc", "nuoc ngap", "tran ngap", "ngap nha", "ngap het", "fire", "smoke", "burning", "gas leak", "sparks", "electric shock");
 
@@ -114,12 +116,20 @@ public final class SymptomClassifier {
     public static Optional<CategoryMatch> classify(String rawText) {
         // "không mất cọc/tiền/phí" sau khi bỏ dấu trùng với triệu chứng "không mát" của máy lạnh
         String text = NOT_LOSING.matcher(" " + normalize(rawText) + " ").replaceAll(" khong ton ");
-        if (rawText != null && Normalizer.normalize(rawText.toLowerCase(Locale.ROOT), Normalizer.Form.NFC).contains("bàn là")) {
-            text += "ban ui "; // "bàn là" có dấu; bỏ dấu thì trùng "bạn là" nên chỉ nhận khi khách gõ có dấu
+        if (rawText != null) {
+            // Thiết bị chỉ nhận khi khách gõ có dấu: bỏ dấu thì trùng từ khác nghĩa
+            // ("bàn là"/"bạn là", "tủ đông"/"tự động", "công tắc"/"công tác", "loa"/"lóa")
+            String raw = " " + Normalizer.normalize(rawText.toLowerCase(Locale.ROOT), Normalizer.Form.NFC)
+                    .replaceAll("[^\\p{L}\\p{N}]+", " ") + " ";
+            for (Map.Entry<String, String> e : DIACRITIC_ONLY.entrySet()) {
+                if (raw.contains(" " + e.getKey() + " ")) {
+                    text += e.getValue() + " ";
+                }
+            }
         }
         CategoryRule best = null;
         int bestScore = 0;
-        for (CategoryRule rule : CATEGORY_RULES) {
+        for (CategoryRule rule : activeRules()) {
             int score = 0;
             for (String kw : rule.keywords()) {
                 if (text.contains(" " + kw + " ")) {
@@ -133,6 +143,36 @@ public final class SymptomClassifier {
         }
         return best == null ? Optional.empty()
                 : Optional.of(new CategoryMatch(best.code(), best.name(), best.reason(), bestScore));
+    }
+
+    /**
+     * Quy tắc nhận diện theo danh mục đang hoạt động trong database: danh mục đã tắt thì bỏ; danh mục mới thêm (chưa có
+     * từ khóa soạn sẵn) nhận diện theo các thiết bị liệt kê trong mô tả danh mục ("Laptop, PC văn phòng, ...").
+     */
+    private static List<CategoryRule> activeRules() {
+        if (!LiveCatalog.fromDatabase()) {
+            return CATEGORY_RULES;
+        }
+        List<String> live = LiveCatalog.categoryCodes();
+        List<CategoryRule> rules = new java.util.ArrayList<>();
+        for (CategoryRule rule : CATEGORY_RULES) {
+            if (live.contains(rule.code())) {
+                rules.add(new CategoryRule(rule.code(), LiveCatalog.categoryName(rule.code()), rule.reason(), rule.keywords()));
+            }
+        }
+        for (Map.Entry<String, List<String>> e : LiveCatalog.categoryDeviceWords().entrySet()) {
+            boolean known = CATEGORY_RULES.stream().anyMatch(r -> r.code().equals(e.getKey()));
+            if (!known && !e.getValue().isEmpty()) {
+                String name = LiveCatalog.categoryName(e.getKey());
+                rules.add(new CategoryRule(e.getKey(), name, "Thiết bị thuộc danh mục " + name + ".", e.getValue()));
+            }
+        }
+        return rules;
+    }
+
+    /** Danh mục có sẵn từ đầu (có bộ từ khóa soạn sẵn), khác danh mục admin thêm sau trong database. */
+    public static boolean isBuiltInCategory(String code) {
+        return CATEGORY_RULES.stream().anyMatch(r -> r.code().equals(code));
     }
 
     public static List<String> categoryNames() {
@@ -159,14 +199,43 @@ public final class SymptomClassifier {
             "TAN_BINH", "Quận Tân Bình", "GO_VAP", "Quận Gò Vấp", "PHU_NHUAN", "Quận Phú Nhuận");
 
     public static String areaLabel(String areaCode) {
+        if (LiveCatalog.fromDatabase()) {
+            for (LiveCatalog.Area a : LiveCatalog.get().areas()) {
+                if (a.code().equals(areaCode)) {
+                    return a.name();
+                }
+            }
+        }
         return AREA_LABELS.getOrDefault(areaCode, areaCode);
     }
 
+    /**
+     * Khu vực khách nhắc tới, chỉ trong các khu vực đang phục vụ (đọc từ database): khu vực mới thêm được nhận theo tên
+     * ("quận 5", "bình tân"); khu vực đã tắt thì không trả về để chatbot không nói là đang phục vụ.
+     */
     public static Optional<String> detectAreaCode(String rawText) {
         String text = " " + normalize(rawText) + " ";
+        if (!LiveCatalog.fromDatabase()) {
+            for (Map.Entry<String, String> e : AREA_ALIASES.entrySet()) {
+                if (text.contains(" " + e.getKey() + " ")) {
+                    return Optional.of(e.getValue());
+                }
+            }
+            return Optional.empty();
+        }
+        List<LiveCatalog.Area> areas = LiveCatalog.get().areas();
         for (Map.Entry<String, String> e : AREA_ALIASES.entrySet()) {
-            if (text.contains(" " + e.getKey() + " ")) {
+            boolean active = areas.stream().anyMatch(a -> a.code().equals(e.getValue()));
+            if (active && text.contains(" " + e.getKey() + " ")) {
                 return Optional.of(e.getValue());
+            }
+        }
+        for (LiveCatalog.Area a : areas) {
+            String full = normalize(a.name());
+            String bare = full.replaceFirst("^(quan|huyen|tp|thanh pho|thi xa) ", "");
+            if (text.contains(" " + full + " ") || (!bare.matches("\\d+") && text.contains(" " + bare + " "))
+                    || (bare.matches("\\d+") && text.contains(" q" + bare + " "))) {
+                return Optional.of(a.code());
             }
         }
         return Optional.empty();

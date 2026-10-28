@@ -10,6 +10,11 @@ import org.junit.jupiter.api.Test;
 
 class ExtractiveFallbackSynthesizerTest {
 
+    @org.junit.jupiter.api.BeforeEach
+    void resetLiveCatalog() {
+        com.fixlink.chatbot.domain.service.LiveCatalog.reset();
+    }
+
     private final ExtractiveFallbackSynthesizer synthesizer = new ExtractiveFallbackSynthesizer();
 
     @Test
@@ -71,9 +76,45 @@ class ExtractiveFallbackSynthesizerTest {
     }
 
     @Test
+    @DisplayName("Rà soát trùng chữ: cần thợ/Cần Thơ, đồ điện/đồ điên, gói cho/gọi cho, thử máy/thứ mấy, bao nhiêu thợ/nhiều thợ")
+    void shouldNotMatchKeywordsInsideOtherPhrases() {
+        assertThat(reply("tôi cần thợ sửa máy lạnh")).doesNotContain("chưa phục vụ");
+        assertThat(reply("sửa đồ điện trong nhà")).doesNotContain("Mình xin lỗi nếu câu trả lời trước");
+        assertThat(reply("gói cho máy lạnh bao nhiêu")).doesNotContain("hotline");
+        assertThat(reply("thợ thử máy xong thì sao")).doesNotContain("ngoài phạm vi");
+        assertThat(reply("tôi bị khóa ngoài cửa")).doesNotContain("không đăng nhập được");
+        assertThat(reply("ai đến sửa cho tôi")).doesNotContain("Mình rất tiếc về trải nghiệm này");
+        assertThat(reply("hiện tại có bao nhiêu thợ đang hoạt động")).contains("chưa công bố số liệu")
+                .doesNotContain("Sửa nhiều thiết bị");
+        assertThat(reply("vệ sinh bao nhiêu máy cũng được à")).doesNotContain("Sửa nhiều thiết bị");
+        assertThat(reply("đồng hồ nước quay liên tục")).doesNotContain("chưa hỗ trợ");
+        assertThat(SymptomClassifier.classify("đơn tự động hủy là sao")).isEmpty();
+        assertThat(SymptomClassifier.classify("tủ đông không lạnh")).isPresent();
+        assertThat(SymptomClassifier.classify("tôi đi công tác vài ngày")).isEmpty();
+        assertThat(SymptomClassifier.classify("công tắc đèn bị hỏng")).isPresent();
+        assertThat(SymptomClassifier.isDanger("ví thợ bị nợ phí")).isFalse();
+        assertThat(reply("duyệt hồ sơ thợ ở đâu")).contains("/quan-tri");
+        assertThat(ExtractiveFallbackSynthesizer.containsKeyword(" bao nhieu tho ", "nhieu tho")).isFalse();
+        // Thiết bị không hỗ trợ luôn thắng "gợi ý dịch vụ"/bảng giá; "số điện thoại bị..." không phải điện thoại hỏng
+        assertThat(reply("laptop tôi bị hư, gợi ý dịch vụ")).contains("chưa hỗ trợ").doesNotContain("**1. Sửa Chữa Điện Lạnh**");
+        assertThat(reply("sửa điện thoại giá bao nhiêu")).contains("chưa hỗ trợ");
+        assertThat(reply("số điện thoại bị trùng không đăng ký được")).doesNotContain("chưa hỗ trợ");
+        assertThat(reply("gợi ý cho tôi tất cả dịch vụ hiện đang có")).contains("**1. Sửa Chữa Điện Lạnh**");
+        assertThat(ExtractiveFallbackSynthesizer.containsKeyword(" can nhieu tho ", "nhieu tho")).isTrue();
+    }
+
+    @Test
     @DisplayName("Câu hỏi thường gặp mới: thanh toán, hóa đơn, tài khoản, giờ làm, ảnh, ngân sách, lịch hẹn, bảo mật")
     void shouldAnswerCommonQuestionsPrecisely() {
-        assertThat(reply("thanh toán tiền mặt được không")).startsWith("Hiện FixLink **chỉ nhận thanh toán bằng mã QR");
+        assertThat(reply("thanh toán tiền mặt được không")).startsWith("**Thanh toán trên FixLink gồm 2 đợt:**")
+                .contains("Xác nhận đã gửi tiền mặt").contains("cọc **không** trả bằng tiền mặt");
+        assertThat(reply("trả tiền mặt cho thợ được không")).contains("Tôi thanh toán tiền mặt trực tiếp cho thợ");
+        assertThat(reply("thợ đòi thêm tiền ngoài app")).contains("không trả thêm");
+        assertThat(reply("phí nền tảng bao nhiêu")).contains("10%").contains("90%").contains("Khách hàng không trả thêm phí này");
+        assertThat(reply("thợ nhận tiền khi nào")).contains("Ví FixLink").doesNotContain("chưa được công bố chính thức");
+        assertThat(reply("ví fixlink bị âm là sao")).contains("tạm âm");
+        assertThat(reply("rút tiền cọc được không")).doesNotContain("Ví FixLink");
+        assertThat(reply("làm sao để được nhiều khách chọn hơn")).doesNotContain("Trực tuyến");
         assertThat(reply("có xuất hóa đơn đỏ không")).startsWith("**Hóa đơn trên FixLink:**");
         assertThat(reply("đổi số điện thoại thế nào")).contains("/khach-hang").doesNotContain("hotline");
         assertThat(reply("thợ có xem được số điện thoại khách không")).doesNotContain("hotline");
@@ -127,6 +168,19 @@ class ExtractiveFallbackSynthesizerTest {
         assertThat(reply("tôi muốn đặt 2 thợ cho 2 máy")).contains("một thợ");
         assertThat(reply("vệ sinh 2 máy lạnh bao nhiêu")).contains("300.000 đ");
         assertThat(reply("máy lạnh kêu rè rè")).doesNotContain("thấp nhất");
+        // Đã nêu thiết bị + sự cố mà xin gợi ý: gợi ý đúng gói, không đổ cả 4 nhóm dịch vụ
+        String suggest = reply("máy lạnh tôi bị chảy nước, gợi ý dịch vụ sửa chữa");
+        assertThat(suggest).startsWith("**Gói dịch vụ gợi ý cho sự cố của bạn**").contains("Vệ sinh máy lạnh")
+                .doesNotContain("Sửa Khóa & Cửa Cuốn").doesNotContain("Sửa bếp từ");
+        assertThat(suggest.indexOf("Vệ sinh máy lạnh")).isLessThan(suggest.indexOf("Nạp ga"));
+        String gas = reply("máy lạnh không mát, nên dùng dịch vụ nào");
+        assertThat(gas.indexOf("Nạp ga")).isLessThan(gas.indexOf("Vệ sinh máy lạnh"));
+        assertThat(reply("tủ lạnh không đông đá, tư vấn dịch vụ")).contains("sửa tủ lạnh").doesNotContain("Sửa máy giặt");
+        // Triệu chứng ngoài bảng (đèn nháy, báo lỗi) không gán bừa gói vệ sinh/nạp ga: để AI chẩn đoán
+        assertThat(synthesizer.directAnswer("máy lạnh bị tình trạng đèn nhấp nháy thì chọn dịch vụ nào")).isEmpty();
+        assertThat(reply("máy lạnh bị tình trạng đèn nhấp nháy thì chọn dịch vụ nào")).doesNotContain("Gói dịch vụ gợi ý");
+        assertThat(reply("gợi ý cho tôi tất cả dịch vụ hiện đang có")).contains("**1. Sửa Chữa Điện Lạnh**");
+        assertThat(reply("điện lạnh có những gói nào")).startsWith("**Các gói của nhóm Sửa Chữa Điện Lạnh**");
         assertThat(reply("sửa máy giặt lồng đứng bao tiền")).contains("250.000 đ");
         assertThat(reply("thông tắc bồn cầu giá")).doesNotContain("Các gói của các gói");
         assertThat(reply("tôi muốn đổi khu vực làm việc")).contains("/tho/ho-so");
@@ -190,7 +244,7 @@ class ExtractiveFallbackSynthesizerTest {
         assertThat(reply("đặt cọc bao nhiêu")).doesNotContain(cheapest).contains("30%");
         assertThat(reply("sửa laptop giá rẻ không")).contains("chưa hỗ trợ");
         assertThat(reply("gợi ý cho tôi tất cả dịch vụ hiện đang có")).contains("**1. Sửa Chữa Điện Lạnh**");
-        assertThat(reply("bảng giá dịch vụ")).contains("Lắp bồn cầu").contains("350.000 đ");
+        assertThat(reply("bảng giá dịch vụ")).contains("Lắp đặt bồn cầu").contains("350.000 đ");
         assertThat(reply("thợ điện lạnh kiếm được bao nhiêu")).doesNotContain("Các gói của").contains("không trả lương cố định");
         assertThat(reply("làm thợ có cần bằng cấp không")).doesNotContain("không trả lương cố định");
         assertThat(reply("máy lạnh không mát")).doesNotContain(cheapest).doesNotContain(priciest);
@@ -228,7 +282,7 @@ class ExtractiveFallbackSynthesizerTest {
         assertThat(reply("bạn có phải là ChatGPT không? model gì?")).contains("Trợ lý ảo FixLink");
         assertThat(reply("đồ ngu, trả lời như cc")).contains("xin lỗi");
         assertThat(reply("có app điện thoại không")).contains("chưa có ứng dụng");
-        assertThat(reply("How much does it cost to fix an air conditioner?")).contains("FixLink Assistant").contains("150,000");
+        assertThat(reply("How much does it cost to fix an air conditioner?")).contains("FixLink Assistant").contains("150.000 đ");
         // Không nhận nhầm câu tiếng Việt không dấu là tiếng Anh, không hiểu "vật tư" là hóa đơn VAT
         assertThat(reply("toi can do lai may lanh")).doesNotContain("FixLink Assistant");
         assertThat(reply("giá công và vật tư tính sao")).doesNotContain("hóa đơn VAT");
@@ -262,9 +316,10 @@ class ExtractiveFallbackSynthesizerTest {
         assertThat(reply("tính giúp tiền cọc 500k")).contains("150.000 đ");
         assertThat(reply("thợ có được xem số điện thoại của tôi không")).contains("thợ phụ trách").doesNotContain("hotline");
         assertThat(reply("bảo hành bao lâu")).contains("chưa được công bố").doesNotContain("Mình rất tiếc");
-        assertThat(reply("fixlink thu phí của thợ bao nhiêu")).contains("chưa được công bố").doesNotContain("CẦN XÁC NHẬN");
+        assertThat(reply("fixlink thu phí của thợ bao nhiêu")).contains("10%").doesNotContain("CẦN XÁC NHẬN");
         assertThat(reply("thợ tới nhanh không")).contains("không cam kết");
-        assertThat(reply("khi thợ đến thì tôi trả tiền cho thợ luôn được không")).contains("không trả tiền mặt");
+        // Cọc chỉ qua QR; phần còn lại mới được trả tiền mặt khi thợ báo hoàn thành
+        assertThat(reply("khi thợ đến thì tôi trả tiền cho thợ luôn được không")).contains("cọc **không** trả bằng tiền mặt");
         assertThat(reply("làm thế nào để biết thợ có uy tín")).contains("KYC");
         assertThat(reply("bên bạn có nhận sửa máy nước nóng không")).contains("Gia Dụng");
         assertThat(reply("thôi để mai tính")).startsWith("Tạm biệt");
@@ -325,7 +380,7 @@ class ExtractiveFallbackSynthesizerTest {
         assertThat(synthesizer.synthesize("tôi muốn đổi thợ khác được không", "").reply())
                 .contains("bạn tự chọn thợ").contains("Đổi thợ khác").contains("bảo chứng");
         assertThat(synthesizer.synthesize("thợ đòi thêm 500k tiền mặt", "").reply())
-                .contains("không trả tiền mặt");
+                .contains("không trả thêm");
         assertThat(synthesizer.synthesize("tl nhà mình hư rồi", "").reply())
                 .contains("Sửa Chữa Điện Lạnh").contains("200.000 đ");
         assertThat(synthesizer.synthesize("đồ nhà tôi bị hỏng", "").reply())

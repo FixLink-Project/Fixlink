@@ -62,6 +62,7 @@ export default function RepairRequestDetailPage() {
   const [newApptNotes, setNewApptNotes] = useState('');
   const [creatingAppt, setCreatingAppt] = useState(false);
   const [createApptError, setCreateApptError] = useState<string | null>(null);
+  const [showCancelledAppts, setShowCancelledAppts] = useState(false);
 
   // Modal xem ảnh phóng to
   const [activeMediaUrl, setActiveMediaUrl] = useState<string | null>(null);
@@ -81,6 +82,7 @@ export default function RepairRequestDetailPage() {
   const [autoFinalQR, setAutoFinalQR] = useState<PaymentResult | null>(null);
   const [loadingFinalQR, setLoadingFinalQR] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [showCashConfirmModal, setShowCashConfirmModal] = useState(false);
 
   // Kích hoạt bản nháp
   const [publishing, setPublishing] = useState(false);
@@ -129,7 +131,7 @@ export default function RepairRequestDetailPage() {
       .then((res) => {
         setDetail(res.data);
         setError(null);
-        if (id && res.data.request.status === 'AWAITING_ACCEPTANCE') {
+        if (id && (res.data.request.status === 'AWAITING_ACCEPTANCE' || res.data.request.status === 'COMPLETED')) {
           api.get<{ rating: number; comment: string } | null>(`/repair-requests/${id}/review`)
             .then((review) => {
               if (review.data) {
@@ -372,10 +374,15 @@ export default function RepairRequestDetailPage() {
   const otherQuotes = detail.quotations.filter((q) => q.technicianId !== req.technicianId && q.status !== 'ACCEPTED');
   const currentSelectedQuote = detail.quotations.find((q) => q.status === 'ACCEPTED' || q.technicianId === req.technicianId);
 
-  // Lấy danh sách ảnh tổng hợp (từ media hoặc mediaUrls)
-  const displayPhotos: string[] = req.media && req.media.length > 0
-    ? req.media.map(m => m.url)
+  // 1. Ảnh do khách hàng tải lên ban đầu mô tả lỗi thiết bị (không tính ảnh thợ tải lên sau)
+  const customerPhotos: string[] = req.media && req.media.length > 0
+    ? req.media.filter(m => !req.technicianId || m.uploadedBy !== req.technicianId).map(m => m.url)
     : req.mediaUrls || [];
+
+  // 2. Ảnh bằng chứng do thợ tải lên tại hiện trường (phát sinh linh kiện/khảo sát)
+  const technicianProofPhotos: string[] = req.media && req.media.length > 0
+    ? req.media.filter(m => req.technicianId && m.uploadedBy === req.technicianId).map(m => m.url)
+    : [];
 
   return (
     <DashboardLayout
@@ -497,14 +504,14 @@ export default function RepairRequestDetailPage() {
                 </div>
               </div>
 
-              {/* Hình ảnh bằng chứng do thợ tải lên */}
-              {displayPhotos.length > 0 && (
+              {/* Hình ảnh bằng chứng linh kiện hỏng do thợ chụp gửi */}
+              {technicianProofPhotos.length > 0 ? (
                 <div className="space-y-2">
                   <p className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                    <span>📸</span> Hình ảnh linh kiện hỏng / hiện trường do thợ chụp gửi:
+                    <span>📸</span> Hình ảnh linh kiện hỏng / hiện trường do thợ chụp gửi ({technicianProofPhotos.length}):
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {displayPhotos.map((url, idx) => (
+                    {technicianProofPhotos.map((url, idx) => (
                       <img
                         key={idx}
                         src={url}
@@ -514,6 +521,10 @@ export default function RepairRequestDetailPage() {
                       />
                     ))}
                   </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-amber-100/50 border border-amber-200/60 text-xs text-amber-800 italic">
+                  ℹ️ Kỹ thuật viên chưa đính kèm ảnh chụp linh kiện phát sinh cho lần điều chỉnh này.
                 </div>
               )}
 
@@ -631,6 +642,24 @@ export default function RepairRequestDetailPage() {
           </div>
         )}
 
+        {/* KHỐI 4: ĐÁNH GIÁ CỦA BẠN DÀNH CHO THỢ */}
+        {req.status === 'COMPLETED' && reviewSubmitted && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                <span>⭐</span> Đánh giá của bạn dành cho kỹ thuật viên
+              </h3>
+              <div className="flex items-center gap-1 text-amber-500 font-bold text-sm">
+                {'★'.repeat(reviewRating)}{'☆'.repeat(5 - reviewRating)}
+                <span className="text-xs text-slate-600 ml-1">({reviewRating}/5 sao)</span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-700 italic bg-white/80 p-3 rounded-xl border border-amber-100">
+              "{reviewComment || 'Rất hài lòng với chất lượng dịch vụ và thái độ làm việc của thợ.'}"
+            </p>
+          </div>
+        )}
+
         {/* Thông tin đơn */}
         <Card title="Thông tin yêu cầu sửa chữa">
           <dl className="divide-y divide-slate-100 text-sm">
@@ -657,9 +686,9 @@ export default function RepairRequestDetailPage() {
           <div className="mt-5 border-t border-slate-100 pt-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <span>📷</span> Hình ảnh & Tệp bằng chứng hiện trường ({displayPhotos.length})
+                <span>📷</span> Hình ảnh & Tệp bằng chứng hiện trường ban đầu ({customerPhotos.length})
               </p>
-              {displayPhotos.length < 6 && (
+              {customerPhotos.length < 6 && (
                 <button
                   type="button"
                   onClick={() => setShowAttachModal(true)}
@@ -670,9 +699,9 @@ export default function RepairRequestDetailPage() {
               )}
             </div>
 
-            {displayPhotos.length > 0 ? (
+            {customerPhotos.length > 0 ? (
               <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-6 gap-3">
-                {displayPhotos.map((url, i) => (
+                {customerPhotos.map((url, i) => (
                   <button
                     key={i}
                     type="button"
@@ -727,15 +756,28 @@ export default function RepairRequestDetailPage() {
           <Card
             title="Thợ kỹ thuật thực hiện"
             description="Báo giá và kỹ thuật viên đã được bạn lựa chọn thực hiện công việc."
-            actions={canSwitchTechnician ? (
-              <Button
-                variant="secondary"
-                onClick={() => setShowSwitchModal(true)}
-                className="text-xs py-1.5 px-3 border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-medium shadow-xs"
-              >
-                🔄 Đổi thợ khác
-              </Button>
-            ) : undefined}
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                {currentSelectedQuote && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => handleOpenReviews(currentSelectedQuote.technicianId, currentSelectedQuote.technicianName || 'Thợ kỹ thuật', currentSelectedQuote.avgRating)}
+                    className="text-xs py-1.5 px-3 border-amber-200 text-amber-800 bg-amber-50 hover:bg-amber-100 font-medium shadow-xs"
+                  >
+                    ⭐ Xem đánh giá thợ
+                  </Button>
+                )}
+                {canSwitchTechnician && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowSwitchModal(true)}
+                    className="text-xs py-1.5 px-3 border-slate-300 text-slate-700 bg-white hover:bg-slate-50 font-medium shadow-xs"
+                  >
+                    🔄 Đổi thợ khác
+                  </Button>
+                )}
+              </div>
+            }
           >
             <div className="grid gap-4 md:grid-cols-2">
               {detail.quotations.filter((q) => q.status === 'ACCEPTED').map((q) => (
@@ -975,6 +1017,20 @@ export default function RepairRequestDetailPage() {
                     >
                       ✓ Tôi đã chuyển khoản phần còn lại thành công
                     </Button>
+                    <div className="relative flex py-1 items-center">
+                      <div className="flex-grow border-t border-slate-200"></div>
+                      <span className="flex-shrink mx-2 text-slate-400 text-[11px] font-semibold uppercase">Hoặc</span>
+                      <div className="flex-grow border-t border-slate-200"></div>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      fullWidth
+                      loading={confirmingPayment}
+                      onClick={() => setShowCashConfirmModal(true)}
+                      className="py-2.5 text-xs font-semibold text-emerald-800 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 shadow-xs"
+                    >
+                      💵 Tôi thanh toán tiền mặt trực tiếp cho thợ ({formatCurrency(autoFinalQR.amount)})
+                    </Button>
                   </div>
                 ) : (
                   <div className="text-center">
@@ -1040,18 +1096,65 @@ export default function RepairRequestDetailPage() {
               <div className="py-6 text-center text-slate-500 text-sm">
                 Chưa có lịch hẹn nào được thiết lập. Hãy bấm <strong>Đặt lịch hẹn mới</strong> để hẹn thời gian kỹ thuật viên tới nhà.
               </div>
-            ) : (
-              <div className="space-y-4 my-2">
-                {appointments.map((appt) => (
-                  <AppointmentCard
-                    key={appt.id}
-                    appointment={appt}
-                    currentUserRole={currentRole as 'CUSTOMER' | 'TECHNICIAN' | 'ADMIN'}
-                    onUpdated={loadDetail}
-                  />
-                ))}
-              </div>
-            )}
+            ) : (() => {
+              const activeList = appointments.filter((a) => a.status !== 'CANCELLED' && a.status !== 'REJECTED');
+              const cancelledList = appointments.filter((a) => a.status === 'CANCELLED' || a.status === 'REJECTED');
+
+              return (
+                <div className="space-y-4 my-2">
+                  {activeList.length === 0 && (
+                    <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span>ℹ️</span>
+                        <span>Hiện chưa có lịch hẹn mới nào đang chờ. Bạn hoặc thợ có thể bấm <strong>+ Đặt lịch hẹn mới</strong> ở góc trên.</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeList.map((appt) => (
+                    <AppointmentCard
+                      key={appt.id}
+                      appointment={appt}
+                      currentUserRole={currentRole as 'CUSTOMER' | 'TECHNICIAN' | 'ADMIN'}
+                      requestStatus={detail.request.status}
+                      onUpdated={loadDetail}
+                    />
+                  ))}
+
+                  {cancelledList.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setShowCancelledAppts(!showCancelledAppts)}
+                        className="flex items-center justify-between w-full p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors text-xs font-semibold"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>📋</span>
+                          <span>Lịch hẹn cũ đã hủy ({cancelledList.length})</span>
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          {showCancelledAppts ? '▲ Thu gọn' : '▼ Xem chi tiết'}
+                        </span>
+                      </button>
+
+                      {showCancelledAppts && (
+                        <div className="mt-3 space-y-3 pl-2 border-l-2 border-slate-200">
+                          {cancelledList.map((appt) => (
+                            <AppointmentCard
+                              key={appt.id}
+                              appointment={appt}
+                              currentUserRole={currentRole as 'CUSTOMER' | 'TECHNICIAN' | 'ADMIN'}
+                              requestStatus={detail.request.status}
+                              onUpdated={loadDetail}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </Card>
         )}
 
@@ -1169,8 +1272,8 @@ export default function RepairRequestDetailPage() {
               label="Chọn ảnh bổ sung"
               value={additionalMediaUrls}
               onChange={setAdditionalMediaUrls}
-              maxFiles={Math.max(6 - displayPhotos.length, 1)}
-              hint={`Bạn có thể gắn thêm tối đa ${6 - displayPhotos.length} ảnh.`}
+              maxFiles={Math.max(6 - customerPhotos.length, 1)}
+              hint={`Bạn có thể gắn thêm tối đa ${6 - customerPhotos.length} ảnh.`}
             />
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
@@ -1503,6 +1606,64 @@ export default function RepairRequestDetailPage() {
           </div>
         </div>
       )}
+      {/* MODAL XÁC NHẬN THANH TOÁN TIỀN MẶT CHO THỢ */}
+      {showCashConfirmModal && autoFinalQR && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">💵</span>
+                <h3 className="font-bold text-slate-900 text-base">
+                  Xác nhận gửi tiền mặt cho thợ
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCashConfirmModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-600">
+              <p>
+                Bạn đang chọn thanh toán trực tiếp số tiền còn lại bằng <strong>tiền mặt</strong> cho kỹ thuật viên:
+              </p>
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Kỹ thuật viên nhận:</span>
+                  <span className="font-bold text-slate-800">{detail.request.technicianName || 'Kỹ thuật viên'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Số tiền mặt cần gửi:</span>
+                  <span className="font-bold text-emerald-700 text-sm">{formatCurrency(autoFinalQR.amount)}</span>
+                </div>
+              </div>
+              <div className="rounded-xl bg-blue-50 border border-blue-100 p-3 text-[11px] text-blue-900 leading-relaxed">
+                ℹ️ Sau khi bạn xác nhận đã đưa tiền mặt cho thợ, hệ thống sẽ mở khóa ngay bước <strong>Nghiệm thu thiết bị & Đánh giá dịch vụ</strong> để kích hoạt bảo hành điện tử.
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button variant="secondary" onClick={() => setShowCashConfirmModal(false)} className="text-xs py-2 px-4">
+                Quay lại
+              </Button>
+              <Button
+                variant="primary"
+                loading={confirmingPayment}
+                onClick={async () => {
+                  setShowCashConfirmModal(false);
+                  await handleConfirmInlinePayment(autoFinalQR.paymentId);
+                }}
+                className="text-xs py-2 px-4 bg-emerald-600 hover:bg-emerald-700 font-bold"
+              >
+                Xác nhận đã gửi tiền mặt
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
@@ -1562,9 +1723,11 @@ function QuotationCard({
       className={`rounded-2xl border p-5 transition-all duration-200 flex flex-col justify-between ${
         isAccepted
           ? 'border-brand bg-blue-50/60 shadow-sm ring-1 ring-brand'
-          : q.status === 'REJECTED'
-            ? 'border-slate-200 bg-slate-50/60 opacity-60'
-            : 'border-slate-200 bg-white shadow-xs hover:border-brand/40 hover:shadow-card'
+          : canSwitch
+            ? 'border-blue-200 bg-white shadow-xs hover:border-brand/50 hover:shadow-card'
+            : q.status === 'REJECTED'
+              ? 'border-slate-200 bg-slate-50/60 opacity-60'
+              : 'border-slate-200 bg-white shadow-xs hover:border-brand/40 hover:shadow-card'
       }`}
     >
       <div>
@@ -1579,16 +1742,14 @@ function QuotationCard({
                 <span className="text-blue-600 text-xs" title="Thợ đã xác minh eKYC">✓</span>
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                {q.avgRating != null && (
-                  <button
-                    type="button"
-                    onClick={() => onViewReviews?.(q.technicianId, q.technicianName ?? 'Thợ kỹ thuật', q.avgRating)}
-                    className="font-semibold text-amber-700 flex items-center gap-0.5 hover:underline cursor-pointer bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200"
-                    title="Bấm để xem đánh giá từ khách hàng"
-                  >
-                    ★ {q.avgRating.toFixed(1)}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => onViewReviews?.(q.technicianId, q.technicianName ?? 'Thợ kỹ thuật', q.avgRating)}
+                  className="font-semibold text-amber-700 flex items-center gap-0.5 hover:underline cursor-pointer bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200"
+                  title="Bấm để xem đánh giá từ khách hàng"
+                >
+                  ★ {q.avgRating != null ? q.avgRating.toFixed(1) : '5.0'}
+                </button>
                 {q.completedJobs != null && <span>• {q.completedJobs} đơn</span>}
                 {q.yearsExperience != null && <span>• {q.yearsExperience} năm kn</span>}
                 {onViewReviews && (
@@ -1603,7 +1764,14 @@ function QuotationCard({
               </div>
             </div>
           </div>
-          <StatusChip status={q.status} />
+          {canSwitch ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Sẵn sàng nhận việc
+            </span>
+          ) : (
+            <StatusChip status={q.status} />
+          )}
         </div>
 
         <div className="mt-3.5 rounded-xl bg-slate-50 p-3 border border-slate-100">
@@ -1649,10 +1817,10 @@ function QuotationCard({
       {canSwitch && q.status !== 'ACCEPTED' && (
         <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
           <Button
-            variant="secondary"
+            variant="primary"
             loading={isSwitching}
             onClick={() => onSwitch?.(q.id)}
-            className="w-full sm:w-auto text-xs py-2 px-4 shadow-sm border-blue-300 text-blue-700 bg-blue-50/60 hover:bg-blue-100"
+            className="w-full sm:w-auto text-xs py-2.5 px-5 font-bold shadow-md bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all"
           >
             🔄 Đổi sang thợ này
           </Button>

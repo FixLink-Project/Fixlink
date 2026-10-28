@@ -659,9 +659,16 @@ export default function AdminUsersPage() {
                         </div>
                         <div className="p-3.5 rounded-xl border border-slate-100 bg-white sm:col-span-2">
                           <span className="text-xs font-medium text-slate-400">Số dư ví thợ</span>
-                          <p className="text-sm font-bold text-emerald-600 mt-0.5">
-                            {formatCurrency(detail.technicianProfile.walletBalance || 0)}
-                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className={`text-sm font-bold ${(detail.technicianProfile.walletBalance || 0) < 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                              {formatCurrency(detail.technicianProfile.walletBalance || 0)}
+                            </p>
+                            {(detail.technicianProfile.walletBalance || 0) < 0 && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                ⚠️ Đang nợ phí sàn (được phép nhận việc bù trừ)
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {detail.technicianProfile.specialization && (
                           <div className="p-3.5 rounded-xl border border-slate-100 bg-white sm:col-span-2">

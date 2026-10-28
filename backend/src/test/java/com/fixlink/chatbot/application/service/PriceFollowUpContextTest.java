@@ -10,6 +10,11 @@ import org.junit.jupiter.api.Test;
 
 class PriceFollowUpContextTest {
 
+    @org.junit.jupiter.api.BeforeEach
+    void resetLiveCatalog() {
+        com.fixlink.chatbot.domain.service.LiveCatalog.reset();
+    }
+
     private final ExtractiveFallbackSynthesizer synthesizer = new ExtractiveFallbackSynthesizer();
 
     private static ChatMessage user(String text) {

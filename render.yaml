@@ -4,6 +4,8 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
+    plan: free
+    region: singapore
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
@@ -11,14 +13,19 @@ services:
         fromDatabase:
           name: fixlink-db
           property: connectionString
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: fixlink-db
+          property: connectionString
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ALLOWED_ORIGINS
-        sync: false
-      - key: FIREBASE_CREDENTIALS
-        sync: false
+        value: https://fixlink.vercel.app,http://localhost:5173
       - key: FRONTEND_URL
-        sync: false
+        value: https://fixlink.vercel.app
+      # Bật Trợ lý FixLink AI (trước đây để "false" khi chưa có key Groq)
+      - key: CHATBOT_ENABLED
+        value: "true"
       # Trợ lý FixLink AI: dán key trên Render Dashboard (sync: false = không lưu trong git)
       - key: CHATBOT_PROVIDER
         value: groq
@@ -27,35 +34,13 @@ services:
       # Tùy chọn: key Groq của tài khoản thứ hai (gấp đôi hạn mức/ngày), bỏ trống cũng được
       - key: GROQ_API_KEY_2
         sync: false
-      # Gọi cổng LiteLLM qua mạng nội bộ của Render; LiteLLM không phản hồi thì backend gọi thẳng Groq
-      - key: LITELLM_BASE_URL
-        fromService:
-          name: fixlink-litellm
-          type: web
-          property: hostport
-      # Dán CÙNG một giá trị (bắt đầu bằng sk-) cho cả fixlink-api và fixlink-litellm
-      - key: LITELLM_MASTER_KEY
-        sync: false
-
-  # Cổng LiteLLM: Groq gpt-oss-120b → qwen3.8-27b khi hết hạn mức (cấu hình trong litellm/config.yaml)
-  - type: web
-    name: fixlink-litellm
-    runtime: docker
-    dockerfilePath: ./litellm/Dockerfile
-    dockerContext: ./litellm
-    healthCheckPath: /health/liveliness
-    envVars:
-      - key: PORT
-        value: "4000"
-      - key: LITELLM_MASTER_KEY
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
-      # Tùy chọn: key Groq của tài khoản thứ hai (gấp đôi hạn mức/ngày), bỏ trống cũng được
-      - key: GROQ_API_KEY_2
-        sync: false
+      # Backend gọi thẳng Groq với chuỗi dự phòng gpt-oss-120b → qwen3.8-27b (key 1 rồi key 2), hết thì trả lời
+      # bằng dữ liệu/câu trả lời chuẩn. KHÔNG deploy cổng LiteLLM trên gói free: web service free của Render
+      # không nhận được kết nối nội bộ và ngủ sau 15 phút, làm câu chat đầu tiên chờ lâu. Xem docs/huong-dan-deploy-chatbot.md
 
 databases:
   - name: fixlink-db
     plan: free
-    databaseName: fixlink
+    region: singapore
+    databaseName: fixlink_db
+    user: fixlink_user

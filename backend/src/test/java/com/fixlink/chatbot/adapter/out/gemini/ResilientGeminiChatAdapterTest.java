@@ -16,6 +16,11 @@ import org.junit.jupiter.api.Test;
 
 class ResilientGeminiChatAdapterTest {
 
+    @org.junit.jupiter.api.BeforeEach
+    void resetLiveCatalog() {
+        com.fixlink.chatbot.domain.service.LiveCatalog.reset();
+    }
+
     private ResilientGeminiChatAdapter adapter;
     private ChatbotProperties properties;
     private ChatbotToolPort toolPort;

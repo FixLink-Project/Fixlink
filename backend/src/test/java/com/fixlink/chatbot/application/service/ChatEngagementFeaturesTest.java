@@ -14,6 +14,11 @@ import org.junit.jupiter.api.Test;
 
 class ChatEngagementFeaturesTest {
 
+    @org.junit.jupiter.api.BeforeEach
+    void resetLiveCatalog() {
+        com.fixlink.chatbot.domain.service.LiveCatalog.reset();
+    }
+
     private final ChatCardFactory cardFactory = new ChatCardFactory(new ObjectMapper());
 
     @Test

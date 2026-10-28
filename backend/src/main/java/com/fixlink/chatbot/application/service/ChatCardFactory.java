@@ -231,7 +231,7 @@ public class ChatCardFactory {
         if (node.has("rejectionReason")) {
             addField(fields, "Lý do từ chối", node.path("rejectionReason").asText(""));
         }
-        addField(fields, "Trực tuyến", node.path("isOnline").asBoolean() ? "Đang bật" : "Đang tắt");
+        addField(fields, "Số dư Ví FixLink", node.path("walletBalanceText").asText(""));
         addField(fields, "Việc đã hoàn thành", node.path("completedJobs").asText("0"));
         addField(fields, "Điểm đánh giá", node.path("avgRating").asText(""));
         return ChatCard.builder()

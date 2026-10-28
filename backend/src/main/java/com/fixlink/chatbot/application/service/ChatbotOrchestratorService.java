@@ -12,6 +12,7 @@ import com.fixlink.chatbot.domain.model.ChatCard;
 import com.fixlink.chatbot.domain.model.ChatMessage;
 import com.fixlink.chatbot.domain.model.ChatSession;
 import com.fixlink.chatbot.domain.model.SourceReference;
+import com.fixlink.chatbot.domain.service.LiveCatalog;
 import com.fixlink.chatbot.domain.service.RepairRequestDraftLink;
 import com.fixlink.chatbot.domain.service.SymptomClassifier;
 import com.fixlink.chatbot.infrastructure.config.ChatbotProperties;
@@ -59,6 +60,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
     private final ChatCardFactory cardFactory;
     private final FaqAnswerCache faqCache;
     private final OfflinePersonalResponder offlineResponder;
+    private final LiveCatalogRefresher catalogRefresher;
 
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter PROMPT_TIME_FORMAT =
@@ -82,7 +84,8 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             ToolCallRecorder recorder,
             ChatCardFactory cardFactory,
             FaqAnswerCache faqCache,
-            OfflinePersonalResponder offlineResponder
+            OfflinePersonalResponder offlineResponder,
+            LiveCatalogRefresher catalogRefresher
     ) {
         this.geminiChatPort = geminiChatPort;
         this.toolPort = toolPort;
@@ -98,6 +101,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         this.cardFactory = cardFactory;
         this.faqCache = faqCache;
         this.offlineResponder = offlineResponder;
+        this.catalogRefresher = catalogRefresher;
     }
 
     @PostConstruct
@@ -143,6 +147,9 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         return toolPort.getToolDeclarations().stream()
                 .filter(t -> {
                     String name = String.valueOf(t.get("name"));
+                    if ("get_admin_overview".equals(name)) {
+                        return "ADMIN".equals(r);
+                    }
                     boolean personal = TECHNICIAN_TOOLS.contains(name);
                     if (!personal) {
                         return true;
@@ -186,6 +193,8 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
 
         // Clean control characters
         String cleanMessage = rawMessage.replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", "").trim();
+        // Danh mục, giá, khu vực luôn theo database mới nhất (đọc lại tối đa mỗi 60 giây)
+        catalogRefresher.refreshIfStale();
 
         // Rate limiting check
         rateLimiterService.checkRateLimit(command.clientIp(), command.userId());
@@ -724,6 +733,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         sb.append("- Trang đang xem: ").append(command.route() != null ? command.route() : "/")
                 .append(" (").append(describeRoute(command.route())).append(")\n");
         sb.append("- ").append(roleGuidance(role)).append("\n\n");
+        sb.append("=== ").append(LiveCatalog.promptBlock()).append("\n\n");
 
         if (properties.usesFullKnowledgeInPrompt()) {
             String knowledge = ragIndex.getFullKnowledgeText();

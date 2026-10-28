@@ -28,7 +28,6 @@ confidence: verified
 - **Tại sao tôi không thấy công việc nào mới trong bảng việc?**
   - Bảng việc chỉ hiện yêu cầu đang `OPEN`, còn hạn 3 ngày, **khớp chuyên môn và khu vực** bạn đã đăng ký, và chỉ khi hồ sơ KYC đã `APPROVED`.
   - Kiểm tra lại chuyên môn/khu vực trong hồ sơ `/tho/ho-so`; có thể hiện tại chưa có khách đăng yêu cầu phù hợp.
-  - Công tắc Trực tuyến chỉ thể hiện bạn sẵn sàng, không ảnh hưởng tới danh sách việc.
 - **Gửi báo giá báo "Chuyên môn/Khu vực của bạn không khớp"?**
   - Yêu cầu thuộc danh mục hoặc khu vực bạn chưa đăng ký. Chỉ báo giá được việc đúng chuyên môn và khu vực.
 - **Đã được chọn nhưng không bấm được "Bắt đầu khảo sát"?**

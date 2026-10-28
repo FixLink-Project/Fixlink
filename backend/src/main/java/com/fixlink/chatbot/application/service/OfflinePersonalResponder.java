@@ -51,7 +51,8 @@ public class OfflinePersonalResponder {
     private static final Pattern PAID_LIST = Pattern.compile("\\b(da dat coc|da coc|coc roi)\\b");
     /** Thợ hỏi điểm đánh giá của mình. */
     private static final Pattern TECH_RATING = Pattern.compile(
-            "\\b(danh gia trung binh|diem danh gia|bao nhieu sao|may sao|so sao|rating|diem cua toi|so viec da lam)\\b");
+            "\\b(danh gia trung binh|diem danh gia|bao nhieu sao|may sao|so sao|rating|diem cua toi|so viec da lam"
+                    + "|so du|vi cua toi|vi fixlink|tien trong vi|vi bi am|vi am|cong no|doanh thu cua toi)\\b");
     /** Thợ hỏi lịch/việc trong ngày: trả lịch hẹn thay vì bảng việc đang mở. */
     private static final Pattern TODAY = Pattern.compile("\\b(hom nay|ngay mai|sap toi|tuan nay)\\b");
     /** "tôi đã đánh giá thợ chưa", "đơn nào tôi chưa đánh giá". */
@@ -111,7 +112,7 @@ public class OfflinePersonalResponder {
         }
         return "Phần còn lại dự kiến của đơn này là **" + vnd(price - deposit) + "** (giá chốt " + vnd(price) + " − tiền cọc "
                 + vnd(deposit) + "), cộng thêm chi phí phát sinh đã duyệt nếu có. Số chính xác hiện trên **mã QR thanh toán** "
-                + "khi thợ báo hoàn thành.";
+                + "khi thợ báo hoàn thành; bạn trả bằng QR hoặc tiền mặt cho thợ rồi bấm *Xác nhận đã gửi tiền mặt*.";
     }
 
     private static long digits(String text) {
@@ -186,6 +187,15 @@ public class OfflinePersonalResponder {
         }
         String r = role != null ? role.toUpperCase(Locale.ROOT) : "";
         boolean technician = "TECHNICIAN".equals(r);
+        if ("ADMIN".equals(r)) {
+            String adminText = SymptomClassifier.normalize(message);
+            if (!ADMIN_STATS.matcher(adminText).find()) {
+                return Optional.empty();
+            }
+            return call("get_admin_overview", Map.of(), userId, r)
+                    .map(node -> reply(adminOverviewText(node, adminText),
+                            List.of("Có bao nhiêu hồ sơ thợ chờ duyệt?", "Doanh thu phí nền tảng tháng này?")));
+        }
         if (!technician && !"CUSTOMER".equals(r)) {
             return Optional.empty();
         }
@@ -373,6 +383,76 @@ public class OfflinePersonalResponder {
             new StatusFilter(Pattern.compile("\\b(da huy|bi huy)\\b"), "CANCELLED", "đã hủy"),
             new StatusFilter(Pattern.compile("\\b(ban nhap|luu nhap)\\b"), "DRAFT", "bản nháp"));
 
+    /** Quản trị viên hỏi số liệu hệ thống: người dùng, thợ, hồ sơ chờ duyệt, đơn, doanh thu, đánh giá. */
+    private static final Pattern ADMIN_STATS = Pattern.compile("\\b(bao nhieu|so luong|thong ke|tong so|co may|doanh thu|"
+            + "hoa hong|phi nen tang|danh gia trung binh|cho duyet|bi khoa|da khoa|dang hoat dong|tinh hinh|tong quan|bao cao|"
+            + "thang nay|hom nay|so lieu|may tho|may khach|may don)\\b");
+
+    static String adminOverviewText(JsonNode n, String question) {
+        if (!n.has("technicians")) {
+            return errorOr(n, "Mình chưa đọc được số liệu hệ thống. Bạn xem trực tiếp tại /quan-tri và /quan-tri/thong-ke nhé.");
+        }
+        JsonNode t = n.path("technicians");
+        JsonNode c = n.path("customers");
+        JsonNode m = n.path("thisMonth");
+        String monthLabel = monthLabel(m.path("month").asText(""));
+        StringBuilder sb = new StringBuilder();
+        boolean aboutTech = question.matches(".*\\b(tho|ky thuat vien)\\b.*");
+        if (question.matches(".*\\b(cho duyet|kyc|ho so)\\b.*")) {
+            sb.append("Hiện có **").append(n.path("pendingApprovalAll").asLong()).append("** tài khoản **chờ duyệt** và **")
+                    .append(n.path("pendingKycAll").asLong()).append("** tài khoản **chờ duyệt KYC**.");
+        } else if (question.matches(".*\\b(doanh thu|hoa hong|phi nen tang)\\b.*") && !m.isMissingNode()) {
+            sb.append("Doanh thu phí nền tảng (10% giá trị đơn hoàn thành) ").append(monthLabel).append(": **")
+                    .append(m.path("platformRevenueText").asText()).append("**.");
+        } else if (aboutTech) {
+            sb.append("Hiện có **").append(t.path("active").asLong()).append("** thợ **đang hoạt động** (trên tổng **")
+                    .append(t.path("total").asLong()).append("** tài khoản thợ).");
+        } else if (question.matches(".*\\b(khach|khach hang)\\b.*")) {
+            sb.append("Hiện có **").append(c.path("total").asLong()).append("** tài khoản khách hàng, trong đó **")
+                    .append(c.path("active").asLong()).append("** đang hoạt động.");
+        } else if (question.matches(".*\\b(don|yeu cau|job)\\b.*") && !m.isMissingNode()) {
+            sb.append(capitalize(monthLabel)).append(" có **").append(m.path("jobsCreated").asLong()).append("** yêu cầu được tạo, **")
+                    .append(m.path("completedJobs").asLong()).append("** đơn hoàn thành.");
+        } else {
+            sb.append("**Tổng quan hệ thống FixLink** (số liệu hiện tại):");
+        }
+        sb.append("\n\n**Người dùng** (tổng ").append(n.path("allUsers").asLong()).append(" tài khoản):\n")
+                .append("- Thợ: ").append(t.path("total").asLong()).append(" (đang hoạt động ").append(t.path("active").asLong())
+                .append(", chờ duyệt ").append(t.path("pendingApproval").asLong()).append(", chờ duyệt KYC ")
+                .append(t.path("pendingKyc").asLong()).append(", đã khoá ").append(t.path("blocked").asLong()).append(")\n")
+                .append("- Khách hàng: ").append(c.path("total").asLong()).append(" (đang hoạt động ").append(c.path("active").asLong())
+                .append(", đã khoá ").append(c.path("blocked").asLong()).append(")\n");
+        if (!m.isMissingNode()) {
+            sb.append("\n**").append(capitalize(monthLabel)).append(":**\n")
+                    .append("- Yêu cầu tạo mới: ").append(m.path("jobsCreated").asLong())
+                    .append(" · đã nhận thợ: ").append(m.path("jobsAccepted").asLong())
+                    .append(" · hoàn thành: ").append(m.path("completedJobs").asLong())
+                    .append(" · đã hủy: ").append(m.path("cancelledJobs").asLong()).append('\n')
+                    .append("- Báo giá đã gửi: ").append(m.path("quotesCreated").asLong())
+                    .append(" · thợ có việc trong tháng: ").append(m.path("activeTechnicians").asLong()).append('\n')
+                    .append("- Giá trị đơn hoàn thành: ").append(m.path("completedJobValueText").asText())
+                    .append(" · doanh thu phí nền tảng (10%): ").append(m.path("platformRevenueText").asText()).append('\n');
+            if (m.hasNonNull("averageRating") && m.path("reviewCount").asLong() > 0) {
+                sb.append("- Đánh giá trung bình: ").append(String.format(Locale.ROOT, "%.1f", m.path("averageRating").asDouble()))
+                        .append("/5 (").append(m.path("reviewCount").asLong()).append(" lượt)\n");
+            }
+        }
+        sb.append("\nChi tiết: quản lý người dùng tại **/quan-tri**, báo cáo tại **/quan-tri/thong-ke**.");
+        return sb.toString();
+    }
+
+    /** "2026-10" → "tháng 10/2026". */
+    private static String monthLabel(String month) {
+        if (month != null && month.matches("\\d{4}-\\d{2}.*")) {
+            return "tháng " + month.substring(5, 7) + "/" + month.substring(0, 4);
+        }
+        return "tháng này";
+    }
+
+    private static String capitalize(String s) {
+        return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
     static String paidText(List<JsonNode> items) {
         if (items.isEmpty()) {
             return "Hiện bạn **không có đơn nào đã đặt cọc mà chưa hoàn thành**. Đơn đã chọn thợ cần xác nhận lịch hẹn rồi "
@@ -449,6 +529,12 @@ public class OfflinePersonalResponder {
             sb.append("\n- Lý do từ chối: ").append(n.path("rejectionReason").asText());
         }
         sb.append("\n- Việc đã hoàn thành: ").append(n.path("completedJobs").asInt());
+        if (n.hasNonNull("walletBalanceText")) {
+            sb.append("\n- Số dư Ví FixLink: ").append(n.path("walletBalanceText").asText());
+            if (n.path("walletNegative").asBoolean()) {
+                sb.append(" (tạm âm do công nợ phí nền tảng khi nhận tiền mặt; được cấn trừ vào doanh thu các đơn sau)");
+            }
+        }
         if (n.hasNonNull("avgRating")) {
             sb.append("\n- Điểm đánh giá: ").append(n.path("avgRating").asText());
         }

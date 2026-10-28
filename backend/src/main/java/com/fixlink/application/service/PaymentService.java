@@ -31,15 +31,10 @@ public class PaymentService {
     private final AdditionalCostService additionalCostService;
     private final VietQRService vietQRService;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PaymentResult createDepositPayment(Long requestId, Long userId) {
         RepairRequestJpaEntity request = findRequest(requestId);
         verifyCustomerOwnership(request, userId);
-
-        if (request.getStatus() != RequestStatus.ASSIGNED) {
-            throw new DomainException("PAYMENT_INVALID_STATUS",
-                    "Yêu cầu phải ở trạng thái đã giao thợ để tạo đặt cọc.", 409);
-        }
 
         Optional<PaymentJpaEntity> existingDeposit = paymentRepo
                 .findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.DEPOSIT);
@@ -47,6 +42,11 @@ public class PaymentService {
             PaymentJpaEntity payment = existingDeposit.get();
             return new PaymentResult(payment.getId(), payment.getQrUrl(), payment.getAmount(),
                     payment.getTransferContent(), vietQRService.getBankInfo());
+        }
+
+        if (request.getStatus() != RequestStatus.ASSIGNED) {
+            throw new DomainException("PAYMENT_INVALID_STATUS",
+                    "Yêu cầu phải ở trạng thái đã giao thợ để tạo đặt cọc.", 409);
         }
 
         BigDecimal agreedPrice = request.getAgreedPrice();

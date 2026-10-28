@@ -39,7 +39,8 @@ confidence: verified
 - Chi tiết đơn (`/yeu-cau-cua-toi/{id}`): trạng thái, danh sách báo giá, thợ phụ trách, giá chốt, tiền cọc, lịch hẹn, tiến độ.
 
 ## 5. Đánh giá, nghiệm thu và giải ngân
-- Khách không giao tiền mặt trực tiếp cho thợ ngoài hệ thống.
-- Khi thợ báo hoàn thành (`AWAITING_ACCEPTANCE`), khách kiểm tra, vận hành thử thiết bị và **quét mã QR thanh toán phần còn lại** (bắt buộc trước khi hoàn tất nghiệm thu).
+- Khách chỉ trả đúng số tiền hệ thống hiển thị, không trả khoản nào ngoài hệ thống.
+- Khi thợ báo hoàn thành (`AWAITING_ACCEPTANCE`), khách kiểm tra, vận hành thử thiết bị và **thanh toán phần còn lại** (bắt buộc trước khi hoàn tất nghiệm thu): quét **mã QR**, hoặc trả **tiền mặt** trực tiếp cho thợ rồi bấm **"Xác nhận đã gửi tiền mặt"**.
+- Khách xem các đánh giá cũ của thợ bằng nút **"⭐ Xem đánh giá thợ"** khi so sánh báo giá hoặc trong khối thông tin thợ.
 - **Bắt buộc chấm điểm 1–5 sao và viết nhận xét** trước khi hoàn tất. Điểm đánh giá được cộng vào điểm trung bình hiển thị trên hồ sơ thợ.
 - Chỉ khi khách hoàn tất nghiệm thu, hệ thống mới giải ngân cho thợ. Chưa hài lòng thì đừng nghiệm thu – hãy trao đổi với thợ hoặc tạo phiếu hỗ trợ.
