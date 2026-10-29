@@ -45,6 +45,10 @@ public class PaymentJpaEntity extends BaseJpaEntity {
     @Column(name = "confirmed_at")
     private LocalDateTime confirmedAt;
 
+    @Column(name = "payment_method", length = 30)
+    @Builder.Default
+    private String paymentMethod = "VIETQR";
+
     public void confirm() {
         this.status = PaymentStatus.CONFIRMED;
         this.confirmedAt = LocalDateTime.now();

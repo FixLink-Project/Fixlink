@@ -38,6 +38,9 @@ class RepairRequestServiceTest {
     private SpringDataRepairRequestRepository requestRepo;
 
     @Mock
+    private SpringDataRepairRequestReviewRepository reviewRepo;
+
+    @Mock
     private SpringDataMediaRepository mediaRepo;
 
     @Mock
@@ -452,5 +455,131 @@ class RepairRequestServiceTest {
 
         assertEquals(RequestStatus.INSPECTING, result.request().getStatus());
         verify(progressRepo, times(1)).save(any(WorkProgressJpaEntity.class));
+    }
+
+    @Test
+    @DisplayName("Nghiệm thu đơn thanh toán TIỀN MẶT: Cọc 600k, giá 2tr -> cộng 400k vào ví thợ")
+    void testCompleteStatus_SettlementWithCash_WithDeposit() {
+        sampleRequest.setStatus(RequestStatus.AWAITING_ACCEPTANCE);
+        sampleRequest.setTechnicianId(2L);
+        sampleRequest.setAgreedPrice(new BigDecimal("2000000"));
+        sampleRequest.setDepositAmount(new BigDecimal("600000"));
+
+        TechnicianProfileJpaEntity tech = new TechnicianProfileJpaEntity();
+        tech.setUserId(2L);
+        tech.setWalletBalance(new BigDecimal("1000000"));
+        tech.setCompletedJobs(5);
+
+        PaymentJpaEntity cashFinalPayment = PaymentJpaEntity.builder()
+                .paymentMethod("CASH")
+                .status(com.fixlink.domain.model.PaymentStatus.CONFIRMED)
+                .amount(new BigDecimal("1400000"))
+                .build();
+
+        when(requestRepo.findById(100L)).thenReturn(Optional.of(sampleRequest));
+        when(requestRepo.save(any(RepairRequestJpaEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(techProfileRepo.findById(2L)).thenReturn(Optional.of(tech));
+        when(paymentRepo.findByRequestIdAndPaymentTypeAndDeletedAtIsNull(eq(100L), eq(com.fixlink.domain.model.PaymentType.FINAL)))
+                .thenReturn(Optional.of(cashFinalPayment));
+        when(reviewRepo.existsByRequestIdAndDeletedAtIsNull(100L)).thenReturn(true);
+        when(repairRequestMapper.toDomain(any(RepairRequestJpaEntity.class))).thenReturn(
+                RepairRequest.builder().id(100L).status(RequestStatus.COMPLETED).build()
+        );
+
+        var cmd = new RepairRequestUseCase.UpdateStatusCommand(
+                100L, RequestStatus.COMPLETED, "Khách đã nghiệm thu", 1L, Role.CUSTOMER
+        );
+
+        var result = service.updateStatus(cmd);
+
+        assertEquals(RequestStatus.COMPLETED, result.request().getStatus());
+        // 1.000.000 + (600.000 - 200.000) = 1.400.000
+        assertEquals(new BigDecimal("1400000"), tech.getWalletBalance());
+        assertEquals(6, tech.getCompletedJobs());
+        verify(techProfileRepo).save(tech);
+    }
+
+    @Test
+    @DisplayName("Nghiệm thu đơn thanh toán TIỀN MẶT: Không cọc, giá 2tr -> trừ 200k hoa hồng trong ví thợ")
+    void testCompleteStatus_SettlementWithCash_NoDeposit() {
+        sampleRequest.setStatus(RequestStatus.AWAITING_ACCEPTANCE);
+        sampleRequest.setTechnicianId(2L);
+        sampleRequest.setAgreedPrice(new BigDecimal("2000000"));
+        sampleRequest.setDepositAmount(BigDecimal.ZERO);
+
+        TechnicianProfileJpaEntity tech = new TechnicianProfileJpaEntity();
+        tech.setUserId(2L);
+        tech.setWalletBalance(new BigDecimal("1000000"));
+        tech.setCompletedJobs(2);
+
+        PaymentJpaEntity cashFinalPayment = PaymentJpaEntity.builder()
+                .paymentMethod("CASH")
+                .status(com.fixlink.domain.model.PaymentStatus.CONFIRMED)
+                .amount(new BigDecimal("2000000"))
+                .build();
+
+        when(requestRepo.findById(100L)).thenReturn(Optional.of(sampleRequest));
+        when(requestRepo.save(any(RepairRequestJpaEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(techProfileRepo.findById(2L)).thenReturn(Optional.of(tech));
+        when(paymentRepo.findByRequestIdAndPaymentTypeAndDeletedAtIsNull(eq(100L), eq(com.fixlink.domain.model.PaymentType.FINAL)))
+                .thenReturn(Optional.of(cashFinalPayment));
+        when(reviewRepo.existsByRequestIdAndDeletedAtIsNull(100L)).thenReturn(true);
+        when(repairRequestMapper.toDomain(any(RepairRequestJpaEntity.class))).thenReturn(
+                RepairRequest.builder().id(100L).status(RequestStatus.COMPLETED).build()
+        );
+
+        var cmd = new RepairRequestUseCase.UpdateStatusCommand(
+                100L, RequestStatus.COMPLETED, "Khách đã nghiệm thu", 1L, Role.CUSTOMER
+        );
+
+        var result = service.updateStatus(cmd);
+
+        assertEquals(RequestStatus.COMPLETED, result.request().getStatus());
+        // 1.000.000 + (0 - 200.000) = 800.000
+        assertEquals(new BigDecimal("800000"), tech.getWalletBalance());
+        assertEquals(3, tech.getCompletedJobs());
+        verify(techProfileRepo).save(tech);
+    }
+
+    @Test
+    @DisplayName("Nghiệm thu đơn thanh toán VIETQR: Đơn 2tr -> giải ngân 1.800.000đ vào ví thợ")
+    void testCompleteStatus_SettlementWithVietQR() {
+        sampleRequest.setStatus(RequestStatus.AWAITING_ACCEPTANCE);
+        sampleRequest.setTechnicianId(2L);
+        sampleRequest.setAgreedPrice(new BigDecimal("2000000"));
+        sampleRequest.setDepositAmount(new BigDecimal("600000"));
+
+        TechnicianProfileJpaEntity tech = new TechnicianProfileJpaEntity();
+        tech.setUserId(2L);
+        tech.setWalletBalance(new BigDecimal("500000"));
+        tech.setCompletedJobs(0);
+
+        PaymentJpaEntity qrFinalPayment = PaymentJpaEntity.builder()
+                .paymentMethod("VIETQR")
+                .status(com.fixlink.domain.model.PaymentStatus.CONFIRMED)
+                .amount(new BigDecimal("1400000"))
+                .build();
+
+        when(requestRepo.findById(100L)).thenReturn(Optional.of(sampleRequest));
+        when(requestRepo.save(any(RepairRequestJpaEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(techProfileRepo.findById(2L)).thenReturn(Optional.of(tech));
+        when(paymentRepo.findByRequestIdAndPaymentTypeAndDeletedAtIsNull(eq(100L), eq(com.fixlink.domain.model.PaymentType.FINAL)))
+                .thenReturn(Optional.of(qrFinalPayment));
+        when(reviewRepo.existsByRequestIdAndDeletedAtIsNull(100L)).thenReturn(true);
+        when(repairRequestMapper.toDomain(any(RepairRequestJpaEntity.class))).thenReturn(
+                RepairRequest.builder().id(100L).status(RequestStatus.COMPLETED).build()
+        );
+
+        var cmd = new RepairRequestUseCase.UpdateStatusCommand(
+                100L, RequestStatus.COMPLETED, "Khách đã nghiệm thu", 1L, Role.CUSTOMER
+        );
+
+        var result = service.updateStatus(cmd);
+
+        assertEquals(RequestStatus.COMPLETED, result.request().getStatus());
+        // 500.000 + (2.000.000 - 200.000) = 2.300.000
+        assertEquals(new BigDecimal("2300000"), tech.getWalletBalance());
+        assertEquals(1, tech.getCompletedJobs());
+        verify(techProfileRepo).save(tech);
     }
 }

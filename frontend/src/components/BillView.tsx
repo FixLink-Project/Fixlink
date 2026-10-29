@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchBills, formatCurrency, getBillHtmlUrl } from '../lib/api';
+import { fetchBills, formatCurrency, fetchBillHtml } from '../lib/api';
 import type { Bill } from '../lib/types';
 import Card from './Card';
 
@@ -10,6 +10,7 @@ interface BillViewProps {
 export default function BillView({ requestId }: BillViewProps) {
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
+  const [printingId, setPrintingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchBills(requestId)
@@ -17,6 +18,24 @@ export default function BillView({ requestId }: BillViewProps) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [requestId]);
+
+  const handlePrint = async (billId: number) => {
+    setPrintingId(billId);
+    try {
+      const html = await fetchBillHtml(billId);
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.open();
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Không thể in hóa đơn. Vui lòng thử lại sau.');
+    } finally {
+      setPrintingId(null);
+    }
+  };
 
   if (loading || bills.length === 0) return null;
 
@@ -28,20 +47,37 @@ export default function BillView({ requestId }: BillViewProps) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="font-mono text-sm font-medium text-ink">{b.billNumber}</p>
-                <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                  b.billType === 'FINAL' ? 'bg-success/10 text-success' : 'bg-brand/10 text-brand'
-                }`}>
-                  {b.billType === 'FINAL' ? 'Hóa đơn tổng' : 'Hóa đơn đặt cọc'}
-                </span>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                    b.billType === 'FINAL' ? 'bg-success/10 text-success' : 'bg-brand/10 text-brand'
+                  }`}>
+                    {b.billType === 'FINAL' ? 'Hóa đơn tổng' : 'Hóa đơn đặt cọc'}
+                  </span>
+                  {b.paymentMethod && (
+                    <span className="text-[11px] font-medium text-slate-500 bg-slate-100 rounded-full px-2 py-0.5">
+                      {b.paymentMethod === 'CASH' ? '💵 Tiền mặt' : '💳 VietQR'}
+                    </span>
+                  )}
+                </div>
               </div>
-              <a
-                href={getBillHtmlUrl(b.id)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft hover:bg-surface-elevated"
+              <button
+                type="button"
+                disabled={printingId === b.id}
+                onClick={() => handlePrint(b.id)}
+                className="inline-flex items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft hover:bg-surface-elevated hover:text-brand transition-colors disabled:opacity-50"
               >
-                In / Xuất PDF
-              </a>
+                {printingId === b.id ? (
+                  <>
+                    <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+                    Đang mở...
+                  </>
+                ) : (
+                  <>
+                    <span>🖨️</span>
+                    In / Xuất PDF
+                  </>
+                )}
+              </button>
             </div>
 
             <div className="mt-3 space-y-1 text-sm">

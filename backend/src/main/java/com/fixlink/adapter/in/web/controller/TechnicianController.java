@@ -86,4 +86,19 @@ public class TechnicianController {
         List<Map<String, Object>> reviews = reviewUseCase.getReviewsForTechnician(technicianId);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đánh giá thành công", reviews));
     }
+
+    @PostMapping("/me/wallet/topup")
+    @Operation(summary = "Nạp tiền vào ví FixLink của thợ", description = "Thợ nạp tiền ký quỹ/duy trì số dư ví FixLink để đảm bảo trên ngưỡng an toàn 500.000đ.")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> topUpWallet(
+            @RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        Object rawAmount = body != null ? body.get("amount") : null;
+        java.math.BigDecimal amount = rawAmount != null ? new java.math.BigDecimal(rawAmount.toString()) : java.math.BigDecimal.ZERO;
+        java.math.BigDecimal newBalance = technicianProfileUseCase.topUpWallet(principal.getId(), amount);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Nạp tiền vào ví thành công",
+                Map.of("newBalance", newBalance, "toppedUpAmount", amount)
+        ));
+    }
 }

@@ -72,6 +72,10 @@ public class QuotationService implements QuotationUseCase {
         if (tech.getVerificationStatus() != VerificationStatus.APPROVED) {
             throw new DomainException("UNVERIFIED_TECHNICIAN", "Tài khoản chưa được xác minh", 403);
         }
+        if (tech.getWalletBalance() != null && tech.getWalletBalance().compareTo(BigDecimal.ZERO) < 0) {
+            throw new DomainException("TECH_WALLET_NEGATIVE",
+                    "Số dư ví FixLink của bạn đang âm do khấu trừ phí hoa hồng các đơn tiền mặt. Vui lòng nạp tiền vào ví để tiếp tục nhận việc mới.", 403);
+        }
         if (!tech.getCategoryIds().contains(request.getCategoryId())) {
             throw new DomainException("INVALID_OPERATION", "Chuyên môn của bạn không khớp với danh mục yêu cầu");
         }
@@ -152,6 +156,10 @@ public class QuotationService implements QuotationUseCase {
 
         if (tech.getVerificationStatus() != VerificationStatus.APPROVED) {
             throw new DomainException("UNVERIFIED_TECHNICIAN", "Tài khoản chưa được xác minh", 403);
+        }
+        if (tech.getWalletBalance() != null && tech.getWalletBalance().compareTo(BigDecimal.ZERO) < 0) {
+            throw new DomainException("TECH_WALLET_NEGATIVE",
+                    "Số dư ví FixLink của bạn đang âm do khấu trừ phí hoa hồng các đơn tiền mặt. Vui lòng nạp tiền vào ví để tiếp tục gửi báo giá mới.", 403);
         }
 
         if (!tech.getCategoryIds().contains(request.getCategoryId())) {

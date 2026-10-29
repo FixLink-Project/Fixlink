@@ -63,4 +63,8 @@ public class BillJpaEntity extends BaseJpaEntity {
 
     @Column(name = "total_amount", precision = 15, scale = 0, nullable = false)
     private BigDecimal totalAmount;
+
+    @Column(name = "payment_method", length = 30)
+    @Builder.Default
+    private String paymentMethod = "VIETQR";
 }

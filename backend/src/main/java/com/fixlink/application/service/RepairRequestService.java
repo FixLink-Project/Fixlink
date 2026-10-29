@@ -374,20 +374,33 @@ public class RepairRequestService implements RepairRequestUseCase {
             }
         }
 
-        // Rule: Tự động trích 10% hoa hồng nền tảng và giải ngân 90% còn lại vào Ví FixLink của thợ khi nghiệm thu hoàn tất
+        // Rule: Tự động trích 10% hoa hồng nền tảng và hạch toán vào Ví FixLink của thợ khi nghiệm thu hoàn tất
         if (targetStatus == RequestStatus.COMPLETED && saved.getTechnicianId() != null) {
             try {
                 techProfileRepo.findById(saved.getTechnicianId()).ifPresent(tech -> {
                     BigDecimal totalJobPrice = saved.getAgreedPrice() != null ? saved.getAgreedPrice() : BigDecimal.ZERO;
                     BigDecimal commission = totalJobPrice.multiply(new BigDecimal("0.10")).setScale(0, java.math.RoundingMode.HALF_UP);
-                    BigDecimal netPayout = totalJobPrice.subtract(commission);
-
                     BigDecimal currentBalance = tech.getWalletBalance() != null ? tech.getWalletBalance() : BigDecimal.ZERO;
-                    tech.setWalletBalance(currentBalance.add(netPayout));
+
+                    var finalPaymentOpt = paymentRepo.findByRequestIdAndPaymentTypeAndDeletedAtIsNull(saved.getId(), com.fixlink.domain.model.PaymentType.FINAL);
+                    boolean isCash = finalPaymentOpt.isPresent() && "CASH".equalsIgnoreCase(finalPaymentOpt.get().getPaymentMethod());
+
+                    BigDecimal walletAdjustment;
+                    if (isCash) {
+                        BigDecimal depositPaid = saved.getDepositAmount() != null ? saved.getDepositAmount() : BigDecimal.ZERO;
+                        walletAdjustment = depositPaid.subtract(commission);
+                        tech.setWalletBalance(currentBalance.add(walletAdjustment));
+                        log.info("Settled request #{} with CASH: Tech #{} wallet changed by {} (deposit held: {}, commission 10%: {}, previous balance: {}, new balance: {})",
+                                saved.getId(), tech.getUserId(), walletAdjustment, depositPaid, commission, currentBalance, tech.getWalletBalance());
+                    } else {
+                        walletAdjustment = totalJobPrice.subtract(commission);
+                        tech.setWalletBalance(currentBalance.add(walletAdjustment));
+                        log.info("Settled request #{} with VIETQR: Tech #{} wallet disbursed {} (total: {}, commission 10%: {}, previous balance: {}, new balance: {})",
+                                saved.getId(), tech.getUserId(), walletAdjustment, totalJobPrice, commission, currentBalance, tech.getWalletBalance());
+                    }
+
                     tech.setCompletedJobs((tech.getCompletedJobs() == null ? 0 : tech.getCompletedJobs()) + 1);
                     techProfileRepo.save(tech);
-                    log.info("Disbursed {} to technician #{} wallet (total: {}, platform commission 10%: {})",
-                            netPayout, tech.getUserId(), totalJobPrice, commission);
                 });
             } catch (Exception e) {
                 log.warn("Wallet disbursement error for request #{}: {}", saved.getId(), e.getMessage());

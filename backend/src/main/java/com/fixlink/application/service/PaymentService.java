@@ -128,6 +128,11 @@ public class PaymentService {
 
     @Transactional
     public BillJpaEntity confirmPayment(Long paymentId, Long userId) {
+        return confirmPayment(paymentId, userId, "VIETQR");
+    }
+
+    @Transactional
+    public BillJpaEntity confirmPayment(Long paymentId, Long userId, String paymentMethod) {
         PaymentJpaEntity payment = paymentRepo.findById(paymentId)
                 .filter(p -> p.getDeletedAt() == null)
                 .orElseThrow(() -> new DomainException("PAYMENT_NOT_FOUND",
@@ -142,6 +147,9 @@ public class PaymentService {
         }
 
         payment.confirm();
+        if (paymentMethod != null && !paymentMethod.isBlank()) {
+            payment.setPaymentMethod(paymentMethod.trim().toUpperCase());
+        }
         payment.setUpdatedBy(userId);
         paymentRepo.save(payment);
 
@@ -252,6 +260,7 @@ public class PaymentService {
                 .depositAmount(depositAmount)
                 .additionalCost(additionalTotal)
                 .totalAmount(payment.getAmount())
+                .paymentMethod(payment.getPaymentMethod() != null ? payment.getPaymentMethod() : "VIETQR")
                 .build();
         bill.setCreatedBy(userId);
         return billRepo.save(bill);

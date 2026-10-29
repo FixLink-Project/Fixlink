@@ -7,4 +7,5 @@ public interface TechnicianProfileUseCase {
     TechnicianProfileResponse getMyProfile(Long userId);
     TechnicianProfileResponse updateMyProfile(Long userId, UpdateTechnicianProfileRequest request);
     TechnicianProfileResponse updateCategoriesByAdmin(Long technicianUserId, java.util.List<Long> categoryIds);
+    java.math.BigDecimal topUpWallet(Long technicianUserId, java.math.BigDecimal amount);
 }

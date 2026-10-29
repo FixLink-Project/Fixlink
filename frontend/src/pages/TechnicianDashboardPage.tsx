@@ -6,7 +6,7 @@ import Card from '../components/Card';
 import DashboardLayout from '../components/DashboardLayout';
 import Pagination from '../components/Pagination';
 import StatusChip from '../components/StatusChip';
-import { ApiError, api, formatCurrency } from '../lib/api';
+import { ApiError, api, formatCurrency, topUpTechnicianWallet } from '../lib/api';
 import type { PageMeta, RepairRequest, VerificationStatus } from '../lib/types';
 
 interface SimpleRef {
@@ -75,6 +75,38 @@ export default function TechnicianDashboardPage() {
   const [selectedAreaId, setSelectedAreaId] = useState<string>('');
   const [searchInput, setSearchInput] = useState<string>('');
   const [appliedSearch, setAppliedSearch] = useState<string>('');
+
+  // Nạp tiền ví FixLink
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState<number>(500000);
+  const [customTopUpInput, setCustomTopUpInput] = useState<string>('500000');
+  const [toppingUp, setToppingUp] = useState(false);
+  const [topUpSuccess, setTopUpSuccess] = useState<string | null>(null);
+  const [topUpError, setTopUpError] = useState<string | null>(null);
+
+  const handleTopUp = async () => {
+    if (topUpAmount < 10000) {
+      setTopUpError('Số tiền nạp tối thiểu là 10.000 VNĐ');
+      return;
+    }
+    setToppingUp(true);
+    setTopUpError(null);
+    try {
+      const res = await topUpTechnicianWallet(topUpAmount);
+      if (profile) {
+        setProfile({ ...profile, walletBalance: res.data.newBalance });
+      }
+      setTopUpSuccess(`Nạp thành công ${formatCurrency(topUpAmount)} vào ví FixLink!`);
+      setTimeout(() => {
+        setShowTopUpModal(false);
+        setTopUpSuccess(null);
+      }, 1500);
+    } catch (err: any) {
+      setTopUpError(err.message || 'Nạp tiền thất bại.');
+    } finally {
+      setToppingUp(false);
+    }
+  };
 
 
 
@@ -253,30 +285,115 @@ export default function TechnicianDashboardPage() {
                 {profile.completedJobs > 0 ? Number(profile.avgRating).toFixed(1) : 'Chưa có'}
               </dd>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-              <dt className="flex items-center justify-between text-xs font-semibold text-slate-500">
-                <span>Số dư ví FixLink</span>
-                <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg border text-sm bg-blue-50 text-brand border-blue-200">
-                  💰
-                </span>
-              </dt>
-              <dd className={`mt-3 font-display text-2xl font-bold ${profile.walletBalance < 0 ? 'text-amber-600' : 'text-slate-900'}`}>
-                {formatCurrency(profile.walletBalance)}
-              </dd>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between">
+              <div>
+                <dt className="flex items-center justify-between text-xs font-semibold text-slate-500">
+                  <span>Số dư ví FixLink</span>
+                  <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg border text-sm bg-blue-50 text-brand border-blue-200">
+                    💰
+                  </span>
+                </dt>
+                <dd className={`mt-2 font-display text-2xl font-bold ${
+                  profile.walletBalance < 0
+                    ? 'text-rose-600'
+                    : profile.walletBalance < 500000
+                    ? 'text-amber-600'
+                    : 'text-slate-900'
+                }`}>
+                  {formatCurrency(profile.walletBalance)}
+                </dd>
+                <div className="mt-1 flex items-center gap-1.5">
+                  {profile.walletBalance >= 500000 && (
+                    <span className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 border border-emerald-200">
+                      ✓ An toàn (&ge;500k)
+                    </span>
+                  )}
+                  {profile.walletBalance >= 0 && profile.walletBalance < 500000 && (
+                    <span className="inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 border border-amber-200">
+                      ⚠️ Dưới ngưỡng 500k
+                    </span>
+                  )}
+                  {profile.walletBalance < 0 && (
+                    <span className="inline-block rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700 border border-rose-200">
+                      ⛔ Công nợ âm
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">Ngưỡng chuẩn: 500k</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const need = profile.walletBalance < 500000 ? Math.max(500000 - profile.walletBalance, 200000) : 500000;
+                    setTopUpAmount(need);
+                    setCustomTopUpInput(String(need));
+                    setShowTopUpModal(true);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-brand px-2.5 py-1 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  <span>+</span> Nạp tiền ví
+                </button>
+              </div>
             </div>
           </dl>
 
-          {/* CẢNH BÁO CÔNG NỢ VÍ ÂM THÂN THIỆN */}
+          {/* CẢNH BÁO CÔNG NỢ VÍ ÂM */}
           {profile.walletBalance < 0 && (
+            <div className="mb-6 rounded-2xl border border-rose-300 bg-rose-50/90 p-4 shadow-xs animate-fade-in">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">⛔</span>
+                <div className="flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <p className="text-xs font-bold text-rose-950 uppercase tracking-wider">
+                      Công nợ ví FixLink: {formatCurrency(profile.walletBalance)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const need = Math.abs(profile.walletBalance) + 500000;
+                        setTopUpAmount(need);
+                        setCustomTopUpInput(String(need));
+                        setShowTopUpModal(true);
+                      }}
+                      className="self-start sm:self-auto text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded-lg shadow-xs transition-colors cursor-pointer"
+                    >
+                      + Nạp tiền cân bằng ví
+                    </button>
+                  </div>
+                  <p className="text-xs text-rose-900 mt-1.5 leading-relaxed">
+                    Ví của bạn đang có khoản công nợ hoa hồng cần thanh toán sau các đơn hàng thanh toán tiền mặt trực tiếp. Quyền gửi báo giá cho các yêu cầu mới tạm hoãn cho đến khi số dư được nạp lại. Vui lòng nạp tiền vào ví để tiếp tục hoạt động!
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CẢNH BÁO DƯỚI NGƯỠNG AN TOÀN 500K (CHẾ ĐỘ HỖ TRỢ LINH HOẠT) */}
+          {profile.walletBalance >= 0 && profile.walletBalance < 500000 && (
             <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 shadow-xs animate-fade-in">
               <div className="flex items-start gap-3">
-                <span className="text-2xl">💡</span>
-                <div>
-                  <p className="text-xs font-bold text-amber-950 uppercase tracking-wider">
-                    Phí nền tảng tạm tính (Công nợ ví: {formatCurrency(profile.walletBalance)})
-                  </p>
-                  <p className="text-xs text-amber-900 mt-1 leading-relaxed">
-                    Bạn đang có số dư ví tạm âm do nhận tiền mặt trực tiếp từ khách hàng. Doanh thu từ các đơn hàng hoàn thành tiếp theo sẽ được tự động cấn trừ để cân bằng ví. Bạn vẫn có thể tiếp tục nhận việc bình thường!
+                <span className="text-2xl">⚠️</span>
+                <div className="flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <p className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                      Số dư ví dưới ngưỡng ký quỹ an toàn 500.000đ
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const need = 500000 - profile.walletBalance;
+                        setTopUpAmount(need);
+                        setCustomTopUpInput(String(need));
+                        setShowTopUpModal(true);
+                      }}
+                      className="self-start sm:self-auto text-xs font-bold text-amber-950 bg-amber-200/80 hover:bg-amber-300 border border-amber-300 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                    >
+                      + Nạp tiền bổ sung
+                    </button>
+                  </div>
+                  <p className="text-xs text-amber-900 mt-1.5 leading-relaxed">
+                    Số dư ví hiện tại là <strong>{formatCurrency(profile.walletBalance)}</strong> (thấp hơn ngưỡng tiêu chuẩn 500.000đ). Hệ thống đang kích hoạt <strong>Chế độ hỗ trợ linh hoạt</strong>: bạn vẫn có thể nhận việc và gửi báo giá bình thường. Vui lòng nạp thêm tiền vào ví để duy trì nhận việc ổn định và khấu trừ hoa hồng cho các đơn thanh toán tiền mặt tiếp theo.
                   </p>
                 </div>
               </div>
@@ -650,6 +767,152 @@ export default function TechnicianDashboardPage() {
             </Card>
           )}
 
+        </div>
+      )}
+
+      {/* MODAL NẠP TIỀN VÀO VÍ FIXLINK */}
+      {showTopUpModal && profile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">💰</span>
+                <h3 className="font-bold text-slate-900 text-base">
+                  Nạp tiền vào Ví FixLink
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTopUpModal(false);
+                  setTopUpError(null);
+                  setTopUpSuccess(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {topUpSuccess ? (
+              <div className="py-6 text-center space-y-2">
+                <span className="text-4xl">🎉</span>
+                <p className="font-bold text-emerald-700 text-sm">{topUpSuccess}</p>
+                <p className="text-xs text-slate-500">Số dư ví của bạn đã được cập nhật thành công.</p>
+              </div>
+            ) : (
+              <div className="space-y-4 text-xs text-slate-600">
+                <p>
+                  Chọn hoặc nhập số tiền bạn muốn nạp vào ví để duy trì số dư an toàn trên <strong>500.000đ</strong>:
+                </p>
+
+                {/* Quick preset buttons */}
+                <div className="grid grid-cols-3 gap-2">
+                  {[200000, 500000, 1000000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => {
+                        setTopUpAmount(amt);
+                        setCustomTopUpInput(String(amt));
+                      }}
+                      className={`rounded-xl border py-2 text-xs font-bold transition-all cursor-pointer ${
+                        topUpAmount === amt
+                          ? 'border-brand bg-brand/10 text-brand ring-1 ring-brand'
+                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      {formatCurrency(amt)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom amount input */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Số tiền muốn nạp (VNĐ):
+                  </label>
+                  <input
+                    type="number"
+                    min="10000"
+                    step="10000"
+                    value={customTopUpInput}
+                    onChange={(e) => {
+                      setCustomTopUpInput(e.target.value);
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val)) setTopUpAmount(val);
+                    }}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-sm font-semibold text-slate-900 focus:border-brand focus:outline-none"
+                    placeholder="Nhập số tiền..."
+                  />
+                </div>
+
+                {/* QR Code and bank details */}
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-3">
+                  <div className="flex flex-col items-center">
+                    <img
+                      src={`https://api.vietqr.io/image/970422-0912345678-compact2.png?amount=${topUpAmount}&addInfo=NAPVI%20${profile.userId}&accountName=CONG%20TY%20CO%20PHAN%20FIXLINK`}
+                      alt="VietQR nạp tiền"
+                      className="h-44 w-44 object-contain rounded-lg border border-slate-200 bg-white p-1"
+                    />
+                    <p className="mt-1 text-[11px] text-slate-500 font-medium">Quét mã QR bằng App Ngân hàng</p>
+                  </div>
+
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Ngân hàng:</span>
+                      <span className="font-bold text-slate-800">MB Bank (Quân Đội)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Số tài khoản:</span>
+                      <span className="font-mono font-bold text-slate-800">0912345678</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Chủ tài khoản:</span>
+                      <span className="font-bold text-slate-800">CONG TY CO PHAN FIXLINK</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Nội dung chuyển khoản:</span>
+                      <span className="font-mono font-bold text-brand bg-blue-50 px-1.5 py-0.5 rounded">
+                        NAPVI {profile.userId}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-t border-slate-200 pt-1.5">
+                      <span className="text-slate-700 font-bold">Số tiền nạp:</span>
+                      <span className="font-bold text-emerald-700 text-xs">{formatCurrency(topUpAmount)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {topUpError && (
+                  <p className="text-xs text-rose-600 font-medium bg-rose-50 border border-rose-200 p-2 rounded-lg">
+                    {topUpError}
+                  </p>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setShowTopUpModal(false);
+                      setTopUpError(null);
+                    }}
+                    className="text-xs py-2 px-4"
+                  >
+                    Đóng
+                  </Button>
+                  <Button
+                    variant="primary"
+                    loading={toppingUp}
+                    onClick={handleTopUp}
+                    className="text-xs py-2 px-4 bg-emerald-600 hover:bg-emerald-700 font-bold"
+                  >
+                    ✓ Tôi đã chuyển khoản nạp tiền
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </DashboardLayout>
