@@ -35,6 +35,7 @@ services:
       # Trợ lý FixLink: gọi qua cổng LiteLLM, LiteLLM không chạy thì gọi thẳng Groq
       CHATBOT_PROVIDER: ${CHATBOT_PROVIDER:-groq}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_API_KEY_2: ${GROQ_API_KEY_2:-}
       LITELLM_BASE_URL: http://litellm:4000
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-fixlink-local}
       TZ: Asia/Ho_Chi_Minh
@@ -43,6 +44,12 @@ services:
         condition: service_healthy
       litellm:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/api/v1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Cổng LiteLLM: chuyển Groq gpt-oss-120b → qwen3.8-27b khi hết hạn mức (cấu hình trong litellm/config.yaml)
   litellm:
@@ -62,11 +69,11 @@ services:
       GROQ_API_KEY_2: ${GROQ_API_KEY_2:-}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-fixlink-local}
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/api/v1/health || exit 1"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness', timeout=4)"]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 40s
 
   frontend:
     build:

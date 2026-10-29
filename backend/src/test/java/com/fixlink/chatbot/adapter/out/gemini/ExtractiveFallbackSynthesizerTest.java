@@ -361,6 +361,33 @@ class ExtractiveFallbackSynthesizerTest {
     }
 
     @Test
+    @DisplayName("Quy định mới: chuông thông báo, chuyên môn do admin cấp phép, đổi thợ bảo lưu 100% cọc")
+    void shouldFollowNotificationAndSpecializationRules() {
+        assertThat(synthesizer.synthesize("làm sao biết có báo giá mới", "").reply()).contains("chuông 🔔")
+                .doesNotContain("chưa có tin nhắn SMS hay thông báo đẩy");
+        assertThat(synthesizer.synthesize("thợ muốn thêm chuyên môn thì làm sao", "").reply())
+                .contains("Ban quản trị FixLink phỏng vấn").contains("Khu vực");
+        assertThat(synthesizer.synthesize("admin cấp phép chuyên môn cho thợ ở đâu", "").reply()).contains("Lưu chuyên môn thợ");
+        assertThat(synthesizer.synthesize("đổi thợ thì tiền cọc thế nào", "").reply()).contains("100%");
+    }
+
+    @Test
+    @DisplayName("Xin tư vấn xử lý sự cố thiết bị thì để AI trả lời; hỏi giá, hỏi quy định vẫn dùng câu trả lời chuẩn")
+    void shouldLeaveDeviceAdviceToAi() {
+        assertThat(synthesizer.directAnswer("máy giặt nhà tôi vắt rung mạnh và kêu to, tôi nên kiểm tra gì trước khi gọi thợ?"))
+                .isEmpty();
+        assertThat(synthesizer.directAnswer("so sánh giúp tôi nên vệ sinh máy lạnh hay nạp ga khi máy chạy mà không mát"))
+                .isEmpty();
+        assertThat(ExtractiveFallbackSynthesizer.asksDeviceAdvice("vệ sinh máy lạnh bao nhiêu tiền")).isFalse();
+        assertThat(ExtractiveFallbackSynthesizer.asksDeviceAdvice("tiền cọc tính thế nào")).isFalse();
+        assertThat(synthesizer.directAnswer("vệ sinh máy lạnh bao nhiêu tiền")).isPresent();
+        // Hết hạn mức AI: gợi ý đúng danh mục thay vì hướng dẫn đăng yêu cầu
+        assertThat(synthesizer.synthesize("máy giặt nhà tôi vắt rung mạnh và kêu to, tôi nên kiểm tra gì trước khi gọi thợ?", "")
+                .reply()).contains("Sửa Chữa Điện Lạnh").contains("ngắt điện").doesNotContain("Cách đăng yêu cầu sửa chữa");
+        assertThat(synthesizer.synthesize("ổ cắm bốc khói tại sao vậy", "").reply()).containsIgnoringCase("ngắt");
+    }
+
+    @Test
     @DisplayName("Trích đoạn dạng bảng được chuyển thành danh sách, không in bảng vỡ định dạng hay mã nội bộ")
     void shouldTurnTablesIntoBullets() {
         String rag = """

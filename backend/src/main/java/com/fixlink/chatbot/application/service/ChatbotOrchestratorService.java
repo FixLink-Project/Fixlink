@@ -150,6 +150,9 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
                     if ("get_admin_overview".equals(name)) {
                         return "ADMIN".equals(r);
                     }
+                    if ("get_my_notifications".equals(name)) {
+                        return !"GUEST".equals(r);
+                    }
                     boolean personal = TECHNICIAN_TOOLS.contains(name);
                     if (!personal) {
                         return true;
@@ -216,9 +219,13 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         String dynamicPrompt = buildDynamicSystemPrompt(command, sources, ragContext, scenarioGuidance);
 
         // 5. Call LLM & Tools Orchestration
-        var tools = toolsForRole(command.role());
+        // Xin tư vấn sự cố ("nên kiểm tra gì") không cần tra dữ liệu: bỏ tool để AI trả lời trong 1 lượt. Gói Groq miễn phí
+        // giới hạn token mỗi phút, lượt gọi tool thứ hai thường làm cả 2 model vượt hạn mức.
+        var tools = ExtractiveFallbackSynthesizer.asksDeviceAdvice(cleanMessage)
+                ? List.<Map<String, Object>>of() : toolsForRole(command.role());
         LlmChatPort.ChatOrchestrationResult orchestrationResult;
         List<ToolCallRecorder.ToolTrace> toolTraces;
+        boolean aiUnavailable = false;
         FaqAnswerCache.Entry cached = faqCache.lookup(cleanMessage, command.role(), history);
         // Dữ liệu cá nhân (đơn, mã đơn, lịch hẹn, hồ sơ, việc phù hợp) luôn lấy thẳng từ hệ thống: AI từng tự bịa cả đơn hàng
         DataAnswer personal = command.userId() != null ? answerFromData(cleanMessage, command) : null;
@@ -279,6 +286,13 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
                     orchestrationResult = offline.get();
                 }
             }
+            aiUnavailable = orchestrationResult.modelUsed() == null || orchestrationResult.modelUsed().startsWith("local-");
+            if (ExtractiveFallbackSynthesizer.asksDeviceAdvice(cleanMessage) && skipsAdvice(orchestrationResult.reply())) {
+                aiUnavailable = true;
+                // Khách hỏi "nên kiểm tra gì" mà AI chỉ hỏi lại có muốn đặt thợ không: dùng hướng dẫn an toàn cục bộ
+                LOG.info("AI reply skipped the requested device advice; using local guidance instead");
+                orchestrationResult = verifiedAnswers.synthesize(cleanMessage, ragContext);
+            }
             orchestrationResult = withPreviousTurnContext(orchestrationResult, cleanMessage, history, ragContext);
             faqCache.store(cleanMessage, command.role(), history, orchestrationResult, toolTraces);
         }
@@ -323,7 +337,8 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
                 orchestrationResult.modelUsed());
         String modelUsed = orchestrationResult.modelUsed() != null ? orchestrationResult.modelUsed() : "";
         String shownModel = orchestrationResult.modelUsed();
-        if (draftSummary != null && (modelUsed.equals("local-fallback") || modelUsed.equals("local-synthesizer"))) {
+        if (draftSummary != null && (modelUsed.equals("local-fallback") || modelUsed.equals("local-synthesizer"))
+                && !ExtractiveFallbackSynthesizer.asksDeviceAdvice(cleanMessage)) {
             // AI tạm quá tải nhưng đã đủ thông tin đặt thợ: trả bản tóm tắt cụ thể thay vì câu xin lỗi chung chung.
             // Bản tóm tắt dựng từ chính thông tin khách nêu nên hiển thị như câu trả lời chuẩn, không phải "dự phòng".
             reply = draftSummary;
@@ -331,6 +346,10 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         } else if (draftSummary != null && modelUsed.startsWith("local-") && describesBooking(cleanMessage)) {
             // Câu trả lời FAQ cục bộ vẫn giữ, kèm bản tóm tắt yêu cầu đã điền sẵn lên đầu
             reply = draftSummary + NL + NL + "---" + NL + NL + reply;
+        }
+        if (aiUnavailable && "local-faq".equals(shownModel)) {
+            // Đã gọi AI nhưng mọi model đều lỗi/hết hạn mức: câu trả lời lấy từ kho tri thức, ghi đúng là "dự phòng"
+            shownModel = "local-backup";
         }
 
         List<ChatCard> cards = cardFactory.fromToolTraces(toolTraces);
@@ -469,6 +488,16 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
     private static final Pattern FOLLOW_UP_ITEM = Pattern.compile("^(the con|con|vay con|the|con cai|con goi)\\b");
 
     /** Khách nêu ngân sách; "thợ báo giá 400k" hay "đã trả 300k cọc" là giá thợ báo/khoản đã trả, không phải ngân sách. */
+    /** Câu trả lời không có bước tư vấn nào: quá ngắn, không có danh sách, chỉ là câu hỏi lại. */
+    static boolean skipsAdvice(String reply) {
+        if (reply == null || reply.isBlank()) {
+            return true;
+        }
+        String text = reply.strip();
+        boolean hasSteps = text.matches("(?s).*(^|\\n)\\s*(\\d+[.)]|[-*•])\\s+.*");
+        return !hasSteps && text.length() < 220;
+    }
+
     private static boolean statesBudget(String message) {
         String normalized = SymptomClassifier.normalize(message);
         return SymptomClassifier.detectBudget(message).isPresent() && !normalized.contains("bao gia")
@@ -498,7 +527,8 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
      * yêu cầu lên đầu câu trả lời cục bộ; câu chỉ hỏi giá hay hỏi bằng tiếng Anh thì giữ nguyên câu trả lời.
      */
     private static boolean describesBooking(String message) {
-        if (ExtractiveFallbackSynthesizer.looksEnglish(message)) {
+        if (ExtractiveFallbackSynthesizer.looksEnglish(message) || ExtractiveFallbackSynthesizer.asksDeviceAdvice(message)) {
+            // "nên kiểm tra gì trước khi gọi thợ" là xin tư vấn, không phải đang đặt thợ
             return false;
         }
         return BOOKING_INTENT.matcher(SymptomClassifier.normalize(message)).find()
