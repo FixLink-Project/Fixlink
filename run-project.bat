@@ -14,6 +14,10 @@ echo                                   (JDBC: jdbc:h2:mem:fixlink_db, user: sa, 
 echo.
 echo   Đang khởi chạy backend FixLink... Nhấn Ctrl+C để dừng.
 echo ===============================================================================
+rem Nạp biến môi trường (GROQ_API_KEY, LITELLM_BASE_URL...) từ file .env để Trợ lý FixLink AI hoạt động
+if exist "%~dp0.env" (
+    for /f "usebackq eol=# tokens=1* delims==" %%i in ("%~dp0.env") do set "%%i=%%j"
+)
 cd /d "%~dp0backend"
 if not exist "target\fixlink-backend-0.0.1-SNAPSHOT.jar" (
     echo Đang đóng gói backend...

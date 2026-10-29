@@ -59,9 +59,11 @@ chatbot:
   provider: ${CHATBOT_PROVIDER:groq}
   groq:
     api-key: ${GROQ_API_KEY:}
+    # Tùy chọn: key Groq của tài khoản thứ hai, dùng khi key chính hết hạn mức (gấp đôi hạn mức/ngày)
+    api-key-2: ${GROQ_API_KEY_2:}
     base-url: https://api.groq.com/openai/v1
     # Chuỗi failover: model đầu tiên là model chính. Ghi đè bằng GROQ_MODELS (phân tách bằng dấu phẩy).
-    models: ${GROQ_MODELS:openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b}
+    models: ${GROQ_MODELS:openai/gpt-oss-120b,qwen/qwen3.8-27b}
     timeout-seconds: 30
     total-budget-seconds: 60
     max-retries: 1
@@ -76,6 +78,13 @@ chatbot:
     max-tool-result-chars: 2000
     max-history-messages: 6
     max-history-message-chars: 600
+  # Cổng LiteLLM (litellm/config.yaml): Groq gpt-oss-120b → qwen3.8-27b khi hết hạn mức.
+  # Bỏ trống LITELLM_BASE_URL thì backend gọi thẳng Groq như cũ.
+  litellm:
+    base-url: ${LITELLM_BASE_URL:}
+    api-key: ${LITELLM_MASTER_KEY:}
+    models: ${LITELLM_MODELS:fixlink-chat}
+    timeout-seconds: 75
   gemini:
     api-key: ${GEMINI_API_KEY:}
     base-url: https://generativelanguage.googleapis.com/v1beta
@@ -106,5 +115,6 @@ chatbot:
     max-input-chars: 1000
     max-tool-rounds: 5
     history-turns: 10
-    guest-rate-per-10min: 20
+    # Đủ cho người dùng hỏi liên tục (~4 tin/phút) mà vẫn chặn spam
+    guest-rate-per-10min: 40
 

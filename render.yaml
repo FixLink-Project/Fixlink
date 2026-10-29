@@ -23,8 +23,20 @@ services:
         value: https://fixlink.vercel.app,http://localhost:5173
       - key: FRONTEND_URL
         value: https://fixlink.vercel.app
+      # Bật Trợ lý FixLink AI (trước đây để "false" khi chưa có key Groq)
       - key: CHATBOT_ENABLED
-        value: "false"
+        value: "true"
+      # Trợ lý FixLink AI: dán key trên Render Dashboard (sync: false = không lưu trong git)
+      - key: CHATBOT_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      # Tùy chọn: key Groq của tài khoản thứ hai (gấp đôi hạn mức/ngày), bỏ trống cũng được
+      - key: GROQ_API_KEY_2
+        sync: false
+      # Backend gọi thẳng Groq với chuỗi dự phòng gpt-oss-120b → qwen3.8-27b (key 1 rồi key 2), hết thì trả lời
+      # bằng dữ liệu/câu trả lời chuẩn. KHÔNG deploy cổng LiteLLM trên gói free: web service free của Render
+      # không nhận được kết nối nội bộ và ngủ sau 15 phút, làm câu chat đầu tiên chờ lâu. Xem docs/huong-dan-deploy-chatbot.md
 
 databases:
   - name: fixlink-db

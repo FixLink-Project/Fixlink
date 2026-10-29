@@ -1,0 +1,58 @@
+# =============================================================================
+# Cổng LiteLLM cho Trợ lý FixLink
+# Backend gọi một tên model duy nhất "fixlink-chat". LiteLLM tự chuyển sang model dự phòng
+# khi model chính hết hạn mức (HTTP 429), quá tải hoặc lỗi:
+#
+#   fixlink-chat (Groq gpt-oss-120b)
+#     → fixlink-groq-qwen (Groq qwen3.8-27b, hạn mức riêng)
+#
+# Không dùng gpt-oss-20b: khi test model này hay hiểu sai câu hỏi (máy giặt thành máy lạnh) và lộ mã nội bộ;
+# hai model mạnh cùng bận thì backend trả lời bằng câu trả lời chuẩn/dữ liệu thật, chính xác hơn model yếu.
+#
+# Mỗi model khai báo 2 lần (GROQ_API_KEY và GROQ_API_KEY_2): có key thứ hai của một tài khoản Groq khác
+# thì LiteLLM chia tải giữa 2 key, gấp đôi hạn mức/ngày; không có thì key 2 dùng lại key 1.
+# Nếu tất cả đều lỗi, backend tự gọi thẳng Groq rồi đến bộ trả lời cục bộ.
+# Mọi API key đọc từ biến môi trường (file .env hoặc biến môi trường trên Render), KHÔNG ghi vào file này.
+# =============================================================================
+
+model_list:
+  - model_name: fixlink-chat
+    litellm_params:
+      model: groq/openai/gpt-oss-120b
+      api_key: os.environ/GROQ_API_KEY
+      reasoning_effort: low
+  - model_name: fixlink-chat
+    litellm_params:
+      model: groq/openai/gpt-oss-120b
+      api_key: os.environ/GROQ_API_KEY_2
+      reasoning_effort: low
+
+  - model_name: fixlink-groq-qwen
+    litellm_params:
+      model: groq/qwen/qwen3.8-27b
+      api_key: os.environ/GROQ_API_KEY
+  - model_name: fixlink-groq-qwen
+    litellm_params:
+      model: groq/qwen/qwen3.8-27b
+      api_key: os.environ/GROQ_API_KEY_2
+
+router_settings:
+  fallbacks:
+    - fixlink-chat: ["fixlink-groq-qwen"]
+  # Model chạm hạn mức sẽ tạm nghỉ để request sau đi thẳng sang model dự phòng.
+  # Hạn mức token/phút của Groq hồi lại nhanh nên chỉ nghỉ ngắn.
+  allowed_fails: 1
+  cooldown_time: 15
+
+litellm_settings:
+  # Tự bỏ tham số mà nhà cung cấp dự phòng không hỗ trợ thay vì báo lỗi 400.
+  drop_params: true
+  # Một key hết hạn mức thì thử ngay key còn lại của cùng model trước khi chuyển model dự phòng.
+  num_retries: 1
+  request_timeout: 25
+  # Không ghi nội dung hội thoại của khách vào log của proxy.
+  turn_off_message_logging: true
+
+general_settings:
+  # Khóa truy cập cổng LiteLLM (bắt đầu bằng sk-). Backend gửi khóa này qua LITELLM_MASTER_KEY.
+  master_key: os.environ/LITELLM_MASTER_KEY

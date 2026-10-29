@@ -32,10 +32,35 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-fixlink}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-fixlink_secret_2024}
       APP_JWT_SECRET: ${APP_JWT_SECRET:-fixlink-jwt-secret-key-2024-must-be-at-least-512-bits-long-for-hs512-algorithm-security}
+      # Trợ lý FixLink: gọi qua cổng LiteLLM, LiteLLM không chạy thì gọi thẳng Groq
+      CHATBOT_PROVIDER: ${CHATBOT_PROVIDER:-groq}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-fixlink-local}
       TZ: Asia/Ho_Chi_Minh
     depends_on:
       db:
         condition: service_healthy
+      litellm:
+        condition: service_started
+
+  # Cổng LiteLLM: chuyển Groq gpt-oss-120b → qwen3.8-27b khi hết hạn mức (cấu hình trong litellm/config.yaml)
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: fixlink_litellm
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/app/fixlink-entrypoint.sh"]
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+      - ./litellm/entrypoint.sh:/app/fixlink-entrypoint.sh:ro
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      # Tùy chọn: key Groq của tài khoản thứ hai để gấp đôi hạn mức/ngày
+      GROQ_API_KEY_2: ${GROQ_API_KEY_2:-}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-fixlink-local}
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/api/v1/health || exit 1"]
       interval: 15s

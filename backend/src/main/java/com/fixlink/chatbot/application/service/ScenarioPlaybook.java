@@ -1,5 +1,6 @@
 package com.fixlink.chatbot.application.service;
 
+import com.fixlink.chatbot.domain.service.LiveCatalog;
 import com.fixlink.chatbot.domain.service.SymptomClassifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,42 +59,44 @@ public class ScenarioPlaybook {
                     "tho hen roi khong den"),
                     "Thợ trễ hẹn/không đến. Nếu khách đã đăng nhập: gọi get_my_appointments hoặc get_repair_request_status để xem lịch hẹn, "
                             + "trạng thái đơn và tên thợ. Hướng dẫn: (1) liên hệ thợ qua thông tin trong chi tiết đơn; (2) dời lịch hẹn nếu cần "
-                            + "(dời được nhiều lần); (3) nếu thợ không đến và đơn chưa ở Đang sửa chữa (IN_PROGRESS) thì khách được hủy đơn kèm lý do; "
+                            + "(dời được nhiều lần); (3) nếu thợ không đến và đơn chưa ở Đang sửa chữa (IN_PROGRESS) thì khách bấm 'Đổi thợ khác' (lý do trễ hẹn) để chuyển sang thợ dự phòng hoặc mở lại đơn nhận báo giá, hoặc hủy đơn kèm lý do; "
                             + "(4) đề nghị tạo phiếu hỗ trợ ưu tiên High để CSKH xử lý tiền cọc. KHÔNG hứa bồi thường hay hoàn tiền cụ thể (chưa công bố)."),
 
             new Scenario("quality_complaint", List.of("sua khong xong", "sua xong lai hong", "sua roi van hong", "lai bi", "tho lam hong",
                     "lam hu them", "lam vo", "lam tray", "thai do", "tho hon", "tho vo le", "khong hai long", "khieu nai", "to cao",
                     "boi thuong", "den bu", "chat luong kem", "lam an gian doi", "tho an cap", "mat do"),
                     "Khiếu nại chất lượng/thái độ/hư hỏng tài sản. 1 câu đồng cảm, tóm tắt đúng vấn đề. Nếu đơn chưa nghiệm thu: "
-                            + "khuyên CHƯA hoàn tất nghiệm thu khi chưa hài lòng (tiền vẫn giữ trung gian; bước nghiệm thu có chấm sao và nhận xét bắt buộc). Hỏi mã đơn, mô tả sự việc, ảnh/video bằng chứng. "
+                            + "khuyên CHƯA thanh toán phần còn lại và CHƯA hoàn tất nghiệm thu khi chưa hài lòng (tiền cọc vẫn được FixLink giữ bảo chứng; bước nghiệm thu có chấm sao và nhận xét bắt buộc). Nếu đơn chưa Đang sửa chữa thì có thể 'Đổi thợ khác'. Hỏi mã đơn, mô tả sự việc, ảnh/video bằng chứng. "
                             + "Đề nghị tạo phiếu hỗ trợ (Critical nếu gian lận/mất tài sản/tranh chấp tiền, High nếu hư hỏng/thái độ). "
                             + "Bảo hành: hệ thống kích hoạt bảo hành khi nghiệm thu nhưng thời hạn bảo hành chưa công bố. KHÔNG hứa bồi thường, sửa lại miễn phí hay mức đền bù."),
 
             new Scenario("extra_money", List.of("doi them tien", "doi them", "tinh them tien", "phat sinh", "tien mat", "chuyen khoan rieng",
                     "tra ngoai", "tra truc tiep cho tho", "thay linh kien", "mua linh kien", "bao gia them", "len gia"),
                     "Chi phí phát sinh/thợ đòi thêm tiền. Quy định: thợ phải gửi đề xuất chi phí mới trên hệ thống (đơn sang Chờ duyệt chi phí phát sinh), "
-                            + "khách xem giải trình rồi Đồng ý (giá chốt và cọc 30% tính lại theo giá mới) hoặc không đồng ý và có thể hủy đơn. "
-                            + "Thợ không được sửa phần phát sinh khi khách chưa đồng ý. Tuyệt đối không trả tiền mặt/chuyển khoản riêng ngoài hệ thống; "
+                            + "khách xem giải trình rồi Đồng ý (khoản phát sinh cộng vào đợt thanh toán cuối, tiền cọc KHÔNG tính lại) hoặc không đồng ý thì bấm 'Từ chối giá & Đổi thợ khác' hoặc hủy đơn. "
+                            + "Thợ không được sửa phần phát sinh khi khách chưa đồng ý. Khách chỉ trả đúng số tiền hệ thống hiển thị: cọc qua QR; "
+                            + "phần còn lại trả QR hoặc tiền mặt cho thợ rồi bấm 'Xác nhận đã gửi tiền mặt'. Không trả thêm/chuyển khoản riêng ngoài hệ thống; "
                             + "bị ép trả ngoài → tạo phiếu hỗ trợ Critical."),
 
             new Scenario("change_technician", List.of("doi tho", "chon tho", "tho khac", "khong muon tho nay", "chi dinh tho", "tho quen",
                     "tho nu", "tho gioi nhat", "tho uy tin nhat", "xem danh gia tho", "xem ho so tho"),
                     "Muốn chọn/đổi thợ. Khách CHỌN thợ trong các báo giá nhận được (nút 'Chọn thợ này' khi đơn OPEN; đã đăng nhập thì gọi get_request_quotations để so sánh "
-                            + "giá, phương án, điểm đánh giá, số việc đã làm — không chọn thay khách). KHÔNG đổi được thợ sau khi đã chọn, không chỉ định trước thợ chưa báo giá. Đã chọn rồi mà muốn đổi: trao đổi với thợ; nếu không muốn tiếp tục "
-                            + "và đơn chưa ở Đang sửa chữa thì hủy đơn (nhập lý do) rồi đăng đơn mới; hoặc tạo phiếu hỗ trợ để CSKH xem xét."),
+                            + "giá, phương án, điểm đánh giá, số việc đã làm — không chọn thay khách). Không chỉ định trước thợ chưa báo giá. ĐỔI THỢ ĐƯỢC khi đơn ASSIGNED/DEPOSIT_PAID/INSPECTING/AWAITING_COST_APPROVAL: "
+                            + "chi tiết đơn → 'Đổi thợ khác' → chọn lý do → (1) chọn báo giá dự phòng của thợ khác, hoặc (2) 'Mở lại sàn nhận báo giá' (đơn về OPEN). "
+                            + "Tiền cọc đã đóng được giữ bảo chứng, thợ cũ không nhận, bảo lưu cho thợ mới. Từ IN_PROGRESS trở đi KHÔNG đổi được. Có thể gọi get_request_quotations để xem thợ dự phòng."),
 
             new Scenario("compare_quotes", List.of("bao gia", "may bao gia", "nhung bao gia", "so sanh bao gia", "nen chon tho nao",
                     "chon tho nao", "tho nao re", "tho nao tot", "chon bao gia", "chot tho", "gui bao gia", "tra gia", "rut bao gia",
                     "chua co bao gia", "chua ai bao gia"),
                     "Báo giá/chọn thợ. Khách đã đăng nhập hỏi về đơn cụ thể → gọi get_request_quotations (dùng ID trong đường dẫn trang nếu có) "
                             + "rồi so sánh khách quan: giá công + vật tư, phương án, điểm đánh giá, số việc đã làm; nêu ưu/nhược, KHÔNG chọn thay khách, "
-                            + "không khẳng định thợ nào chắc chắn tốt hơn. Nhắc: bấm 'Chọn thợ này' trong chi tiết đơn, báo giá khác sẽ tự bị từ chối, "
-                            + "không đổi thợ được sau khi chọn. Chưa có báo giá: đơn nhận báo giá tối đa 3 ngày; mô tả rõ, ảnh đầy đủ, ngân sách hợp lý giúp có báo giá sớm. "
+                            + "không khẳng định thợ nào chắc chắn tốt hơn. Nhắc: bấm 'Chọn thợ này' trong chi tiết đơn, báo giá nhận được không vượt ngân sách khách đặt; "
+                            + "trước khi sửa vẫn có thể 'Đổi thợ khác' sang báo giá dự phòng. Chưa có báo giá: đơn nhận báo giá tối đa 3 ngày; mô tả rõ, ảnh đầy đủ, ngân sách hợp lý giúp có báo giá sớm. "
                             + "Với THỢ: gửi báo giá trong chi tiết yêu cầu (tiền công bắt buộc), sửa/rút khi còn chờ duyệt, giá đối thủ hiển thị ẩn danh."),
 
             new Scenario("reschedule", List.of("doi lich", "doi gio", "doi ngay", "hen lai", "doi lich hen", "huy lich", "huy hen",
                     "ban viec", "khong co nha", "vang nha", "ve que"),
-                    "Đổi/hủy lịch hẹn. Lịch hẹn chỉ có sau khi khách đã chọn thợ (thợ phải đặt lịch hẹn trên hệ thống trước khi bắt đầu khảo sát); dời lịch được nhiều lần (thời gian mới phải từ hiện tại trở đi); "
+                    "Đổi/hủy lịch hẹn. Lịch hẹn chỉ có sau khi khách đã chọn thợ: thợ đặt lịch (Chờ xác nhận), CHỈ khách bấm 'Xác nhận lịch hẹn' hoặc từ chối; xác nhận xong thì QR đặt cọc 30% hiện ra, đặt cọc xong thợ mới được khảo sát; dời lịch được nhiều lần (thời gian mới phải từ hiện tại trở đi); "
                             + "hủy lịch hẹn phải nhập lý do và KHÔNG tự hủy yêu cầu sửa chữa. Thao tác trong trang chi tiết đơn (/yeu-cau-cua-toi/{id} với khách, "
                             + "/tho/yeu-cau/{id} với thợ). Đã đăng nhập thì gọi get_my_appointments để nêu đúng lịch hiện tại. Chatbot không tự dời lịch."),
 
@@ -105,10 +108,11 @@ public class ScenarioPlaybook {
                             + "ghi rõ 'cần gấp' và khung giờ mong muốn trong mô tả, chọn đúng danh mục và khu vực, đính kèm ảnh, đặt ngân sách hợp lý."),
 
             new Scenario("refund_payment", List.of("hoan tien", "tra lai tien", "bi tru tien", "tru tien 2 lan", "mat tien", "chua nhan tien",
-                    "thanh toan bang gi", "thanh toan the nao", "momo", "zalopay", "vnpay", "the ngan hang", "tra gop", "hoa don", "vat",
+                    "thanh toan bang gi", "thanh toan the nao", "ma qr", "quet qr", "chuyen khoan", "momo", "zalopay", "vnpay", "the ngan hang", "tra gop", "hoa don", "vat",
                     "xuat hoa don", "tien coc ve dau", "lay lai coc"),
-                    "Thanh toán/hoàn tiền/hóa đơn. Được nói: cọc 30% giá chốt giữ trung gian khi khách chọn thợ, 70% còn lại khi khách nghiệm thu, giải ngân cho thợ "
-                            + "khi nghiệm thu. CHƯA công bố: phương thức/cổng thanh toán cụ thể (ví điện tử, thẻ, trả góp), tỷ lệ hoàn cọc khi hủy, hóa đơn VAT. "
+                    "Thanh toán/hoàn tiền/hóa đơn. Được nói: thanh toán bằng mã QR chuyển khoản ngân hàng (VietQR) trong chi tiết đơn; đợt 1 cọc 30% giá chốt (QR hiện sau khi khách xác nhận lịch hẹn), "
+                            + "đợt 2 phần còn lại = giá chốt + phát sinh đã duyệt − cọc (QR hiện khi thợ báo hoàn thành); mỗi lần thanh toán có hóa đơn điện tử in/xuất PDF; "
+                            + "thợ nhận tiền khi khách nghiệm thu. CHƯA công bố/chưa hỗ trợ: ví điện tử, thẻ, trả góp, tỷ lệ hoàn cọc khi hủy, hóa đơn VAT. "
                             + "Không xác nhận khách có bị trừ tiền hay chưa (chatbot không xem được giao dịch). Hướng xử lý: hỏi mã đơn, thời điểm, số tiền "
                             + "rồi đề nghị tạo phiếu hỗ trợ Critical để bộ phận kế toán kiểm tra."),
 
@@ -122,7 +126,7 @@ public class ScenarioPlaybook {
             new Scenario("out_of_scope_device", List.of("sua dien thoai", "dien thoai bi", "dien thoai hong", "iphone", "samsung galaxy", "laptop", "may tinh", "pc", "macbook",
                     "xe may", "o to", "xe hoi", "xe dap", "dong ho", "camera", "may anh", "xay nha", "son nha", "chong tham", "op lat",
                     "may in", "router", "wifi", "game"),
-                    "Thiết bị/dịch vụ có thể nằm ngoài phạm vi. FixLink chỉ có 4 danh mục: Điện lạnh, Điện nước, Điện gia dụng, Khóa & Cửa cuốn. "
+                    "Thiết bị/dịch vụ có thể nằm ngoài phạm vi. FixLink hiện có {{CATEGORY_COUNT}} danh mục: {{CATEGORY_NAMES}}. Thiết bị thuộc một danh mục này thì ĐƯỢC hỗ trợ. "
                             + "Điện thoại, laptop/máy tính, xe, xây sửa nhà, sơn, chống thấm... KHÔNG thuộc phạm vi → nói rõ là FixLink chưa hỗ trợ. "
                             + "Thiết bị điện gia dụng khác chưa có gói riêng (tivi, loa, máy hút bụi...) → có thể đăng ở danh mục Điện gia dụng và tự đặt ngân sách, "
                             + "nhưng nói rõ không có gói giá tham khảo riêng."),
@@ -149,7 +153,7 @@ public class ScenarioPlaybook {
             new Scenario("compare_competitor", List.of("so voi", "khac gi", "hon gi", "tai sao chon", "vi sao chon", "co uy tin khong",
                     "co lua dao khong", "dang tin", "an toan khong", "dien may xanh", "ung dung khac", "ben khac"),
                     "So sánh/hỏi độ tin cậy. Không chê bai đơn vị khác, không bịa số liệu (số thợ, số đơn, đánh giá). Nêu điểm mạnh có thật của FixLink: "
-                            + "thợ xác minh KYC; thợ báo giá công khai, khách so sánh điểm đánh giá thật và tự chọn thợ; cọc giữ trung gian, chỉ giải ngân khi khách nghiệm thu; phát sinh phải được khách duyệt; "
+                            + "thợ xác minh KYC; thợ báo giá công khai, khách so sánh điểm đánh giá thật và tự chọn thợ; cọc 30% qua QR được giữ bảo chứng, đổi thợ được trước khi sửa, chỉ giải ngân khi khách nghiệm thu; phát sinh phải được khách duyệt; "
                             + "có phiếu hỗ trợ để khiếu nại."),
 
             new Scenario("diy_repair", List.of("tu sua", "huong dan sua", "cach sua", "tu lam", "thao ra", "nap ga tai nha", "tu thay",
@@ -162,8 +166,9 @@ public class ScenarioPlaybook {
                     "khach huy don", "khach khong co nha", "khach bung", "khach khong tra tien", "khach doi giam gia", "danh gia thap",
                     "bi tu choi kyc", "ho so bi tu choi", "chua duoc duyet", "khong thay viec"),
                     "Câu hỏi nghiệp vụ của THỢ. Được nói: chỉ gửi báo giá khi KYC APPROVED, khớp chuyên môn + khu vực, đơn OPEN còn hạn; mỗi đơn một báo giá, sửa/rút khi còn chờ duyệt, thấy giá đối thủ ẩn danh; khách chọn thì các báo giá khác bị từ chối; được chọn phải đặt lịch hẹn trước khi khảo sát; "
-                            + "tiền công giải ngân vào ví khi khách nghiệm thu; phát sinh phải gửi đề xuất cho khách duyệt; khách vắng nhà → liên hệ khách, dời lịch "
-                            + "hoặc hủy lịch hẹn kèm lý do, cần thì tạo phiếu hỗ trợ. CHƯA công bố: tỷ lệ hoa hồng, cách rút tiền từ ví. "
+                            + "khi khách nghiệm thu, FixLink trích 10% phí nền tảng trên giá chốt và cộng 90% vào Ví FixLink của thợ (khách trả tiền mặt "
+                            + "thì ví có thể tạm âm, cấn trừ vào đơn sau); phát sinh phải gửi đề xuất cho khách duyệt, cần linh kiện thì hẹn lại ngày thi công; "
+                            + "khách vắng nhà → liên hệ khách, dời lịch hoặc hủy lịch hẹn kèm lý do, cần thì tạo phiếu hỗ trợ. CHƯA công bố: cách rút tiền từ ví. "
                             + "Thợ đã đăng nhập → gọi get_my_technician_status / find_matching_jobs để trả lời bằng dữ liệu thật. "
                             + "Muốn được chọn nhiều hơn: báo giá hợp lý, ghi rõ phương án, giữ điểm đánh giá tốt, đăng ký đúng chuyên môn và mở rộng khu vực hoạt động."),
 
@@ -208,7 +213,7 @@ public class ScenarioPlaybook {
             facts.append(". Dùng đúng danh mục này khi tư vấn và khi gọi prepare_repair_request.");
             result.add(facts.toString());
         });
-        return result;
+        return result.stream().map(LiveCatalog::resolve).toList();
     }
 
     /** Mã các kịch bản khớp với tin nhắn (dùng cho logic leo thang sang nhân viên). */
@@ -241,7 +246,7 @@ public class ScenarioPlaybook {
                     + "để tiếp tục đúng luồng tư vấn (không hỏi lại điều khách đã trả lời).");
         } else if (mentionsBroken && !mentionsDevice && result.size() < MAX_SCENARIOS + 1) {
             result.add("Khách báo hỏng nhưng CHƯA nói thiết bị. Đừng đoán. Hỏi ngắn: thiết bị nào bị hỏng và hiện tượng cụ thể; "
-                    + "gợi ý 4 nhóm FixLink hỗ trợ (Điện lạnh, Điện nước, Điện gia dụng, Khóa & Cửa cuốn) để khách chọn.");
+                    + "gợi ý {{CATEGORY_COUNT}} nhóm FixLink hỗ trợ ({{CATEGORY_NAMES}}) để khách chọn.");
         } else if (mentionsDevice && result.size() < MAX_SCENARIOS + 1) {
             result.add("Luồng TƯ VẤN ĐẶT THỢ: (1) nêu 2–4 nguyên nhân thường gặp + bước kiểm tra an toàn; (2) gọi suggest_category để chốt danh mục "
                     + "và list_services để báo giá tham khảo; (3) hỏi thông tin còn thiếu (tối đa 2 câu/lượt): hãng/model hoặc tuổi máy, quận, khung giờ mong muốn; "
@@ -250,7 +255,7 @@ public class ScenarioPlaybook {
             result.add("Câu hỏi quá ngắn hoặc chưa rõ ý. Không trả lời chung chung cho có: đoán ý gần nhất nếu hợp lý, đồng thời hỏi lại 1 câu "
                     + "và đưa 3–4 lựa chọn cụ thể (tư vấn sửa thiết bị, giá/cọc, đăng yêu cầu, tra cứu đơn/lịch hẹn, gặp nhân viên) qua suggestions.");
         }
-        return result;
+        return result.stream().map(LiveCatalog::resolve).toList();
     }
 
     private boolean isVague(String paddedText) {

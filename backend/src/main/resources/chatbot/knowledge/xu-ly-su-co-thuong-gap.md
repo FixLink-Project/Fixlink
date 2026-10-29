@@ -28,11 +28,10 @@ confidence: verified
 - **Tại sao tôi không thấy công việc nào mới trong bảng việc?**
   - Bảng việc chỉ hiện yêu cầu đang `OPEN`, còn hạn 3 ngày, **khớp chuyên môn và khu vực** bạn đã đăng ký, và chỉ khi hồ sơ KYC đã `APPROVED`.
   - Kiểm tra lại chuyên môn/khu vực trong hồ sơ `/tho/ho-so`; có thể hiện tại chưa có khách đăng yêu cầu phù hợp.
-  - Công tắc Trực tuyến chỉ thể hiện bạn sẵn sàng, không ảnh hưởng tới danh sách việc.
 - **Gửi báo giá báo "Chuyên môn/Khu vực của bạn không khớp"?**
   - Yêu cầu thuộc danh mục hoặc khu vực bạn chưa đăng ký. Chỉ báo giá được việc đúng chuyên môn và khu vực.
 - **Đã được chọn nhưng không bấm được "Bắt đầu khảo sát"?**
-  - Bạn cần đặt lịch hẹn khảo sát với khách trên hệ thống trước; nút bắt đầu khảo sát chỉ mở sau khi đã có lịch hẹn.
+  - Cần đủ 2 điều kiện: (1) đã đặt lịch hẹn và **khách đã xác nhận lịch**; (2) **khách đã đặt cọc 30% qua QR** (đơn ở trạng thái Đã đặt cọc). Chưa đủ thì nhắc khách xác nhận lịch và thanh toán cọc trong chi tiết đơn.
 
 ## 3. Sự cố của khách hàng
 - **Tôi đã đăng yêu cầu nhưng chưa thấy thợ nào nhận?**

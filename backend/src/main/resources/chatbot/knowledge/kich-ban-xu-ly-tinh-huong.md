@@ -12,11 +12,11 @@ Nguyên tắc chung: trả lời đúng quy định đang có, không hứa đi�
 ## 1. Thợ trễ hẹn hoặc không đến
 1. Xem lịch hẹn và tên thợ trong chi tiết đơn tại **Yêu cầu của tôi** (`/yeu-cau-cua-toi`).
 2. Liên hệ thợ để xác nhận lại giờ; cần thì **dời lịch hẹn** (dời được nhiều lần, thời gian mới phải từ hiện tại trở đi).
-3. Thợ không đến và đơn **chưa ở Đang sửa chữa (`IN_PROGRESS`)** → khách được **hủy đơn** (nhập lý do) rồi đăng lại.
+3. Thợ không đến và đơn **chưa ở Đang sửa chữa (`IN_PROGRESS`)** → khách bấm **"Đổi thợ khác"** (chọn lý do trễ hẹn) để chuyển sang thợ dự phòng hoặc mở lại đơn nhận báo giá; hoặc **hủy đơn** (nhập lý do).
 4. Tạo phiếu hỗ trợ ưu tiên **High** để CSKH xem xét tiền cọc. Mức hoàn cọc cụ thể chưa được công bố.
 
 ## 2. Sửa xong nhưng chưa hài lòng / thiết bị vẫn hỏng
-- Khi đơn đang **Chờ nghiệm thu (`AWAITING_ACCEPTANCE`)**: **chưa bấm Nghiệm thu**. Tiền vẫn được giữ trung gian; trao đổi để thợ kiểm tra lại.
+- Khi đơn đang **Chờ nghiệm thu (`AWAITING_ACCEPTANCE`)**: **chưa thanh toán phần còn lại và chưa bấm Nghiệm thu**. Tiền cọc vẫn được giữ bảo chứng; trao đổi để thợ kiểm tra lại.
 - Đã nghiệm thu rồi mới hỏng lại: hệ thống kích hoạt bảo hành điện tử khi nghiệm thu, nhưng **thời hạn bảo hành cụ thể chưa công bố** → tạo phiếu hỗ trợ kèm mã đơn, mô tả và ảnh/video.
 
 ## 3. Thợ làm hư hỏng thêm tài sản, thái độ không đúng mực, nghi gian lận
@@ -24,16 +24,20 @@ Nguyên tắc chung: trả lời đúng quy định đang có, không hứa đi�
 - Tạo phiếu hỗ trợ: **Critical** nếu gian lận, mất tài sản hoặc tranh chấp tiền; **High** nếu hư hỏng hoặc thái độ.
 - Chính sách bồi thường cụ thể chưa được công bố; CSKH sẽ thẩm định từng trường hợp.
 
-## 4. Thợ đòi thêm tiền, đòi trả tiền mặt hoặc chuyển khoản riêng
+## 4. Thợ đòi thêm tiền hoặc chuyển khoản riêng ngoài hệ thống
 - Mọi chi phí phát sinh phải được thợ **gửi đề xuất trên hệ thống** → đơn sang **Chờ duyệt chi phí phát sinh**.
-- Khách xem giải trình: **Đồng ý** thì giá chốt và tiền cọc (30%) được tính lại theo giá mới; **không đồng ý** thì có thể hủy đơn.
-- **Không trả tiền mặt/chuyển khoản riêng ngoài hệ thống.** Bị ép trả ngoài → phiếu hỗ trợ **Critical**.
+- Khách xem giải trình: **Đồng ý** thì khoản phát sinh được cộng vào đợt thanh toán cuối (tiền cọc **không** tính lại); **không đồng ý** thì bấm "Từ chối giá & Đổi thợ khác" hoặc hủy đơn.
+- **Chỉ trả đúng số tiền hệ thống hiển thị.** Phần còn lại được trả tiền mặt cho thợ nếu khách chọn và bấm xác nhận trên hệ thống; mọi khoản đòi thêm, chuyển khoản riêng ngoài hệ thống thì không trả. Bị ép trả ngoài → phiếu hỗ trợ **Critical**.
 
 ## 5. Muốn chọn hoặc đổi thợ
 - **Chọn thợ:** khách tự chọn trong các báo giá đã nhận (so sánh giá, phương án, điểm đánh giá, số việc đã làm) bằng nút **"Chọn thợ này"** khi đơn đang `OPEN`. Không thể chỉ định trước một thợ cụ thể khi chưa có báo giá của thợ đó.
-- **Đổi thợ sau khi đã chọn:** hệ thống **không có tính năng đổi thợ** cho đơn đã `ASSIGNED`.
+- **Đổi thợ sau khi đã chọn:** được, khi đơn đang **Đã chọn thợ (`ASSIGNED`)**, **Đã đặt cọc (`DEPOSIT_PAID`)**, **Đang khảo sát (`INSPECTING`)** hoặc **Chờ duyệt phát sinh (`AWAITING_COST_APPROVAL`)**. Vào chi tiết đơn → bấm **"Đổi thợ khác"** (hoặc **"Từ chối giá & Đổi thợ khác"** khi không đồng ý phát sinh) → chọn lý do:
+  - **Phương án 1 – Đổi nhanh sang thợ dự phòng:** chọn một báo giá khác đã gửi cho đơn; giá chốt và tiền cọc tính theo báo giá mới, không phải chờ.
+  - **Phương án 2 – Mở lại sàn nhận báo giá:** hủy thợ hiện tại, đơn về `OPEN` để các thợ khác gửi báo giá mới.
+  - **Bảo chứng tiền cọc:** cọc đã đóng được FixLink giữ; thợ cũ chưa nghiệm thu nên **không nhận** khoản này, cọc được bảo lưu cho thợ mới.
+- Từ **Đang sửa chữa (`IN_PROGRESS`)** trở đi **không đổi được thợ**.
 - Mọi thợ báo giá đều đã được duyệt KYC và đúng chuyên môn, khu vực.
-- Không muốn tiếp tục với thợ hiện tại: nếu đơn chưa ở Đang sửa chữa thì hủy đơn (nhập lý do) và đăng đơn mới, hoặc tạo phiếu hỗ trợ.
+- Không muốn tiếp tục với thợ hiện tại: dùng **"Đổi thợ khác"** như trên; hoặc hủy đơn (nhập lý do), hoặc tạo phiếu hỗ trợ.
 
 ## 6. Cần sửa gấp
 - FixLink **không cam kết thời gian thợ có mặt** chung cho mọi đơn. Thời gian cụ thể do khách và thợ thống nhất qua lịch hẹn; đơn mở tối đa 3 ngày.
@@ -45,8 +49,8 @@ Nguyên tắc chung: trả lời đúng quy định đang có, không hứa đi�
 - Thợ đến nơi mà khách vắng: liên hệ khách, dời lịch hoặc hủy lịch hẹn kèm lý do; cần thì tạo phiếu hỗ trợ.
 
 ## 8. Thanh toán, hoàn tiền, hóa đơn
-- Được xác nhận: cọc 30% giá chốt giữ trung gian khi khách chọn thợ, 70% còn lại khi khách nghiệm thu, tiền được giải ngân cho thợ khi nghiệm thu.
-- **Chưa công bố**: cổng/phương thức thanh toán cụ thể (ví điện tử, thẻ, trả góp), tỷ lệ hoàn cọc khi hủy, hóa đơn VAT.
+- Được xác nhận: đợt 1 cọc 30% giá chốt bằng **mã QR chuyển khoản ngân hàng** (sau khi khách xác nhận lịch hẹn); đợt 2 phần còn lại = giá chốt + phát sinh đã duyệt − cọc (khi thợ báo hoàn thành), trả bằng mã QR hoặc tiền mặt trực tiếp cho thợ (xác nhận trên hệ thống). Mỗi lần thanh toán có hóa đơn điện tử in/xuất PDF. Khi đơn hoàn thành, FixLink trích 10% phí nền tảng trên giá chốt, thợ nhận 90% vào Ví FixLink.
+- **Chưa công bố**: ví điện tử, thẻ, trả góp, tỷ lệ hoàn cọc khi hủy, hóa đơn VAT.
 - Trợ lý không xem được giao dịch ngân hàng. Nghi bị trừ tiền sai → tạo phiếu hỗ trợ **Critical** kèm mã đơn, thời điểm, số tiền.
 
 ## 9. Khu vực ngoài TP.HCM hoặc quận chưa phục vụ
@@ -71,7 +75,7 @@ Nguyên tắc chung: trả lời đúng quy định đang có, không hứa đi�
 - Muốn làm thợ: đăng ký tại `/dang-ky-tho`.
 
 ## 14. Câu hỏi của thợ về thu nhập
-- Tiền công giải ngân vào ví khi khách nghiệm thu. **Tỷ lệ hoa hồng và cách rút tiền từ ví chưa công bố.**
+- Khi khách hoàn tất nghiệm thu, FixLink trích **10% phí nền tảng** trên giá chốt và cộng **90%** vào **Ví FixLink** của thợ (xem số dư trên bảng điều khiển /tho). Nhận tiền mặt trực tiếp từ khách thì ví có thể tạm âm (công nợ phí nền tảng), được cấn trừ vào các đơn sau. **Cách rút tiền từ ví chưa công bố.**
 - Muốn được chọn nhiều hơn: đăng ký đúng chuyên môn, mở rộng khu vực hoạt động, báo giá hợp lý và rõ phương án, giữ điểm đánh giá tốt.
 
 ## 15. Khách muốn tự sửa

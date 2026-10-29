@@ -47,7 +47,8 @@ class ScenarioPlaybookTest {
     void shouldMatchRealWorldScenarios() {
         assertThat(guidance("thợ hẹn 2h mà giờ thợ chưa đến")).contains("trễ hẹn");
         assertThat(guidance("thợ đòi thêm tiền mặt")).contains("ngoài hệ thống");
-        assertThat(guidance("tôi muốn đổi thợ khác")).contains("KHÔNG đổi được thợ sau khi đã chọn");
+        assertThat(guidance("tôi muốn đổi thợ khác")).contains("ĐỔI THỢ ĐƯỢC").contains("Từ IN_PROGRESS trở đi KHÔNG đổi được");
+        assertThat(guidance("thanh toán bằng mã QR thế nào")).contains("VietQR").contains("hóa đơn điện tử");
         assertThat(guidance("đơn của tôi có mấy báo giá, nên chọn thợ nào")).contains("get_request_quotations");
         assertThat(guidance("ở Bình Dương có thợ không")).contains("chưa phục vụ");
     }

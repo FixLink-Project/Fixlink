@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fixlink.adapter.in.web.dto.response.AppointmentResponse;
 import com.fixlink.adapter.in.web.dto.response.QuotationResponse;
 import com.fixlink.adapter.in.web.dto.response.RepairRequestResponse;
+import com.fixlink.application.port.in.AdminStatisticsUseCase;
 import com.fixlink.application.port.in.AppointmentUseCase;
 import com.fixlink.application.port.in.MasterDataUseCase;
 import com.fixlink.application.port.in.QuotationUseCase;
@@ -12,6 +13,7 @@ import com.fixlink.application.port.in.RepairRequestUseCase.RepairRequestDetail;
 import com.fixlink.application.port.in.RepairRequestUseCase.RepairRequestPageResult;
 import com.fixlink.application.port.in.RepairRequestUseCase.RepairRequestQuery;
 import com.fixlink.application.port.in.TechnicianUseCase;
+import com.fixlink.application.port.in.UserManagementUseCase;
 import com.fixlink.chatbot.adapter.out.rag.InMemoryRagIndex;
 import com.fixlink.chatbot.application.port.in.SupportTicketUseCase;
 import com.fixlink.chatbot.application.port.out.ChatbotToolPort;
@@ -19,6 +21,7 @@ import com.fixlink.chatbot.domain.model.SupportTicket;
 import com.fixlink.chatbot.domain.model.TicketPriority;
 import com.fixlink.chatbot.domain.service.RepairRequestDraftLink;
 import com.fixlink.chatbot.domain.service.SymptomClassifier;
+import com.fixlink.domain.model.AppointmentStatus;
 import com.fixlink.domain.model.RepairRequest;
 import com.fixlink.domain.model.RequestStatus;
 import com.fixlink.domain.model.RequestTab;
@@ -28,6 +31,7 @@ import com.fixlink.domain.model.ServiceCategory;
 import com.fixlink.domain.model.TechnicianProfile;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -67,6 +71,8 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
     private final AppointmentUseCase appointmentUseCase;
     private final SupportTicketUseCase supportTicketUseCase;
     private final QuotationUseCase quotationUseCase;
+    private final UserManagementUseCase userManagementUseCase;
+    private final AdminStatisticsUseCase adminStatisticsUseCase;
     private final InMemoryRagIndex ragIndex;
     private final ObjectMapper objectMapper;
 
@@ -77,6 +83,8 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
             AppointmentUseCase appointmentUseCase,
             SupportTicketUseCase supportTicketUseCase,
             QuotationUseCase quotationUseCase,
+            UserManagementUseCase userManagementUseCase,
+            AdminStatisticsUseCase adminStatisticsUseCase,
             InMemoryRagIndex ragIndex,
             ObjectMapper objectMapper
     ) {
@@ -86,6 +94,8 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
         this.appointmentUseCase = appointmentUseCase;
         this.supportTicketUseCase = supportTicketUseCase;
         this.quotationUseCase = quotationUseCase;
+        this.userManagementUseCase = userManagementUseCase;
+        this.adminStatisticsUseCase = adminStatisticsUseCase;
         this.ragIndex = ragIndex;
         this.objectMapper = objectMapper;
     }
@@ -139,9 +149,11 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                 "Lấy danh sách yêu cầu sửa chữa của người dùng đang đăng nhập: với KHÁCH HÀNG là các đơn họ đã đăng; "
                         + "với THỢ là các việc thợ đã nhận.",
                 Map.of("status", prop("STRING",
-                        "Lọc theo trạng thái (OPEN, ASSIGNED, INSPECTING, AWAITING_COST_APPROVAL, IN_PROGRESS, "
+                        "Lọc theo trạng thái (OPEN, ASSIGNED, DEPOSIT_PAID, INSPECTING, AWAITING_COST_APPROVAL, IN_PROGRESS, "
                                 + "AWAITING_ACCEPTANCE, COMPLETED, CANCELLED, DRAFT) hoặc nhóm tab "
-                                + "(AWAITING_QUOTE = đang nhận báo giá, IN_PROGRESS = đang thực hiện). Bỏ trống để lấy tất cả.")),
+                                + "(AWAITING_QUOTE = đang nhận báo giá, IN_PROGRESS = đang thực hiện). Bỏ trống để lấy tất cả: kết quả có "
+                                + "totalItems (tổng số đơn) và countsByGroup (số đơn theo từng nhóm), đủ để trả lời 'có bao nhiêu đơn' "
+                                + "mà không cần gọi lại.")),
                 List.of()));
 
         Map<String, Object> statusProps = new LinkedHashMap<>();
@@ -163,7 +175,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
 
         tools.add(tool("get_my_technician_status",
                 "Kiểm tra hồ sơ thợ đang đăng nhập: trạng thái duyệt KYC (PENDING/APPROVED/REJECTED) và lý do từ chối, "
-                        + "online/offline, số việc đã hoàn thành, điểm đánh giá.",
+                        + "số dư Ví FixLink, số việc đã hoàn thành, điểm đánh giá.",
                 Map.of(), List.of()));
 
         tools.add(tool("find_matching_jobs",
@@ -198,6 +210,11 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                 "Tìm kiếm thêm trong kho tri thức FixLink (quy trình, chính sách, tài khoản, xử lý sự cố) khi cần trích dẫn nguồn.",
                 Map.of("query", prop("STRING", "Câu hỏi hoặc từ khóa cần tìm")),
                 List.of("query")));
+
+        tools.add(tool("get_admin_overview",
+                "CHỈ dành cho QUẢN TRỊ VIÊN: số người dùng theo vai trò/trạng thái (đang hoạt động, chờ duyệt, chờ duyệt KYC, đã khoá) "
+                        + "và thống kê tháng hiện tại (đơn tạo, hoàn thành, hủy, doanh thu phí nền tảng 10%, điểm đánh giá trung bình).",
+                Map.of(), List.of()));
 
         return tools;
     }
@@ -248,6 +265,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                 case "create_support_ticket" -> handleCreateSupportTicket(args, currentUserId, guestContact);
                 case "read_support_ticket" -> handleReadSupportTicket(args, currentUserId, currentRole, guestContact);
                 case "search_knowledge_base" -> handleSearchKnowledgeBase(args, currentRole);
+                case "get_admin_overview" -> handleAdminOverview(currentRole);
                 default -> error("Không tìm thấy công cụ: " + toolName);
             };
         } catch (Exception ex) {
@@ -420,8 +438,9 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                 "depositText", formatVnd(deposit),
                 "remainingRate", "70%",
                 "remainingText", formatVnd(remaining),
-                "rule", "Tiền cọc = 30% giá đã chốt (làm tròn lên), được giữ trung gian khi khách chọn thợ; "
-                        + "70% còn lại tất toán khi khách đánh giá và nghiệm thu. Nếu khách duyệt chi phí phát sinh, cọc được tính lại theo giá mới."
+                "rule", "Tiền cọc = 30% giá đã chốt, khách trả qua mã QR chuyển khoản sau khi xác nhận lịch hẹn; FixLink giữ bảo chứng. "
+                        + "Phần còn lại (70% nếu không có phát sinh) trả qua QR khi thợ báo hoàn thành = giá chốt + phát sinh đã duyệt − tiền cọc. "
+                        + "Duyệt chi phí phát sinh KHÔNG làm thay đổi tiền cọc."
         ));
     }
 
@@ -513,6 +532,17 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("viewerRole", role.name());
         result.put("totalItems", statusFilter != null ? items.size() : page.totalItems());
+        if (statusArg == null || statusArg.isBlank()) {
+            // Đếm sẵn theo nhóm như các tab trên trang "Yêu cầu của tôi" để trả lời "có bao nhiêu đơn" trong một lần gọi
+            Map<String, Object> counts = new LinkedHashMap<>();
+            for (RequestTab group : List.of(RequestTab.AWAITING_QUOTE, RequestTab.IN_PROGRESS,
+                    RequestTab.COMPLETED, RequestTab.CANCELLED)) {
+                long count = repairRequestUseCase.listRequests(new RepairRequestQuery(
+                        1, 1, group.name(), null, "createdAt", "DESC", currentUserId, role)).totalItems();
+                counts.put(group.getLabel(), count);
+            }
+            result.put("countsByGroup", counts);
+        }
         result.put("shownItems", items.size());
         result.put("items", items);
         if (items.isEmpty()) {
@@ -571,10 +601,18 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
 
         try {
             List<Map<String, Object>> appointments = new ArrayList<>();
+            boolean confirmed = false;
+            boolean pending = false;
             for (AppointmentResponse a : appointmentUseCase.getAppointmentsForRequest(req.getId(), currentUserId, role.name())) {
                 appointments.add(summarizeAppointment(a));
+                confirmed |= a.getStatus() == AppointmentStatus.CONFIRMED;
+                pending |= a.getStatus() == AppointmentStatus.PENDING_APPROVAL;
             }
             result.put("appointments", appointments);
+            if (req.getStatus() == RequestStatus.ASSIGNED) {
+                // Bước tiếp theo phải khớp lịch hẹn thật, không thì khách thấy "chờ thợ đề xuất lịch" dù lịch đã xác nhận
+                result.put("nextStep", assignedNextStep(role, confirmed, pending));
+            }
         } catch (Exception ignored) {
             // không có quyền / chưa có lịch hẹn — bỏ qua
         }
@@ -743,6 +781,62 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
         return value != null ? value : BigDecimal.ZERO;
     }
 
+    /** Tổng quan cho quản trị viên: đếm người dùng như các tab ở /quan-tri và chỉ số tháng hiện tại như trang Thống kê. */
+    private ToolExecutionResult handleAdminOverview(String currentRole) {
+        if (!"ADMIN".equalsIgnoreCase(currentRole)) {
+            return error("Chỉ quản trị viên mới xem được số liệu tổng quan của hệ thống.");
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        Map<String, Object> technicians = new LinkedHashMap<>();
+        technicians.put("total", countUsers("TECHNICIAN", "ALL"));
+        technicians.put("active", countUsers("TECHNICIAN", "ACTIVE"));
+        technicians.put("pendingApproval", countUsers("TECHNICIAN", "PENDING_APPROVAL"));
+        technicians.put("pendingKyc", countUsers("TECHNICIAN", "PENDING"));
+        technicians.put("blocked", countUsers("TECHNICIAN", "BLOCKED"));
+        result.put("technicians", technicians);
+        Map<String, Object> customers = new LinkedHashMap<>();
+        customers.put("total", countUsers("CUSTOMER", "ALL"));
+        customers.put("active", countUsers("CUSTOMER", "ACTIVE"));
+        customers.put("blocked", countUsers("CUSTOMER", "BLOCKED"));
+        result.put("customers", customers);
+        result.put("allUsers", countUsers("ALL", "ALL"));
+        result.put("pendingApprovalAll", countUsers("ALL", "PENDING_APPROVAL"));
+        result.put("pendingKycAll", countUsers("ALL", "PENDING"));
+        result.put("blockedAll", countUsers("ALL", "BLOCKED"));
+        try {
+            Map<String, Object> month = adminStatisticsUseCase.getMonthlyStatistics(LocalDate.now(), null);
+            Map<String, Object> monthly = new LinkedHashMap<>();
+            for (String key : List.of("month", "jobsCreated", "jobsAccepted", "completedJobs", "cancelledJobs", "quotesCreated",
+                    "activeTechnicians", "activeCustomers", "customerRegistrations", "technicianRegistrations",
+                    "averageRating", "reviewCount", "completionRate")) {
+                monthly.put(key, month.get(key));
+            }
+            monthly.put("completedJobValueText", formatVnd(toBigDecimal(month.get("completedJobValueVnd"))));
+            monthly.put("platformRevenueText", formatVnd(toBigDecimal(month.get("platformRevenueVnd"))));
+            result.put("thisMonth", monthly);
+        } catch (Exception ex) {
+            LOG.info("Chatbot admin overview: không đọc được thống kê tháng: {}", ex.getMessage());
+        }
+        result.put("statisticsUrl", "/quan-tri/thong-ke");
+        result.put("usersUrl", "/quan-tri");
+        return ok(result);
+    }
+
+    private long countUsers(String role, String status) {
+        return userManagementUseCase.getUsers(new UserManagementUseCase.UserQuery(1, 1, null, role, status, "createdAt", "DESC"))
+                .totalItems();
+    }
+
+    private static BigDecimal toBigDecimal(Object value) {
+        if (value instanceof BigDecimal b) {
+            return b;
+        }
+        if (value instanceof Number n) {
+            return BigDecimal.valueOf(n.doubleValue());
+        }
+        return BigDecimal.ZERO;
+    }
+
     private ToolExecutionResult handleGetMyTechnicianStatus(Long currentUserId, String currentRole) {
         if (currentUserId == null || parseRole(currentRole) != Role.TECHNICIAN) {
             return requireLogin("Bạn cần đăng nhập bằng tài khoản Thợ (tại /dang-nhap-tho) để kiểm tra hồ sơ.");
@@ -767,7 +861,8 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
         }
         result.put("hasIdCardFront", profile.getIdCardFrontUrl() != null && !profile.getIdCardFrontUrl().isBlank());
         result.put("hasIdCardBack", profile.getIdCardBackUrl() != null && !profile.getIdCardBackUrl().isBlank());
-        result.put("isOnline", Boolean.TRUE.equals(profile.getIsOnline()));
+        result.put("walletBalanceText", formatVnd(profile.getWalletBalance() != null ? profile.getWalletBalance() : BigDecimal.ZERO));
+        result.put("walletNegative", profile.getWalletBalance() != null && profile.getWalletBalance().signum() < 0);
         result.put("completedJobs", profile.getCompletedJobs() != null ? profile.getCompletedJobs() : 0);
         result.put("avgRating", profile.getCompletedJobs() != null && profile.getCompletedJobs() > 0
                 && profile.getAvgRating() != null ? profile.getAvgRating().toString() : "Chưa có đánh giá");
@@ -960,26 +1055,45 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                     ? "Đơn đang nhận báo giá: thợ đúng chuyên môn và khu vực gửi báo giá (sửa/rút khi còn chờ duyệt); khách sẽ so sánh và chọn thợ."
                     : "Đơn đang nhận báo giá (tối đa 3 ngày, quá hạn đơn tự hủy). Vào chi tiết đơn để so sánh các báo giá và bấm 'Chọn thợ này'. Chỉ sửa được nội dung đơn khi chưa có báo giá nào.";
             case ASSIGNED -> tech
-                    ? "Bạn đã được khách chọn: đặt lịch hẹn khảo sát trên hệ thống trước, rồi đến nơi và chuyển sang 'Đang khảo sát'."
-                    : "Bạn đã chọn thợ. Thợ sẽ đặt lịch hẹn khảo sát trên hệ thống; bạn có thể xem/dời lịch hẹn trong chi tiết đơn.";
+                    ? "Bạn đã được khách chọn: đặt lịch hẹn khảo sát trên hệ thống, chờ khách xác nhận lịch và thanh toán cọc 30% qua QR rồi mới được bắt đầu khảo sát."
+                    : "Bạn đã chọn thợ. Thợ sẽ đề xuất lịch hẹn: bấm 'Xác nhận lịch hẹn' trong chi tiết đơn, sau đó quét mã QR đặt cọc 30% và bấm xác nhận đã chuyển khoản. Nếu chưa ưng thợ, bạn có thể bấm 'Đổi thợ khác'.";
             case DEPOSIT_PAID -> tech
-                    ? "Khách đã đặt cọc 30%. Đặt lịch hẹn khảo sát và đến nơi để bắt đầu."
-                    : "Bạn đã đặt cọc thành công. Chờ thợ đặt lịch hẹn khảo sát.";
+                    ? "Khách đã đặt cọc 30%. Đến đúng lịch hẹn và chuyển đơn sang 'Đang khảo sát'."
+                    : "Bạn đã đặt cọc thành công, tiền cọc được FixLink giữ bảo chứng. Thợ sẽ đến theo lịch hẹn để khảo sát.";
             case INSPECTING -> tech
                     ? "Khảo sát xong: bắt đầu sửa theo ngân sách đã chốt, hoặc gửi đề xuất chi phí phát sinh để khách duyệt."
                     : "Thợ đang khảo sát. Nếu có lỗi phát sinh, thợ sẽ gửi chi phí mới để bạn duyệt trước khi sửa.";
             case AWAITING_COST_APPROVAL -> tech
                     ? "Chờ khách duyệt chi phí phát sinh; chỉ được sửa khi khách đồng ý."
-                    : "Vào chi tiết đơn xem giải trình của thợ và bấm Đồng ý để thợ tiếp tục sửa, hoặc hủy đơn nếu không đồng ý.";
+                    : "Vào chi tiết đơn xem giải trình của thợ và bấm Đồng ý để thợ tiếp tục sửa. Nếu không đồng ý, bạn có thể 'Từ chối giá & Đổi thợ khác' hoặc hủy đơn.";
             case IN_PROGRESS -> tech
                     ? "Hoàn tất sửa chữa, chạy thử rồi báo hoàn thành để khách nghiệm thu."
                     : "Thợ đang sửa chữa. Đơn ở trạng thái này không thể hủy.";
             case AWAITING_ACCEPTANCE -> tech
-                    ? "Chờ khách kiểm tra, chấm sao và nghiệm thu."
-                    : "Kiểm tra, vận hành thử thiết bị, chấm 1–5 sao và viết nhận xét (bắt buộc) rồi hoàn tất nghiệm thu để giải ngân cho thợ.";
-            case COMPLETED -> "Đơn đã hoàn tất, thanh toán đã được giải ngân cho thợ.";
+                    ? "Chờ khách thanh toán phần còn lại (QR hoặc tiền mặt, khách xác nhận trên hệ thống), chấm sao và nghiệm thu."
+                    : "Kiểm tra, vận hành thử thiết bị, thanh toán phần còn lại (giá chốt + phát sinh đã duyệt − tiền cọc) bằng mã QR "
+                            + "hoặc tiền mặt cho thợ rồi bấm 'Xác nhận đã gửi tiền mặt', chấm 1–5 sao và viết nhận xét (bắt buộc) rồi hoàn tất nghiệm thu.";
+            case COMPLETED -> tech
+                    ? "Đơn đã hoàn tất: 90% giá chốt đã được cộng vào Ví FixLink của bạn (trừ 10% phí nền tảng)."
+                    : "Đơn đã hoàn tất, đã kích hoạt bảo hành điện tử; hóa đơn xem trong chi tiết đơn.";
             case CANCELLED -> "Đơn đã hủy, không thể thao tác tiếp. Có thể đăng yêu cầu mới tại /dang-yeu-cau.";
         };
+    }
+
+    /** Bước tiếp theo của đơn ASSIGNED theo tình trạng lịch hẹn khảo sát. */
+    static String assignedNextStep(Role role, boolean confirmed, boolean pending) {
+        boolean tech = role == Role.TECHNICIAN;
+        if (confirmed) {
+            return tech
+                    ? "Khách đã xác nhận lịch hẹn. Chờ khách thanh toán cọc 30% qua QR; đơn chuyển sang 'Đã đặt cọc' thì mới được bắt đầu khảo sát."
+                    : "Lịch hẹn đã được xác nhận. Vào chi tiết đơn, quét mã QR đặt cọc 30% và bấm xác nhận đã chuyển khoản để thợ đến khảo sát. Nếu chưa ưng thợ, bạn có thể bấm 'Đổi thợ khác'.";
+        }
+        if (pending) {
+            return tech
+                    ? "Bạn đã đề xuất lịch hẹn, đang chờ khách xác nhận. Khách xác nhận và thanh toán cọc 30% thì mới được bắt đầu khảo sát."
+                    : "Thợ đã đề xuất lịch hẹn: vào chi tiết đơn bấm 'Xác nhận lịch hẹn' (hoặc từ chối nếu không phù hợp), sau đó quét mã QR đặt cọc 30% và bấm xác nhận đã chuyển khoản.";
+        }
+        return nextStep(RequestStatus.ASSIGNED, role);
     }
 
     // ==================================================================================

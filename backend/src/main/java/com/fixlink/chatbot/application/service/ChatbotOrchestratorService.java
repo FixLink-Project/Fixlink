@@ -12,6 +12,7 @@ import com.fixlink.chatbot.domain.model.ChatCard;
 import com.fixlink.chatbot.domain.model.ChatMessage;
 import com.fixlink.chatbot.domain.model.ChatSession;
 import com.fixlink.chatbot.domain.model.SourceReference;
+import com.fixlink.chatbot.domain.service.LiveCatalog;
 import com.fixlink.chatbot.domain.service.RepairRequestDraftLink;
 import com.fixlink.chatbot.domain.service.SymptomClassifier;
 import com.fixlink.chatbot.infrastructure.config.ChatbotProperties;
@@ -30,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -57,6 +59,8 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
     private final ToolCallRecorder recorder;
     private final ChatCardFactory cardFactory;
     private final FaqAnswerCache faqCache;
+    private final OfflinePersonalResponder offlineResponder;
+    private final LiveCatalogRefresher catalogRefresher;
 
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter PROMPT_TIME_FORMAT =
@@ -79,7 +83,9 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             ReplyGroundingGuard groundingGuard,
             ToolCallRecorder recorder,
             ChatCardFactory cardFactory,
-            FaqAnswerCache faqCache
+            FaqAnswerCache faqCache,
+            OfflinePersonalResponder offlineResponder,
+            LiveCatalogRefresher catalogRefresher
     ) {
         this.geminiChatPort = geminiChatPort;
         this.toolPort = toolPort;
@@ -94,6 +100,8 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         this.recorder = recorder;
         this.cardFactory = cardFactory;
         this.faqCache = faqCache;
+        this.offlineResponder = offlineResponder;
+        this.catalogRefresher = catalogRefresher;
     }
 
     @PostConstruct
@@ -139,6 +147,9 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         return toolPort.getToolDeclarations().stream()
                 .filter(t -> {
                     String name = String.valueOf(t.get("name"));
+                    if ("get_admin_overview".equals(name)) {
+                        return "ADMIN".equals(r);
+                    }
                     boolean personal = TECHNICIAN_TOOLS.contains(name);
                     if (!personal) {
                         return true;
@@ -182,6 +193,8 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
 
         // Clean control characters
         String cleanMessage = rawMessage.replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", "").trim();
+        // Danh mục, giá, khu vực luôn theo database mới nhất (đọc lại tối đa mỗi 60 giây)
+        catalogRefresher.refreshIfStale();
 
         // Rate limiting check
         rateLimiterService.checkRateLimit(command.clientIp(), command.userId());
@@ -207,7 +220,26 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         LlmChatPort.ChatOrchestrationResult orchestrationResult;
         List<ToolCallRecorder.ToolTrace> toolTraces;
         FaqAnswerCache.Entry cached = faqCache.lookup(cleanMessage, command.role(), history);
-        if (cached != null) {
+        // Dữ liệu cá nhân (đơn, mã đơn, lịch hẹn, hồ sơ, việc phù hợp) luôn lấy thẳng từ hệ thống: AI từng tự bịa cả đơn hàng
+        DataAnswer personal = command.userId() != null ? answerFromData(cleanMessage, command) : null;
+        // Câu hỏi quy định đã có câu trả lời chuẩn: trả lời trực tiếp, không để AI thêm thắt điều kiện không có thật
+        Optional<LlmChatPort.ChatOrchestrationResult> verified = personal == null
+                ? verifiedAnswers.directAnswer(withDeviceContext(cleanMessage, history)) : Optional.empty();
+        if (ExtractiveFallbackSynthesizer.isArithmetic(cleanMessage)) {
+            // Câu tính toán nằm ngoài phạm vi: trả lời từ chối ngay, không gửi lên AI (model hay trả lời luôn)
+            orchestrationResult = verifiedAnswers.synthesize(cleanMessage, "");
+            toolTraces = List.of();
+        } else if (command.userId() == null && OfflinePersonalResponder.asksPersonalData(cleanMessage)) {
+            // Khách vãng lai hỏi về đơn/lịch hẹn của mình: chưa đăng nhập thì không tra được, hướng dẫn đăng nhập
+            orchestrationResult = OfflinePersonalResponder.loginRequired();
+            toolTraces = List.of();
+        } else if (personal != null) {
+            orchestrationResult = personal.result();
+            toolTraces = personal.traces();
+        } else if (verified.isPresent()) {
+            orchestrationResult = verified.get();
+            toolTraces = List.of();
+        } else if (cached != null) {
             orchestrationResult = cached.result();
             toolTraces = cached.traces();
         } else {
@@ -227,6 +259,27 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
             } finally {
                 toolTraces = recorder.stop();
             }
+            boolean emptyPromise = toolTraces.isEmpty() && OfflinePersonalResponder.isEmptyPromise(orchestrationResult.reply())
+                    && OfflinePersonalResponder.asksPersonalData(cleanMessage);
+            if ((emptyPromise || orchestrationResult.modelUsed() != null && orchestrationResult.modelUsed().startsWith("local-"))
+                    && command.userId() != null) {
+                // AI hết hạn mức: câu hỏi về đơn/lịch hẹn/hồ sơ vẫn được trả lời bằng dữ liệu thật
+                recorder.start();
+                Optional<LlmChatPort.ChatOrchestrationResult> offline;
+                try {
+                    offline = offlineResponder.answer(cleanMessage, command.userId(), command.role());
+                } finally {
+                    List<ToolCallRecorder.ToolTrace> offlineTraces = recorder.stop();
+                    if (!offlineTraces.isEmpty()) {
+                        toolTraces = new ArrayList<>(toolTraces);
+                        toolTraces.addAll(offlineTraces);
+                    }
+                }
+                if (offline.isPresent()) {
+                    orchestrationResult = offline.get();
+                }
+            }
+            orchestrationResult = withPreviousTurnContext(orchestrationResult, cleanMessage, history, ragContext);
             faqCache.store(cleanMessage, command.role(), history, orchestrationResult, toolTraces);
         }
 
@@ -242,24 +295,40 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
 
         String reply = groundingGuard.enforce(localizeRefusal(orchestrationResult.reply(), cleanMessage),
                 userConversation);
+        if ("local-faq".equals(orchestrationResult.modelUsed()) && reply.startsWith("**Chính sách cọc")
+                && SymptomClassifier.detectBudget(cleanMessage).isEmpty()) {
+            // "vậy tiền cọc là bao nhiêu?" sau khi khách đã nêu ngân sách ở lượt trước: tính luôn con số
+            Optional<Long> earlierBudget = SymptomClassifier.detectBudget(userConversation);
+            if (earlierBudget.isPresent() && earlierBudget.get() > 0) {
+                reply = ExtractiveFallbackSynthesizer.depositFor(earlierBudget.get()) + NL + NL + reply;
+            }
+        }
 
         List<ChatAction> actions = new ArrayList<>();
         if (orchestrationResult.actions() != null) {
             for (var a : orchestrationResult.actions()) {
                 String label = a.get("label") != null ? a.get("label") : "";
                 // Không có trang riêng cho phiếu hỗ trợ: nút "Tạo phiếu..." do model tự chế sẽ dẫn sai chỗ
-                if (label.toLowerCase(Locale.ROOT).contains("phiếu")) {
+                // Nút "Nhân viên" do model tự chế chỉ dẫn về trang chủ; khung chat đã có nút "👤 Nhân viên" thật
+                String lower = label.toLowerCase(Locale.ROOT);
+                // Nút do model tự tạo trỏ về trang chủ ("Xem dịch vụ... -> /") không dẫn tới đâu cả
+                boolean pointlessHomeLink = "/".equals(a.get("url")) && !lower.contains("trang chủ");
+                if (lower.contains("phiếu") || lower.contains("nhân viên") || pointlessHomeLink) {
                     continue;
                 }
                 actions.add(new ChatAction(a.get("type"), label, a.get("url")));
             }
         }
-        String draftSummary = attachDraftRequestAction(actions, cleanMessage, userConversation, history);
+        String draftSummary = attachDraftRequestAction(actions, cleanMessage, userConversation, history,
+                orchestrationResult.modelUsed());
         String modelUsed = orchestrationResult.modelUsed() != null ? orchestrationResult.modelUsed() : "";
+        String shownModel = orchestrationResult.modelUsed();
         if (draftSummary != null && (modelUsed.equals("local-fallback") || modelUsed.equals("local-synthesizer"))) {
-            // AI tạm quá tải nhưng đã đủ thông tin đặt thợ: trả bản tóm tắt cụ thể thay vì câu xin lỗi chung chung
+            // AI tạm quá tải nhưng đã đủ thông tin đặt thợ: trả bản tóm tắt cụ thể thay vì câu xin lỗi chung chung.
+            // Bản tóm tắt dựng từ chính thông tin khách nêu nên hiển thị như câu trả lời chuẩn, không phải "dự phòng".
             reply = draftSummary;
-        } else if (draftSummary != null && modelUsed.startsWith("local-")) {
+            shownModel = "local-faq";
+        } else if (draftSummary != null && modelUsed.startsWith("local-") && describesBooking(cleanMessage)) {
             // Câu trả lời FAQ cục bộ vẫn giữ, kèm bản tóm tắt yêu cầu đã điền sẵn lên đầu
             reply = draftSummary + NL + NL + "---" + NL + NL + reply;
         }
@@ -276,7 +345,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
                 .sources(sources)
                 .needsHuman(orchestrationResult.needsHuman())
                 .ticketId(orchestrationResult.ticketId())
-                .modelUsed(orchestrationResult.modelUsed())
+                .modelUsed(shownModel)
                 .timestamp(now)
                 .build();
         memoryService.addMessage(session.getSessionId(), modelMsg);
@@ -297,7 +366,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
                 orchestrationResult.needsHuman(),
                 orchestrationResult.ticketId(),
                 command.sessionId() != null && !command.sessionId().isBlank() ? command.sessionId() : session.getSessionId(),
-                orchestrationResult.modelUsed(),
+                shownModel,
                 cards,
                 offerHandoff
         );
@@ -359,31 +428,112 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         return (double) inter.size() / union.size();
     }
 
+    private static final Pattern PRICE_FOLLOW_UP = Pattern.compile("\\b(gia|bao nhieu|chi phi|het nhieu|ton nhieu|nhieu tien)\\b");
+
+    /**
+     * "giá sửa bao nhiêu" ngay sau khi khách kể "cửa cuốn kêu to": hỏi giá của đúng thiết bị đó, không đổ cả bảng giá.
+     * Chỉ áp dụng cho câu hỏi giá ngắn chưa nêu thiết bị, không phải câu hỏi cọc.
+     */
+    static String withDeviceContext(String message, List<ChatMessage> history) {
+        String normalized = SymptomClassifier.normalize(message);
+        if (history == null || history.isEmpty() || normalized.contains("coc") || normalized.split(" ").length > 8) {
+            return message;
+        }
+        List<String> previous = new ArrayList<>();
+        for (int i = history.size() - 1; i >= 0 && previous.size() < 3; i--) {
+            ChatMessage m = history.get(i);
+            if ("user".equalsIgnoreCase(m.getRole()) && m.getContent() != null) {
+                previous.add(m.getContent());
+            }
+        }
+        boolean priceQuestion = PRICE_FOLLOW_UP.matcher(normalized).find();
+        // "thế còn vệ sinh" ngay sau "nạp ga thì bao nhiêu": vẫn là hỏi giá, chỉ đổi gói
+        boolean priceFollowUp = !priceQuestion && FOLLOW_UP_ITEM.matcher(normalized).find() && !previous.isEmpty()
+                && PRICE_FOLLOW_UP.matcher(SymptomClassifier.normalize(previous.get(0))).find();
+        if (!priceQuestion && !priceFollowUp) {
+            return message;
+        }
+        String asked = priceFollowUp ? message + " giá bao nhiêu" : message;
+        if (SymptomClassifier.classify(message).isPresent() && !priceFollowUp) {
+            return message;
+        }
+        // Lấy câu khách kể thiết bị/sự cố gần nhất (bỏ qua các câu chỉ hỏi giá)
+        for (String m : previous) {
+            if (SymptomClassifier.classify(m).isPresent() && !PRICE_FOLLOW_UP.matcher(SymptomClassifier.normalize(m)).find()) {
+                return asked + " " + m;
+            }
+        }
+        return asked;
+    }
+
+    private static final Pattern FOLLOW_UP_ITEM = Pattern.compile("^(the con|con|vay con|the|con cai|con goi)\\b");
+
+    /** Khách nêu ngân sách; "thợ báo giá 400k" hay "đã trả 300k cọc" là giá thợ báo/khoản đã trả, không phải ngân sách. */
+    private static boolean statesBudget(String message) {
+        String normalized = SymptomClassifier.normalize(message);
+        return SymptomClassifier.detectBudget(message).isPresent() && !normalized.contains("bao gia")
+                && !normalized.matches(".*\\b(da tra|da chuyen|da coc|coc roi|tra roi)\\b.*");
+    }
+
     private static final Pattern BOOKING_INTENT = Pattern.compile(
-            "\\b(dat tho|goi tho|can tho|tim tho|dang yeu cau|dat lich|muon sua|can sua|sua giup|sua dum|cho tho qua|tho qua|tho den)\\b");
+            "\\b(dat tho|goi tho|can tho|tim tho|dang yeu cau|dat lich|muon sua|can sua|sua giup|sua dum|cho tho qua|cho tho den|dat luon|chot luon|dat ngay)\\b");
+
+    /** Câu trả lời dựng trực tiếp từ dữ liệu cá nhân kèm vết gọi tool (để hiện thẻ đơn hàng). */
+    private record DataAnswer(LlmChatPort.ChatOrchestrationResult result, List<ToolCallRecorder.ToolTrace> traces) { }
+
+    private DataAnswer answerFromData(String message, ChatCommand command) {
+        recorder.start();
+        Optional<LlmChatPort.ChatOrchestrationResult> answer;
+        List<ToolCallRecorder.ToolTrace> traces;
+        try {
+            answer = offlineResponder.answer(message, command.userId(), command.role());
+        } finally {
+            traces = recorder.stop();
+        }
+        return answer.map(a -> new DataAnswer(a, traces)).orElse(null);
+    }
+
+    /**
+     * Khách đang mô tả yêu cầu đặt thợ (muốn đặt thợ, đã cho khu vực hoặc ngân sách) thì mới chèn bản tóm tắt
+     * yêu cầu lên đầu câu trả lời cục bộ; câu chỉ hỏi giá hay hỏi bằng tiếng Anh thì giữ nguyên câu trả lời.
+     */
+    private static boolean describesBooking(String message) {
+        if (ExtractiveFallbackSynthesizer.looksEnglish(message)) {
+            return false;
+        }
+        return BOOKING_INTENT.matcher(SymptomClassifier.normalize(message)).find()
+                || SymptomClassifier.detectAreaCode(message).isPresent()
+                || statesBudget(message);
+    }
 
     /**
      * Gắn nút "Đăng yêu cầu với thông tin này" (form điền sẵn) khi khách đã mô tả thiết bị và có ý định
      * đặt thợ, hoặc model đã gợi ý đăng yêu cầu. Làm bằng code để không phụ thuộc việc model nhớ gọi tool
-     * hay chép đúng đường dẫn dài.
+     * hay chép đúng đường dẫn dài. Câu lạc đề như "2+2=" thì không gắn.
      */
     private String attachDraftRequestAction(List<ChatAction> actions, String message, String userConversation,
-                                            List<ChatMessage> history) {
+                                            List<ChatMessage> history, String modelUsed) {
         boolean alreadyPrefilled = actions.stream()
                 .anyMatch(a -> a.getUrl() != null && a.getUrl().startsWith("/dang-yeu-cau?"));
         if (alreadyPrefilled) {
             return null;
         }
         var category = SymptomClassifier.classify(userConversation);
-        if (category.isEmpty() || SymptomClassifier.isDanger(message)) {
+        if (category.isEmpty() || SymptomClassifier.isDanger(message) || ExtractiveFallbackSynthesizer.isArithmetic(message)
+                || ExtractiveFallbackSynthesizer.looksEnglish(message)) {
             return null;
         }
         String normalizedMessage = SymptomClassifier.normalize(message);
         var area = SymptomClassifier.detectAreaCode(userConversation);
         var budget = SymptomClassifier.detectBudget(userConversation);
-        boolean modelSuggestedPosting = actions.stream().anyMatch(a -> "/dang-yeu-cau".equals(a.getUrl()));
+        // Nút "Đăng yêu cầu" mặc định của câu trả lời cục bộ không phải là gợi ý của AI: chỉ tính khi câu hiện tại
+        // đang nói về thiết bị, tránh gắn form đặt thợ vào câu cảm ơn hay câu lạc đề.
+        boolean localAnswer = modelUsed == null || modelUsed.startsWith("local-");
+        boolean modelSuggestedPosting = actions.stream().anyMatch(a -> "/dang-yeu-cau".equals(a.getUrl()))
+                && (!localAnswer || SymptomClassifier.classify(message).isPresent());
         boolean wantsBooking = BOOKING_INTENT.matcher(normalizedMessage).find()
-                || area.isPresent() || budget.isPresent();
+                || SymptomClassifier.detectAreaCode(message).isPresent()
+                || statesBudget(message);
         if (!modelSuggestedPosting && !wantsBooking) {
             return null;
         }
@@ -404,7 +554,15 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
                 .map(ChatbotOrchestratorService::symptomOnly)
                 .filter(t -> t.length() >= 4)
                 .orElse(category.get().name());
-        String description = String.join(". ", userMessages.subList(Math.max(0, userMessages.size() - 4), userMessages.size()));
+        // Mô tả: chỉ các câu khách kể về sự cố/khu vực/ngân sách, bỏ câu lạc đề ("2+2=", "cảm ơn"...)
+        List<String> relevant = userMessages.stream()
+                .filter(m -> SymptomClassifier.classify(m).isPresent() || SymptomClassifier.detectAreaCode(m).isPresent()
+                        || SymptomClassifier.detectBudget(m).isPresent())
+                .toList();
+        if (relevant.isEmpty()) {
+            relevant = List.of(message.trim());
+        }
+        String description = String.join(". ", relevant.subList(Math.max(0, relevant.size() - 4), relevant.size()));
 
         String url = RepairRequestDraftLink.build(category.get().code(), capitalize(title), description,
                 area.orElse(null), budget.orElse(null));
@@ -475,6 +633,43 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         return false;
     }
 
+    /**
+     * Câu hiện tại phải là câu nối tiếp chủ đề FixLink (nhắc đơn, thợ, cọc, lịch, giá, khu vực... hoặc "vậy",
+     * "còn... thì sao") mới được ghép với câu trước; câu lạc đề như "1+1=?" thì không.
+     */
+    private static final Pattern QUESTION_SIGNAL = Pattern.compile(
+            " (khong|ko|k|chua|thi sao|sao|nao|gi|bao nhieu|bao lau|nhu the nao|the nao|duoc khong|co phai|o dau|khi nao) ");
+    private static final Pattern FOLLOW_UP_SIGNAL = Pattern.compile(
+            "\\b(don|tho|coc|huy|trang thai|lich|gia|tien|sua|quan|ngan sach|thanh toan|bao gia|nghiem thu|"
+                    + "dang sua|vay|the con|con .* thi sao|thi sao|nhu the nao|bao nhieu)\\b");
+
+    /**
+     * AI hết hạn mức và câu hiện tại quá ngắn để tự hiểu (ví dụ "đơn đang ở trạng thái thợ đang sửa" sau
+     * câu "tôi muốn hủy đơn"): ghép với câu hỏi liền trước rồi tra lại câu trả lời chuẩn.
+     */
+    private LlmChatPort.ChatOrchestrationResult withPreviousTurnContext(LlmChatPort.ChatOrchestrationResult result,
+                                                                        String message, List<ChatMessage> history,
+                                                                        String ragContext) {
+        String model = result.modelUsed() != null ? result.modelUsed() : "";
+        boolean unresolved = model.equals("local-synthesizer") || model.equals("local-fallback");
+        String normalized = SymptomClassifier.normalize(message);
+        // Chỉ ghép khi câu hiện tại là câu kể nối tiếp ("đơn đang ở trạng thái thợ đang sửa"); câu có câu hỏi riêng
+        // ("thủ đức thì sao", "hủy được không") phải được trả lời theo chính nó, không lặp lại chủ đề câu trước.
+        if (!unresolved || history == null || !FOLLOW_UP_SIGNAL.matcher(normalized).find()
+                || QUESTION_SIGNAL.matcher(" " + normalized + " ").find() || message.contains("?")) {
+            return result;
+        }
+        for (int i = history.size() - 1; i >= 0; i--) {
+            ChatMessage m = history.get(i);
+            if ("user".equalsIgnoreCase(m.getRole()) && m.getContent() != null) {
+                LlmChatPort.ChatOrchestrationResult combined =
+                        verifiedAnswers.synthesize(m.getContent() + " " + message, ragContext);
+                return "local-faq".equals(combined.modelUsed()) ? combined : result;
+            }
+        }
+        return result;
+    }
+
     private static String userConversationText(List<ChatMessage> history, String currentMessage) {
         StringBuilder sb = new StringBuilder(currentMessage != null ? currentMessage : "");
         if (history != null) {
@@ -538,6 +733,7 @@ public class ChatbotOrchestratorService implements ChatbotUseCase {
         sb.append("- Trang đang xem: ").append(command.route() != null ? command.route() : "/")
                 .append(" (").append(describeRoute(command.route())).append(")\n");
         sb.append("- ").append(roleGuidance(role)).append("\n\n");
+        sb.append("=== ").append(LiveCatalog.promptBlock()).append("\n\n");
 
         if (properties.usesFullKnowledgeInPrompt()) {
             String knowledge = ragIndex.getFullKnowledgeText();

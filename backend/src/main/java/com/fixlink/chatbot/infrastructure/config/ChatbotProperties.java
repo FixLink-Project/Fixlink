@@ -17,6 +17,7 @@ public class ChatbotProperties {
     /** Nhà cung cấp LLM: groq | gemini. */
     private String provider = "groq";
     private GroqProperties groq = new GroqProperties();
+    private LitellmProperties litellm = new LitellmProperties();
     private GeminiProperties gemini = new GeminiProperties();
     private ToolsProperties tools = new ToolsProperties();
     private RagProperties rag = new RagProperties();
@@ -38,13 +39,14 @@ public class ChatbotProperties {
     @Setter
     public static class GroqProperties {
         private String apiKey = "";
+        /** Key Groq của tài khoản thứ hai (tùy chọn): dùng khi key chính hết hạn mức. */
+        private String apiKey2 = "";
         /** Endpoint tương thích OpenAI của Groq. */
         private String baseUrl = "https://api.groq.com/openai/v1";
         /** Chuỗi failover: model đầu tiên là model chính. */
         private List<String> models = new ArrayList<>(List.of(
                 "openai/gpt-oss-120b",
-                "qwen/qwen3.8-27b",
-                "openai/gpt-oss-20b"
+                "qwen/qwen3.8-27b"
         ));
         private int timeoutSeconds = 30;
         private int totalBudgetSeconds = 60;
@@ -64,6 +66,28 @@ public class ChatbotProperties {
         private int maxHistoryMessages = 6;
         /** Rút gọn mỗi tin nhắn lịch sử dài hơn số ký tự này. */
         private int maxHistoryMessageChars = 600;
+    }
+
+    /**
+     * Cổng LiteLLM (proxy tương thích OpenAI) đứng trước các nhà cung cấp LLM. LiteLLM tự chuyển
+     * sang nhà cung cấp dự phòng khi Groq hết hạn mức. Bỏ trống {@code baseUrl} thì backend gọi thẳng
+     * Groq như cũ.
+     */
+    @Getter
+    @Setter
+    public static class LitellmProperties {
+        /** Ví dụ http://localhost:4000 (không có /v1 ở cuối cũng được). */
+        private String baseUrl = "";
+        /** Master key hoặc virtual key của LiteLLM. */
+        private String apiKey = "";
+        /** Tên nhóm model khai báo trong litellm/config.yaml; chuỗi fallback do LiteLLM xử lý. */
+        private List<String> models = new ArrayList<>(List.of("fixlink-chat"));
+        /** LiteLLM có thể thử lần lượt nhiều nhà cung cấp trong một request nên cần thời gian chờ dài hơn. */
+        private int timeoutSeconds = 75;
+
+        public boolean isEnabled() {
+            return baseUrl != null && !baseUrl.isBlank();
+        }
     }
 
     @Getter
@@ -123,6 +147,6 @@ public class ChatbotProperties {
         private int maxInputChars = 1000;
         private int maxToolRounds = 5;
         private int historyTurns = 10;
-        private int guestRatePer10min = 20;
+        private int guestRatePer10min = 40;
     }
 }

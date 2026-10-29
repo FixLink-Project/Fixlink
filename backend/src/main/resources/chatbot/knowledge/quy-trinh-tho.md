@@ -25,16 +25,20 @@ Bảng việc tại `/tho` hiển thị các yêu cầu đang mở khớp chuyê
 - Mở chi tiết yêu cầu (`/tho/yeu-cau/{id}`), nhập **giá tiền công** (bắt buộc) và tiền vật tư/phương án nếu có, bấm gửi.
 - Mỗi thợ có **một báo giá** cho mỗi yêu cầu; khi báo giá còn **chờ khách duyệt** có thể **sửa (trả giá lại)** hoặc **rút báo giá**.
 - **Sàn báo giá công khai (ẩn danh):** thợ thấy mức giá của các thợ khác dưới tên "Thợ ẩn danh #1, #2...", không thấy danh tính đối thủ, để chủ động cân nhắc giá.
-- Khách hàng tự so sánh và chọn thợ (dựa trên giá, phương án, điểm đánh giá, số việc đã làm). Khi khách chọn báo giá của thợ: yêu cầu chuyển sang `ASSIGNED`, giá chốt = báo giá đó, tiền cọc 30% được ghi nhận; các báo giá khác bị từ chối.
+- Khách hàng tự so sánh và chọn thợ (dựa trên giá, phương án, điểm đánh giá, số việc đã làm). Khi khách chọn báo giá của thợ: yêu cầu chuyển sang `ASSIGNED`, giá chốt = báo giá đó.
+- **Báo giá (công + vật tư) không được vượt ngân sách khách đặt**, nếu vượt hệ thống báo lỗi.
+- Báo giá của thợ không được chọn vẫn là **báo giá dự phòng**: nếu khách đổi thợ khi chưa sửa, khách có thể chuyển sang thợ dự phòng. Thợ đang phụ trách bị khách đổi thì **không nhận tiền cọc**.
 - Muốn tăng khả năng được chọn: báo giá hợp lý, ghi rõ phương án sửa, giữ điểm đánh giá tốt và nhận việc đúng chuyên môn.
 
-## 4. Trạng thái Trực tuyến / Ngoại tuyến
-- Thợ bật/tắt **Trực tuyến (Online)** tại `/tho/ho-so` để thể hiện đang sẵn sàng. Trạng thái này **không ẩn/hiện bảng việc**.
+## 4. Hồ sơ, đánh giá và Ví FixLink
+- Hồ sơ thợ tại `/tho/ho-so`: thông tin cá nhân, tab **Chuyên môn & Khu vực** (chọn rồi bấm "Lưu chuyên môn"), tab đánh giá xem **điểm trung bình và từng nhận xét** của khách.
+- **Ví FixLink**: số dư hiển thị trên bảng điều khiển `/tho`. Mỗi đơn hoàn thành, hệ thống trích **10% phí nền tảng** trên giá chốt và cộng **90%** vào ví. Nhận tiền mặt trực tiếp từ khách thì ví có thể tạm âm (công nợ phí nền tảng), được tự động cấn trừ vào doanh thu các đơn sau; vẫn nhận việc bình thường. Cách rút tiền từ ví: chưa công bố.
 
 ## 5. Thực hiện công việc sau khi được chọn
-1. **Đặt lịch hẹn khảo sát trên hệ thống trước** trong trang chi tiết công việc (thời gian hẹn từ hiện tại trở đi). Nút bắt đầu khảo sát chỉ mở sau khi đã có lịch hẹn.
-2. Đến hiện trường, chuyển sang **Đang khảo sát** (`INSPECTING`).
-3. Khảo sát xong: sửa theo giá đã chốt → **Đang sửa chữa** (`IN_PROGRESS`); hoặc có lỗi phát sinh → gửi **đề xuất chi phí mới** (`AWAITING_COST_APPROVAL`) và **chỉ sửa phần phát sinh khi khách đồng ý**.
+1. **Đặt lịch hẹn khảo sát trên hệ thống** trong trang chi tiết công việc (thời gian hẹn từ hiện tại trở đi). Lịch ở trạng thái **Chờ xác nhận** cho đến khi khách xác nhận; khách từ chối thì đặt lịch khác.
+2. Khách xác nhận lịch và **thanh toán cọc 30% qua QR** → đơn **Đã đặt cọc** (`DEPOSIT_PAID`). Chỉ khi đó mới đến hiện trường và chuyển sang **Đang khảo sát** (`INSPECTING`).
+3. Khảo sát xong: sửa theo giá đã chốt → **Đang sửa chữa** (`IN_PROGRESS`); hoặc có lỗi phát sinh → gửi **đề xuất chi phí mới** kèm ảnh linh kiện hỏng (`AWAITING_COST_APPROVAL`) và **chỉ sửa phần phát sinh khi khách đồng ý**. Cần chuẩn bị linh kiện thì dùng **"📅 Hẹn lại ngày thi công"** để đặt ngày thi công mới cho khách xác nhận.
+   - Lịch hẹn khảo sát đã thực hiện được khóa (không đổi/hủy nữa) khi đơn đã sang khảo sát.
 4. Sửa xong, chạy thử, báo **hoàn thành** (`AWAITING_ACCEPTANCE`).
-5. Khách **chấm sao + nhận xét** và hoàn tất nghiệm thu (`COMPLETED`) → tiền công được giải ngân vào ví của thợ; điểm đánh giá trung bình và số việc hoàn thành cập nhật trên hồ sơ.
+5. Hệ thống tạo QR thanh toán phần còn lại cho khách (khách cũng có thể trả tiền mặt cho thợ và xác nhận trên hệ thống). Khách **thanh toán, chấm sao + nhận xét** và hoàn tất nghiệm thu (`COMPLETED`) → 90% giá chốt được cộng vào Ví FixLink của thợ (trừ 10% phí nền tảng); điểm đánh giá trung bình và số việc hoàn thành cập nhật trên hồ sơ.
 6. Thợ xem danh sách việc đã hoàn thành trong trang riêng của bảng điều khiển thợ.

@@ -89,11 +89,12 @@ export default function ChatCards({ cards }: { cards: ChatCardItem[] }) {
           )}
 
           {card.fields && card.fields.length > 0 && (
-            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+            <dl className="mt-2 space-y-1.5">
               {card.fields.map((f, i) => (
-                <div key={i} className="contents">
-                  <dt className="text-slate-500 whitespace-nowrap">{f.label}</dt>
-                  <dd className="text-slate-800 font-medium text-right break-words">{f.value}</dd>
+                // Nhãn dài (tên gói dịch vụ) được xuống dòng; giá trị ngắn (giá, ngày giờ) giữ gọn bên phải
+                <div key={i} className="flex items-start justify-between gap-3">
+                  <dt className="min-w-0 flex-1 text-slate-500 leading-snug break-words">{f.label}</dt>
+                  <dd className="max-w-[60%] text-slate-800 font-medium text-right leading-snug break-words">{f.value}</dd>
                 </div>
               ))}
             </dl>

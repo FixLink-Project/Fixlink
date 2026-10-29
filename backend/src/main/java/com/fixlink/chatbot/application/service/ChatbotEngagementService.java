@@ -148,12 +148,14 @@ public class ChatbotEngagementService implements ChatbotEngagementUseCase {
         List<String> suggestions = switch (status) {
             case "OPEN", "DRAFT", "PENDING" -> List.of("Đơn này đã có những báo giá nào?", "Nên chọn thợ nào?",
                     "Hủy đơn này có mất phí không?", "Nên tăng ngân sách không?");
-            case "ASSIGNED" -> List.of("Lịch hẹn của đơn này thế nào?", "Thợ chưa liên hệ thì sao?",
+            case "ASSIGNED" -> List.of("Xác nhận lịch hẹn và đặt cọc thế nào?", "Thợ chưa đặt lịch thì sao?",
                     "Tiền cọc của đơn này là bao nhiêu?", "Tôi muốn đổi thợ");
+            case "DEPOSIT_PAID" -> List.of("Lịch hẹn của đơn này thế nào?", "Thợ không đến thì sao?",
+                    "Tôi muốn đổi thợ");
             case "INSPECTING", "AWAITING_COST_APPROVAL" -> List.of("Có nên đồng ý chi phí phát sinh?",
-                    "Không đồng ý phát sinh thì sao?", "Thợ đòi trả tiền mặt thì sao?");
+                    "Không đồng ý phát sinh thì đổi thợ được không?", "Thợ đòi trả tiền mặt thì sao?");
             case "IN_PROGRESS" -> List.of("Sửa xong thì làm gì tiếp?", "Đang sửa có hủy được không?");
-            case "AWAITING_ACCEPTANCE" -> List.of("Đánh giá và nghiệm thu thế nào?", "Thiết bị vẫn còn lỗi thì sao?",
+            case "AWAITING_ACCEPTANCE" -> List.of("Thanh toán phần còn lại và nghiệm thu thế nào?", "Thiết bị vẫn còn lỗi thì sao?",
                     "Sau nghiệm thu có bảo hành không?");
             case "COMPLETED" -> List.of("Sửa xong lại hỏng thì sao?", "Đăng yêu cầu mới", "Gặp nhân viên hỗ trợ");
             default -> List.of("Đăng yêu cầu mới", "Gặp nhân viên hỗ trợ");

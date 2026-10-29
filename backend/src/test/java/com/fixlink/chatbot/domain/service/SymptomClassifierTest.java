@@ -7,6 +7,11 @@ import org.junit.jupiter.api.Test;
 
 class SymptomClassifierTest {
 
+    @org.junit.jupiter.api.BeforeEach
+    void resetLiveCatalog() {
+        com.fixlink.chatbot.domain.service.LiveCatalog.reset();
+    }
+
     @Test
     @DisplayName("Hiểu viết tắt: 'tl' là tủ lạnh (Điện lạnh), không phải tivi")
     void shouldClassifyAbbreviatedDevices() {
@@ -29,6 +34,10 @@ class SymptomClassifierTest {
     @DisplayName("Đọc ngân sách theo nhiều cách viết, không nhầm số điện thoại hay chữ 'trên'")
     void shouldDetectBudget() {
         assertThat(SymptomClassifier.detectBudget("ngân sách tầm 300k")).contains(300_000L);
+        // "quận 7, ngân sách..." không được đọc thành 7 nghìn
+        assertThat(SymptomClassifier.detectBudget("nhà ở quận 7, ngân sách khoảng 400k")).contains(400_000L);
+        assertThat(SymptomClassifier.detectBudget("ở q7 ngân sách 1tr")).contains(1_000_000L);
+        assertThat(SymptomClassifier.detectBudget("nhà ở quận 7")).isEmpty();
         assertThat(SymptomClassifier.detectBudget("khoảng 1tr2 thôi")).contains(1_200_000L);
         assertThat(SymptomClassifier.detectBudget("1,5 triệu được không")).contains(1_500_000L);
         assertThat(SymptomClassifier.detectBudget("giá 500.000đ")).contains(500_000L);
