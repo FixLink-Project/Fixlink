@@ -36,9 +36,17 @@ model_list:
       model: groq/qwen/qwen3.8-27b
       api_key: os.environ/GROQ_API_KEY_2
 
+  # CHỈ DÙNG KHI DEMO (litellm/demo-litellm.ps1), backend không gọi model này: model chính cố tình trỏ tới
+  # một model không tồn tại để thấy LiteLLM tự chuyển sang model dự phòng khi nhà cung cấp báo lỗi thật.
+  - model_name: fixlink-demo-loi
+    litellm_params:
+      model: groq/fixlink-model-khong-ton-tai
+      api_key: os.environ/GROQ_API_KEY
+
 router_settings:
   fallbacks:
     - fixlink-chat: ["fixlink-groq-qwen"]
+    - fixlink-demo-loi: ["fixlink-groq-qwen"]
   # Model chạm hạn mức sẽ tạm nghỉ để request sau đi thẳng sang model dự phòng.
   # Hạn mức token/phút của Groq hồi lại nhanh nên chỉ nghỉ ngắn.
   allowed_fails: 1

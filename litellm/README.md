@@ -35,19 +35,36 @@ Kiểm tra nhanh LiteLLM:
 curl http://localhost:4000/health/liveliness
 ```
 
+## Demo các tính năng LiteLLM
+
+Khi LiteLLM đang chạy, mở PowerShell ở thư mục gốc dự án:
+
+```
+powershell -ExecutionPolicy Bypass -File litellm\demo-litellm.ps1
+```
+
+Script đi qua 6 bước, mỗi bước chờ bấm Enter:
+1. Kiểm tra LiteLLM đang chạy (`/health/liveliness`).
+2. Gọi không có master key thì bị chặn (HTTP 401).
+3. Liệt kê các nhóm model (`/v1/models`): backend chỉ thấy tên chung, không thấy key Groq.
+4. Gọi bình thường: header `x-litellm-model-name` cho biết model thật, kèm thời gian và chi phí ước tính.
+5. Gọi nhóm `fixlink-demo-loi` (model chính cố tình trỏ tới model không tồn tại): LiteLLM tự chuyển sang
+   `fixlink-groq-qwen`, header `x-litellm-attempted-fallbacks: 1`.
+6. In phần cấu hình định tuyến trong `config.yaml`.
+
+Script tốn khoảng 2 lượt gọi Groq rất ngắn. Trên giao diện chatbot (môi trường local), nhãn dưới mỗi câu
+trả lời AI ghi `Trợ lý AI · LiteLLM → tên model`.
+
 ## Deploy (Render)
 
-`render.yaml` khai báo thêm web service `fixlink-litellm` (build từ `litellm/Dockerfile`).
-Trên Render Dashboard, nhập các biến (đều là `sync: false`, không nằm trong git):
+Bản deploy **không chạy LiteLLM**: web service gói free của Render không nhận được kết nối nội bộ và ngủ
+sau 15 phút không dùng, nên câu chat đầu tiên sẽ phải chờ rất lâu. Backend gọi thẳng Groq với cùng chuỗi
+dự phòng (gpt-oss-120b → qwen3.8-27b, key 1 rồi key 2, cuối cùng là câu trả lời cục bộ). Trên Render chỉ
+đặt `GROQ_API_KEY` (và `GROQ_API_KEY_2`), **không** đặt `LITELLM_BASE_URL`. Chi tiết xem
+`docs/huong-dan-deploy-chatbot.md`.
 
-| Service | Biến |
-|---|---|
-| `fixlink-api` | `GROQ_API_KEY`, `LITELLM_MASTER_KEY` |
-| `fixlink-litellm` | `GROQ_API_KEY`, `LITELLM_MASTER_KEY` (cùng giá trị với `fixlink-api`), `GROQ_API_KEY_2` (tùy chọn) |
-
-`LITELLM_BASE_URL` của backend được Render tự điền bằng địa chỉ nội bộ của `fixlink-litellm`.
-Gói Render miễn phí cho service ngủ sau 15 phút không dùng; lúc LiteLLM đang khởi động lại, backend
-tự gọi thẳng Groq nên chatbot vẫn trả lời.
+Khi lên gói trả phí, có thể chạy LiteLLM thành service riêng rồi đặt `LITELLM_BASE_URL` cho backend,
+không phải sửa code.
 
 Frontend trên Vercel **không** cần và **không được** chứa các key này.
 

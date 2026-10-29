@@ -169,18 +169,22 @@ public class ExtractiveFallbackSynthesizer {
                     "them chuyen mon", "cap nhat khu vuc", "cap nhat chuyen mon"),
                     """
                     **Chuyên môn và khu vực nhận việc (dành cho thợ):**
-                    - Bảng việc tại /tho chỉ hiện yêu cầu **khớp chuyên môn và khu vực** bạn đăng ký; báo giá cho đơn khác khu vực sẽ bị từ chối.
-                    - Muốn nhận việc ở quận khác hoặc thêm chuyên môn: vào **Hồ sơ thợ** (/tho/ho-so) → tab **Chuyên môn & Khu vực**, chọn thêm rồi bấm **Lưu chuyên môn**.
+                    - Bảng việc tại /tho chỉ hiện yêu cầu **khớp chuyên môn và khu vực** của bạn; báo giá cho đơn khác khu vực sẽ bị từ chối.
+                    - **Khu vực**: bạn tự chọn ở **Hồ sơ thợ** (/tho/ho-so) → tab **Chuyên môn & Khu vực** → mục *Khu vực bạn tới được*, rồi bấm **Lưu chuyên môn**.
+                    - **Chuyên môn**: do **Ban quản trị FixLink phỏng vấn, thẩm định và cấp phép**, thợ không tự thêm được (để đảm bảo an toàn kỹ thuật cho khách). Muốn mở thêm chuyên môn, bạn liên hệ Ban quản trị theo hướng dẫn trong tab đó để đăng ký lịch sát hạch.
                     - FixLink hiện phục vụ: {{AREA_LIST}}.""",
                     List.of("Có việc nào phù hợp với tôi?", "Làm sao để được khách chọn?"), List.of(), false),
 
             new Intent(List.of("tin nhan xac nhan", "gui tin nhan", "gui sms", "sms", "thong bao qua", "email xac nhan",
-                    "nhan thong bao don", "thong bao khi co bao gia"),
+                    "nhan thong bao don", "thong bao khi co bao gia", "chuong thong bao", "xem thong bao", "thong bao o dau",
+                    "co thong bao khong", "lam sao biet co bao gia"),
                     """
-                    Hiện FixLink **chỉ gửi email khi bạn yêu cầu đặt lại mật khẩu**; chưa có tin nhắn SMS hay thông báo đẩy cho đơn hàng.
-                    - Theo dõi báo giá, lịch hẹn, thanh toán và trạng thái đơn trong **Yêu cầu của tôi** (/yeu-cau-cua-toi).
-                    - Đã đăng nhập thì hỏi mình *"tôi có bao nhiêu đơn"* hoặc nhập **mã đơn** để xem nhanh trạng thái và việc cần làm tiếp.""",
-                    List.of("Tôi có bao nhiêu đơn?", "Lịch hẹn của tôi"), List.of(LINK_MY), false),
+                    **Thông báo trên FixLink:** khi đăng nhập, biểu tượng **chuông 🔔** ở góc trên màn hình hiện số thông báo chưa đọc. FixLink báo khi:
+                    - Khách: có **báo giá mới**, thợ đề xuất **lịch hẹn**, đặt cọc / thanh toán thành công, thợ **báo hoàn thành** (mời nghiệm thu).
+                    - Thợ: khách **chọn bạn** (hoặc chọn bạn thay thợ khác), khách hẹn hoặc xác nhận lịch, khách **đã cọc**, khách đã nghiệm thu và tiền công đã vào ví.
+
+                    Bấm vào thông báo để mở đúng đơn liên quan. FixLink **chưa gửi SMS**; email chỉ dùng khi bạn đặt lại mật khẩu. Đã đăng nhập thì hỏi mình *"tôi có thông báo gì mới"* để xem nhanh.""",
+                    List.of("Tôi có thông báo gì mới?", "Tôi có bao nhiêu đơn?"), List.of(LINK_MY), false),
 
             new Intent(List.of("phi di lai", "phi di chuyen", "tien xang", "phi den nha", "tien di lai", "phu phi"),
                     """
@@ -199,10 +203,11 @@ public class ExtractiveFallbackSynthesizer {
 
             new Intent(List.of("trang quan tri", "quan tri vien", "duyet ho so tho", "duyet tai khoan tho", "duyet kyc",
                     "khoa tai khoan nguoi dung", "mo khoa tai khoan", "tao tai khoan tho cho", "tao tai khoan khach cho",
-                    "xem thong ke", "quan ly nguoi dung", "quan ly danh muc", "them danh muc", "an danh muc"),
+                    "xem thong ke", "quan ly nguoi dung", "quan ly danh muc", "them danh muc", "an danh muc", "cap phep chuyen mon",
+                    "cap chuyen mon cho tho", "sua chuyen mon cho tho", "chinh chuyen mon tho"),
                     """
                     **Trang quản trị FixLink** (/quan-tri, chỉ tài khoản quản trị viên):
-                    - **Người dùng**: lọc theo tab *Tất cả, Chờ duyệt, Chờ duyệt KYC, Đang hoạt động, Đã khoá*; tìm theo tên đăng nhập; **Xem hồ sơ** (thông tin, ảnh CCCD 2 mặt, chuyên môn, khu vực, số dư ví thợ) để **duyệt / từ chối** hồ sơ thợ; **Khoá tài khoản** vi phạm hoặc **Mở khoá** (không khoá được tài khoản quản trị viên); **Tạo tài khoản khách / Tạo tài khoản thợ**.
+                    - **Người dùng**: lọc theo tab *Tất cả, Chờ duyệt, Chờ duyệt KYC, Đang hoạt động, Đã khoá*; tìm theo tên đăng nhập; **Xem hồ sơ** (thông tin, ảnh CCCD 2 mặt, chuyên môn, khu vực, số dư ví thợ) để **duyệt / từ chối** hồ sơ thợ; **cấp phép chuyên môn** cho thợ sau khi phỏng vấn, thẩm định (chọn danh mục rồi bấm **Lưu chuyên môn thợ**); **Khoá tài khoản** vi phạm hoặc **Mở khoá** (không khoá được tài khoản quản trị viên); **Tạo tài khoản khách / Tạo tài khoản thợ**.
                     - **Thống kê** (/quan-tri/thong-ke): yêu cầu, báo giá, lịch hẹn, đơn hoàn thành, giá trị đơn, doanh thu phí nền tảng 10%, đánh giá, theo tháng và khu vực.
                     - **Danh mục dịch vụ** (/quan-tri/danh-muc): quản lý các danh mục sửa chữa.
                     Bạn hỏi mình số liệu (ví dụ *"có bao nhiêu thợ đang hoạt động"*) thì mình tra trực tiếp từ hệ thống.""",
@@ -426,7 +431,7 @@ public class ExtractiveFallbackSynthesizer {
                     **Tiền cọc khi hủy đơn:**
                     - Tiền cọc 30% được FixLink **giữ bảo chứng**, thợ chỉ nhận tiền khi bạn nghiệm thu.
                     - **Tỷ lệ phạt hoặc hoàn cọc khi hủy hiện chưa được công bố chính thức.** Mỗi trường hợp (ví dụ thợ không đến, thợ vi phạm thỏa thuận) do Admin thẩm định qua **phiếu hỗ trợ**.
-                    - Nếu chỉ không ưng thợ hiện tại và đơn chưa sửa, bạn có thể **"Đổi thợ khác"**: cọc đã đóng được bảo lưu cho thợ mới, thợ cũ không nhận.
+                    - Nếu chỉ không ưng thợ hiện tại và đơn chưa sửa, bạn có thể **"Đổi thợ khác"**: 100% cọc đã đóng được bảo lưu cho thợ mới (không phải cọc lại), thợ cũ không nhận.
 
                     Bạn cần xử lý tiền cọc cho đơn cụ thể, mình có thể tạo phiếu hỗ trợ (bạn cho mình mã đơn nhé).""",
                     List.of("Tạo phiếu hỗ trợ", "Đổi thợ được không?", "Quy định hủy đơn"), List.of(LINK_MY), true),
@@ -668,7 +673,7 @@ public class ExtractiveFallbackSynthesizer {
                     2. **Phương án 1:** chọn ngay báo giá dự phòng của thợ khác đã gửi cho đơn.
                     3. **Phương án 2:** *Mở lại sàn nhận báo giá* để đơn về trạng thái nhận báo giá mới.
 
-                    Tiền cọc đã đóng được FixLink giữ bảo chứng: thợ cũ không nhận, cọc được bảo lưu cho thợ mới. Khi đơn đã Đang sửa chữa thì không đổi thợ được.""",
+                    Tiền cọc đã đóng được FixLink giữ bảo chứng: thợ cũ không nhận, **100% số cọc đã nộp được bảo lưu cho thợ mới** (bạn không phải cọc lại; phần còn lại tính theo giá chốt của thợ mới). Khi đơn đã Đang sửa chữa thì không đổi thợ được.""",
                     List.of("So sánh báo giá đơn của tôi", "Tạo phiếu hỗ trợ"), List.of(LINK_MY), false),
 
             new Intent(List.of("bao hanh", "lai hong", "sua roi van hong", "sua xong lai", "bi lua", "lua tien", "bi gat", "van hu", "xong van hu", "sua xong ma van", "con hu", "khong hai long", "lam hong them",
@@ -924,6 +929,11 @@ public class ExtractiveFallbackSynthesizer {
         }
 
         Optional<Intent> intent = SymptomClassifier.mentionsFire(userMessage) ? Optional.of(INTENTS.get(0)) : matchIntent(padded);
+        boolean advice = asksDeviceAdvice(userMessage);
+        if (advice && intent.isPresent() && intent.get() != INTENTS.get(0)) {
+            // Xin tư vấn sự cố khi AI không trả lời được: gợi ý đúng danh mục, không đưa câu trả lời chuẩn lệch ý
+            intent = Optional.empty();
+        }
         if (intent.isPresent()) {
             Intent i = intent.get();
             String text = LiveCatalog.resolve(i.reply().strip());
@@ -948,6 +958,9 @@ public class ExtractiveFallbackSynthesizer {
             boolean asksSupported = padded.matches(".* co (sua|nhan sua|lam|ho tro sua) .*(khong|ko|k|hong) $");
             return new ChatOrchestrationResult(
                     (asksSupported ? "**Có**, FixLink nhận sửa thiết bị này qua danh mục **" + match.name() + "**.\n\n"
+                            : advice ? "Sự cố bạn mô tả thuộc danh mục **" + match.name() + "**. Để tìm đúng nguyên nhân, "
+                                    + "bạn **ngắt điện thiết bị**, không tự tháo máy, rồi để thợ khảo sát tận nơi; thợ sẽ kiểm tra và "
+                                    + "báo phương án trước khi sửa.\n\n"
                             : "Sự cố bạn mô tả thuộc danh mục **" + match.name() + "**.\n\n")
                             + "**Giá tham khảo khởi điểm:** " + LiveCatalog.referencePrices(match.code()) + "\n\n"
                             + "Trên FixLink bạn đặt **ngân sách dự kiến**, các thợ gửi báo giá và bạn chọn thợ phù hợp; nếu thợ khảo sát phát hiện lỗi phát sinh, "
@@ -1008,7 +1021,7 @@ public class ExtractiveFallbackSynthesizer {
                 || SMALL_TALK.matcher(query).matches() || THANKS.matcher(query).matches() || GOODBYE.matcher(query).matches()
                 || IMPATIENT.matcher(query).matches() || PASSWORD_REQUEST.matcher(query).find() || isArithmetic(userMessage)
                 || asksServedArea(userMessage, query);
-        if (!preCheck && matchIntent(" " + query + " ").isEmpty()) {
+        if (!preCheck && (matchIntent(" " + query + " ").isEmpty() || asksDeviceAdvice(userMessage))) {
             return Optional.empty();
         }
         if (!preCheck && twoTopics(" " + query + " ")) {
@@ -1021,6 +1034,25 @@ public class ExtractiveFallbackSynthesizer {
     }
 
     private static final int MAX_DIRECT_WORDS = 25;
+
+    /** Xin tư vấn xử lý sự cố ("nên kiểm tra gì", "vì sao", "nên A hay B"), khác với hỏi giá hay quy định. */
+    private static final Pattern DEVICE_ADVICE = Pattern.compile("\\b(nen kiem tra|kiem tra gi|kiem tra nhung gi|tu kiem tra"
+            + "|nguyen nhan|tai sao|vi sao|do dau|tu khac phuc|tu sua|tu xu ly|xu ly tam|khac phuc tam|nen lam gi truoc"
+            + "|so sanh giup|nen .{1,40} hay|co nen|meo)\\b");
+    private static final Pattern PRICE_WORDS = Pattern.compile("\\b(gia|bao nhieu tien|chi phi|het bao nhieu|mat bao nhieu|tien cong)\\b");
+
+    /**
+     * Câu xin tư vấn xử lý sự cố của một thiết bị cụ thể: để AI giải thích theo đúng tình huống thay vì đưa câu trả lời
+     * chuẩn (bảng giá, cách đăng yêu cầu) lệch ý. Hết hạn mức AI thì bộ trả lời cục bộ vẫn gợi ý danh mục và gói phù hợp.
+     */
+    public static boolean asksDeviceAdvice(String userMessage) {
+        if (userMessage == null) {
+            return false;
+        }
+        String query = normalize(userMessage);
+        return DEVICE_ADVICE.matcher(query).find() && !PRICE_WORDS.matcher(query).find()
+                && SymptomClassifier.classify(query).isPresent();
+    }
 
     /**
      * Câu trả lời chuẩn (đã đối chiếu nghiệp vụ) cho chủ đề của câu hỏi, nếu có. Orchestrator đưa nội

@@ -15,7 +15,9 @@ function sourceLabel(modelUsed: string): string {
   if (modelUsed === 'local-faq') return 'Câu trả lời chuẩn';
   if (modelUsed === 'local-data') return 'Dữ liệu FixLink';
   if (modelUsed.startsWith('local-')) return 'Chế độ dự phòng';
-  return 'Trợ lý AI';
+  // Chỉ môi trường local/dev mới trả về tên model: cho biết câu trả lời đi qua cổng LiteLLM hay gọi thẳng Groq
+  if (modelUsed.startsWith('litellm/')) return `Trợ lý AI · LiteLLM → ${modelUsed.split('/').pop()}`;
+  return `Trợ lý AI · Groq trực tiếp → ${modelUsed.split('/').pop()}`;
 }
 
 export default function MessageBubble({ message, onFeedback, onRequestHandoff }: MessageBubbleProps) {

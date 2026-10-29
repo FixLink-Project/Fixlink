@@ -53,6 +53,25 @@ class OfflinePersonalResponderTest {
     }
 
     @Test
+    @DisplayName("Hỏi thông báo của mình: đọc chuông thông báo thật; hỏi cách xem thông báo thì để câu trả lời chuẩn")
+    void shouldAnswerMyNotifications() {
+        when(toolPort.executeTool(eq("get_my_notifications"), anyMap(), any(), any(), any()))
+                .thenReturn(new ToolExecutionResult("""
+                        {"unreadCount":1,"notifications":[
+                          {"title":"Có báo giá mới từ thợ","message":"Thợ An vừa gửi báo giá 300.000đ cho yêu cầu #12.",
+                           "isRead":false,"createdAt":"09:30 29/10/2026","url":"/yeu-cau/12"},
+                          {"title":"Đặt cọc thành công!","message":"Bạn đã thanh toán cọc 90.000đ.","isRead":true,
+                           "createdAt":"08:00 28/10/2026","url":"/yeu-cau/9"}]}
+                        """, false));
+
+        String reply = responder.answer("tôi có thông báo gì mới không", 7L, "CUSTOMER").orElseThrow().reply();
+        assertThat(reply).contains("1 thông báo chưa đọc").contains("Có báo giá mới từ thợ").contains("09:30 29/10/2026")
+                .contains("chuông");
+        assertThat(responder.answer("xem thông báo ở đâu", 7L, "CUSTOMER")).isEmpty();
+        assertThat(responder.answer("tôi có thông báo gì mới không", null, "GUEST")).isEmpty();
+    }
+
+    @Test
     @DisplayName("Quản trị viên hỏi số thợ đang hoạt động, hồ sơ chờ duyệt: trả lời bằng số liệu thật, đúng trọng tâm")
     void shouldAnswerAdminStatistics() {
         when(toolPort.executeTool(eq("get_admin_overview"), anyMap(), any(), any(), any()))

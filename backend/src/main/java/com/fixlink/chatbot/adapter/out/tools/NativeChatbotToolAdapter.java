@@ -2,11 +2,13 @@ package com.fixlink.chatbot.adapter.out.tools;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fixlink.adapter.in.web.dto.response.AppointmentResponse;
+import com.fixlink.adapter.in.web.dto.response.NotificationResponse;
 import com.fixlink.adapter.in.web.dto.response.QuotationResponse;
 import com.fixlink.adapter.in.web.dto.response.RepairRequestResponse;
 import com.fixlink.application.port.in.AdminStatisticsUseCase;
 import com.fixlink.application.port.in.AppointmentUseCase;
 import com.fixlink.application.port.in.MasterDataUseCase;
+import com.fixlink.application.port.in.NotificationUseCase;
 import com.fixlink.application.port.in.QuotationUseCase;
 import com.fixlink.application.port.in.RepairRequestUseCase;
 import com.fixlink.application.port.in.RepairRequestUseCase.RepairRequestDetail;
@@ -73,6 +75,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
     private final QuotationUseCase quotationUseCase;
     private final UserManagementUseCase userManagementUseCase;
     private final AdminStatisticsUseCase adminStatisticsUseCase;
+    private final NotificationUseCase notificationUseCase;
     private final InMemoryRagIndex ragIndex;
     private final ObjectMapper objectMapper;
 
@@ -85,6 +88,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
             QuotationUseCase quotationUseCase,
             UserManagementUseCase userManagementUseCase,
             AdminStatisticsUseCase adminStatisticsUseCase,
+            NotificationUseCase notificationUseCase,
             InMemoryRagIndex ragIndex,
             ObjectMapper objectMapper
     ) {
@@ -96,6 +100,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
         this.quotationUseCase = quotationUseCase;
         this.userManagementUseCase = userManagementUseCase;
         this.adminStatisticsUseCase = adminStatisticsUseCase;
+        this.notificationUseCase = notificationUseCase;
         this.ragIndex = ragIndex;
         this.objectMapper = objectMapper;
     }
@@ -211,6 +216,11 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                 Map.of("query", prop("STRING", "Câu hỏi hoặc từ khóa cần tìm")),
                 List.of("query")));
 
+        tools.add(tool("get_my_notifications",
+                "Thông báo trong chuông 🔔 của người dùng đang đăng nhập (báo giá mới, được chọn, lịch hẹn, đã cọc, hoàn thành...): "
+                        + "số thông báo chưa đọc và các thông báo gần nhất.",
+                Map.of(), List.of()));
+
         tools.add(tool("get_admin_overview",
                 "CHỈ dành cho QUẢN TRỊ VIÊN: số người dùng theo vai trò/trạng thái (đang hoạt động, chờ duyệt, chờ duyệt KYC, đã khoá) "
                         + "và thống kê tháng hiện tại (đơn tạo, hoàn thành, hủy, doanh thu phí nền tảng 10%, điểm đánh giá trung bình).",
@@ -266,6 +276,7 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
                 case "read_support_ticket" -> handleReadSupportTicket(args, currentUserId, currentRole, guestContact);
                 case "search_knowledge_base" -> handleSearchKnowledgeBase(args, currentRole);
                 case "get_admin_overview" -> handleAdminOverview(currentRole);
+                case "get_my_notifications" -> handleGetMyNotifications(currentUserId);
                 default -> error("Không tìm thấy công cụ: " + toolName);
             };
         } catch (Exception ex) {
@@ -782,6 +793,26 @@ public class NativeChatbotToolAdapter implements ChatbotToolPort {
     }
 
     /** Tổng quan cho quản trị viên: đếm người dùng như các tab ở /quan-tri và chỉ số tháng hiện tại như trang Thống kê. */
+    private ToolExecutionResult handleGetMyNotifications(Long currentUserId) {
+        if (currentUserId == null) {
+            return requireLogin("Bạn cần đăng nhập để xem thông báo của mình.");
+        }
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (NotificationResponse n : notificationUseCase.getMyNotifications(currentUserId, LIST_LIMIT)) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("title", nvl(n.getTitle()));
+            item.put("message", nvl(n.getMessage()));
+            item.put("isRead", Boolean.TRUE.equals(n.getIsRead()));
+            item.put("createdAt", n.getCreatedAt() != null ? n.getCreatedAt().format(VN_DATE_TIME) : "");
+            item.put("url", nvl(n.getReferenceUrl()));
+            items.add(item);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("unreadCount", notificationUseCase.getUnreadCount(currentUserId));
+        result.put("notifications", items);
+        return ok(result);
+    }
+
     private ToolExecutionResult handleAdminOverview(String currentRole) {
         if (!"ADMIN".equalsIgnoreCase(currentRole)) {
             return error("Chỉ quản trị viên mới xem được số liệu tổng quan của hệ thống.");

@@ -59,6 +59,12 @@ public class OfflinePersonalResponder {
     private static final Pattern REVIEWED = Pattern.compile(
             "\\b(toi da danh gia|da danh gia chua|danh gia chua|chua danh gia|can danh gia|phai danh gia don)\\b");
 
+    /** "tôi có thông báo gì mới", "thông báo chưa đọc": đọc chuông thông báo thật của tài khoản. */
+    private static final Pattern NOTIFICATIONS = Pattern.compile("\\bthong bao\\b");
+    private static final Pattern NOTIFICATION_ASK = Pattern.compile(
+            "\\b(cua toi|cua minh|toi co|minh co|co thong bao|thong bao moi|thong bao gi|thong bao nao|chua doc|bao nhieu thong bao"
+                    + "|thong bao gan day|thong bao gan nhat|xem thong bao cua)\\b");
+
     /** Trạng thái được đổi thợ: theo QuotationService.switchTechnician. */
     private static final Set<String> SWITCHABLE = Set.of(
             "ASSIGNED", "DEPOSIT_PAID", "INSPECTING", "AWAITING_COST_APPROVAL");
@@ -147,7 +153,12 @@ public class OfflinePersonalResponder {
         }
         String text = SymptomClassifier.normalize(message);
         return REQUEST_CODE.matcher(message).find() || MY_REQUESTS.matcher(text).find()
-                || (APPOINTMENTS.matcher(text).find() && text.matches(".*\\b(cua toi|cua minh|toi co|minh co)\\b.*"));
+                || (APPOINTMENTS.matcher(text).find() && text.matches(".*\\b(cua toi|cua minh|toi co|minh co)\\b.*"))
+                || asksMyNotifications(text);
+    }
+
+    private static boolean asksMyNotifications(String text) {
+        return NOTIFICATIONS.matcher(text).find() && NOTIFICATION_ASK.matcher(text).find() && !HOW_TO.matcher(text).find();
     }
 
     /**
@@ -162,7 +173,7 @@ public class OfflinePersonalResponder {
     /** Khách vãng lai hỏi về đơn/lịch hẹn của mình: hướng dẫn đăng nhập thay vì để AI hứa "đang kiểm tra". */
     public static ChatOrchestrationResult loginRequired() {
         return new ChatOrchestrationResult(
-                "Để xem các yêu cầu sửa chữa, lịch hẹn và trạng thái đơn **của bạn**, bạn cần **đăng nhập** trước nhé "
+                "Để xem các yêu cầu sửa chữa, lịch hẹn, thông báo và trạng thái đơn **của bạn**, bạn cần **đăng nhập** trước nhé "
                         + "(khách hàng tại /dang-nhap, thợ tại /dang-nhap-tho). Đăng nhập xong, bạn hỏi lại mình sẽ tra ngay "
                         + "số lượng đơn, trạng thái và bước tiếp theo của từng đơn.\n\nChưa có tài khoản? Đăng ký miễn phí tại /dang-ky.",
                 List.of("Cách đăng ký tài khoản", "Cách đăng yêu cầu sửa chữa"),
@@ -200,6 +211,10 @@ public class OfflinePersonalResponder {
             return Optional.empty();
         }
         String text = SymptomClassifier.normalize(message);
+        if (asksMyNotifications(text)) {
+            return call("get_my_notifications", Map.of(), userId, r)
+                    .map(node -> reply(notificationsText(node), List.of("Tôi có bao nhiêu đơn?", "Lịch hẹn của tôi")));
+        }
         Matcher code = REQUEST_CODE.matcher(message);
 
         if (code.find()) {
@@ -515,6 +530,36 @@ public class OfflinePersonalResponder {
         }
         sb.append("\nLịch ở trạng thái *Chờ xác nhận* thì khách bấm **Xác nhận lịch hẹn** trong chi tiết đơn; "
                 + "xác nhận xong mã QR đặt cọc 30% sẽ hiện ra.");
+        return sb.toString();
+    }
+
+    static String notificationsText(JsonNode n) {
+        JsonNode items = n.path("notifications");
+        if (!items.isArray()) {
+            return errorOr(n, "Mình chưa đọc được thông báo của bạn. Bạn bấm biểu tượng chuông 🔔 ở góc trên màn hình để xem nhé.");
+        }
+        if (items.isEmpty()) {
+            return "Bạn **chưa có thông báo nào**. Khi có báo giá mới, được chọn thợ, lịch hẹn, đặt cọc hay hoàn thành đơn, "
+                    + "FixLink sẽ báo ở biểu tượng chuông 🔔 góc trên màn hình.";
+        }
+        long unread = n.path("unreadCount").asLong();
+        StringBuilder sb = new StringBuilder(unread > 0
+                ? "Bạn có **" + unread + " thông báo chưa đọc**. Thông báo gần nhất:\n"
+                : "Bạn đã đọc hết thông báo. Thông báo gần nhất:\n");
+        int i = 1;
+        for (JsonNode a : items) {
+            if (i > 5) {
+                break;
+            }
+            sb.append(i++).append(". ").append(a.path("isRead").asBoolean() ? "" : "🔵 ")
+                    .append("**").append(a.path("title").asText()).append("** – ").append(a.path("message").asText());
+            String at = a.path("createdAt").asText("");
+            if (!at.isBlank()) {
+                sb.append(" *(").append(at).append(")*");
+            }
+            sb.append("\n");
+        }
+        sb.append("\nBấm chuông 🔔 ở góc trên màn hình để mở từng thông báo hoặc đánh dấu đã đọc.");
         return sb.toString();
     }
 

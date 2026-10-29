@@ -6,9 +6,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fixlink.adapter.in.web.dto.response.NotificationResponse;
 import com.fixlink.application.port.in.AdminStatisticsUseCase;
 import com.fixlink.application.port.in.AppointmentUseCase;
 import com.fixlink.application.port.in.MasterDataUseCase;
+import com.fixlink.application.port.in.NotificationUseCase;
 import com.fixlink.application.port.in.QuotationUseCase;
 import com.fixlink.application.port.in.RepairRequestUseCase;
 import com.fixlink.application.port.in.TechnicianUseCase;
@@ -18,6 +20,7 @@ import com.fixlink.chatbot.application.port.in.SupportTicketUseCase;
 import com.fixlink.chatbot.application.port.out.ChatbotToolPort;
 import com.fixlink.domain.model.Role;
 import com.fixlink.domain.model.ServiceCategory;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +35,7 @@ class NativeChatbotToolAdapterTest {
     private AppointmentUseCase appointmentUseCase;
     private SupportTicketUseCase supportTicketUseCase;
     private UserManagementUseCase userManagementUseCase;
+    private NotificationUseCase notificationUseCase;
     private InMemoryRagIndex ragIndex;
     private ObjectMapper objectMapper;
 
@@ -45,6 +49,7 @@ class NativeChatbotToolAdapterTest {
         appointmentUseCase = mock(AppointmentUseCase.class);
         supportTicketUseCase = mock(SupportTicketUseCase.class);
         userManagementUseCase = mock(UserManagementUseCase.class);
+        notificationUseCase = mock(NotificationUseCase.class);
         ragIndex = mock(InMemoryRagIndex.class);
         objectMapper = new ObjectMapper();
 
@@ -57,6 +62,7 @@ class NativeChatbotToolAdapterTest {
                 mock(QuotationUseCase.class),
                 userManagementUseCase,
                 mock(AdminStatisticsUseCase.class),
+                notificationUseCase,
                 ragIndex,
                 objectMapper
         );
@@ -101,10 +107,10 @@ class NativeChatbotToolAdapterTest {
     }
 
     @Test
-    @DisplayName("Cung cấp đầy đủ định nghĩa 16 công cụ chuẩn Gemini API")
+    @DisplayName("Cung cấp đầy đủ định nghĩa 17 công cụ chuẩn Gemini API")
     void shouldProvideAllToolDeclarations() {
         List<Map<String, Object>> tools = toolAdapter.getToolDeclarations();
-        assertThat(tools).hasSize(16);
+        assertThat(tools).hasSize(17);
 
         List<String> toolNames = tools.stream()
                 .map(t -> (String) t.get("name"))
@@ -125,8 +131,26 @@ class NativeChatbotToolAdapterTest {
                 "calculate_deposit",
                 "find_matching_jobs",
                 "prepare_repair_request",
-                "get_request_quotations"
+                "get_request_quotations",
+                "get_my_notifications"
         );
+    }
+
+    @Test
+    @DisplayName("Thông báo trong chuông: chỉ người đã đăng nhập, trả số chưa đọc và thông báo gần nhất")
+    void shouldReadMyNotifications() throws Exception {
+        assertThat(toolAdapter.executeTool("get_my_notifications", Map.of(), null, "GUEST", null).content())
+                .contains("đăng nhập");
+
+        when(notificationUseCase.getUnreadCount(5L)).thenReturn(1L);
+        when(notificationUseCase.getMyNotifications(5L, 10)).thenReturn(List.of(NotificationResponse.builder()
+                .title("Có báo giá mới từ thợ").message("Thợ An vừa gửi báo giá 300.000đ cho yêu cầu #12.")
+                .isRead(false).referenceUrl("/yeu-cau/12").createdAt(LocalDateTime.of(2026, 10, 29, 9, 30)).build()));
+
+        var node = objectMapper.readTree(toolAdapter.executeTool("get_my_notifications", Map.of(), 5L, "CUSTOMER", null).content());
+        assertThat(node.path("unreadCount").asLong()).isEqualTo(1);
+        assertThat(node.path("notifications").get(0).path("title").asText()).isEqualTo("Có báo giá mới từ thợ");
+        assertThat(node.path("notifications").get(0).path("createdAt").asText()).isEqualTo("09:30 29/10/2026");
     }
 
     @Test

@@ -31,7 +31,7 @@ Bảng việc tại `/tho` hiển thị các yêu cầu đang mở khớp chuyê
 - Muốn tăng khả năng được chọn: báo giá hợp lý, ghi rõ phương án sửa, giữ điểm đánh giá tốt và nhận việc đúng chuyên môn.
 
 ## 4. Hồ sơ, đánh giá và Ví FixLink
-- Hồ sơ thợ tại `/tho/ho-so`: thông tin cá nhân, tab **Chuyên môn & Khu vực** (chọn rồi bấm "Lưu chuyên môn"), tab đánh giá xem **điểm trung bình và từng nhận xét** của khách.
+- Hồ sơ thợ tại `/tho/ho-so`: thông tin cá nhân, tab **Chuyên môn & Khu vực** (thợ tự chọn **khu vực** rồi bấm "Lưu chuyên môn"; **chuyên môn chỉ đọc**, do Ban quản trị phỏng vấn, thẩm định và cấp phép, muốn thêm chuyên môn thì liên hệ Ban quản trị để đăng ký sát hạch), tab đánh giá xem **điểm trung bình và từng nhận xét** của khách.
 - **Ví FixLink**: số dư hiển thị trên bảng điều khiển `/tho`. Mỗi đơn hoàn thành, hệ thống trích **10% phí nền tảng** trên giá chốt và cộng **90%** vào ví. Nhận tiền mặt trực tiếp từ khách thì ví có thể tạm âm (công nợ phí nền tảng), được tự động cấn trừ vào doanh thu các đơn sau; vẫn nhận việc bình thường. Cách rút tiền từ ví: chưa công bố.
 
 ## 5. Thực hiện công việc sau khi được chọn
