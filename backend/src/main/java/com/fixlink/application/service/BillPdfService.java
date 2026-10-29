@@ -75,6 +75,7 @@ public class BillPdfService {
                     <div class="info-grid">
                         <div class="info-item"><label>Ho ten</label><span>%s</span></div>
                         <div class="info-item"><label>SDT</label><span>%s</span></div>
+                        <div class="info-item"><label>Hinh thuc</label><span>%s</span></div>
                     </div>
                 </div>
                 <div class="section">
@@ -93,6 +94,11 @@ public class BillPdfService {
                     <p>FixLink — Nen tang ket noi dich vu sua chua</p>
                     <p>Hoa don nay duoc tao tu dong boi he thong FixLink</p>
                 </div>
+                <script>
+                    window.addEventListener('DOMContentLoaded', function() {
+                        setTimeout(function() { window.print(); }, 400);
+                    });
+                </script>
             </body>
             </html>
             """.formatted(
@@ -109,6 +115,7 @@ public class BillPdfService {
                 nvl(bill.getCustomerAddress()),
                 nvl(bill.getTechnicianName()),
                 nvl(bill.getTechnicianPhone()),
+                "CASH".equalsIgnoreCase(bill.getPaymentMethod()) ? "Tien mat truc tiep cho tho" : "Chuyen khoan VietQR",
                 formatVnd(bill.getQuotedPrice()),
                 isFinal ? "<tr><td>Da dat coc</td><td class=\"amount\">-" + formatVnd(bill.getDepositAmount()) + " VND</td></tr>" : "",
                 bill.getAdditionalCost() != null && bill.getAdditionalCost().compareTo(BigDecimal.ZERO) > 0

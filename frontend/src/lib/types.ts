@@ -268,6 +268,7 @@ export interface Payment {
   status: PaymentStatus;
   transferContent: string;
   qrUrl: string;
+  paymentMethod?: string;
   createdAt: string;
   confirmedAt: string | null;
 }
@@ -289,6 +290,7 @@ export interface Bill {
   depositAmount: number;
   additionalCost: number;
   totalAmount: number;
+  paymentMethod?: string;
   createdAt: string;
 }
 

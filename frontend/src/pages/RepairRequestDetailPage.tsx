@@ -191,13 +191,17 @@ export default function RepairRequestDetailPage() {
     }
   }, [detail?.request.status, hasConfirmedAppointment, autoDepositQR, autoFinalQR, loadingDepositQR, loadingFinalQR]);
 
-  async function handleConfirmInlinePayment(paymentId: number) {
+  async function handleConfirmInlinePayment(paymentId: number, paymentMethod: string = 'VIETQR') {
     setConfirmingPayment(true);
     setActionError(null);
     try {
-      await confirmPayment(paymentId);
+      await confirmPayment(paymentId, paymentMethod);
       loadDetail();
-      setLifecycleMessage('Xác nhận thanh toán thành công!');
+      setLifecycleMessage(
+        paymentMethod === 'CASH'
+          ? 'Xác nhận gửi tiền mặt cho thợ thành công! Bạn có thể tiến hành nghiệm thu thiết bị.'
+          : 'Xác nhận chuyển khoản thành công!'
+      );
     } catch (err: any) {
       setActionError(err.message || 'Xác nhận thanh toán thất bại.');
     } finally {
@@ -1019,7 +1023,7 @@ export default function RepairRequestDetailPage() {
                       variant="primary"
                       fullWidth
                       loading={confirmingPayment}
-                      onClick={() => handleConfirmInlinePayment(autoFinalQR.paymentId)}
+                      onClick={() => handleConfirmInlinePayment(autoFinalQR.paymentId, 'VIETQR')}
                       className="py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700"
                     >
                       ✓ Tôi đã chuyển khoản phần còn lại thành công
@@ -1661,7 +1665,7 @@ export default function RepairRequestDetailPage() {
                 loading={confirmingPayment}
                 onClick={async () => {
                   setShowCashConfirmModal(false);
-                  await handleConfirmInlinePayment(autoFinalQR.paymentId);
+                  await handleConfirmInlinePayment(autoFinalQR.paymentId, 'CASH');
                 }}
                 className="text-xs py-2 px-4 bg-emerald-600 hover:bg-emerald-700 font-bold"
               >

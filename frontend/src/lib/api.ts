@@ -250,8 +250,8 @@ export function createFinalPayment(requestId: number): Promise<ApiResponse<Payme
   return api.post<PaymentResult>(`/payments/final/${requestId}`);
 }
 
-export function confirmPayment(paymentId: number): Promise<ApiResponse<Bill>> {
-  return api.post<Bill>(`/payments/${paymentId}/confirm`);
+export function confirmPayment(paymentId: number, paymentMethod: string = 'VIETQR'): Promise<ApiResponse<Bill>> {
+  return api.post<Bill>(`/payments/${paymentId}/confirm`, { paymentMethod });
 }
 
 export function fetchPayments(requestId: number): Promise<ApiResponse<Payment[]>> {
@@ -298,6 +298,25 @@ export function getBillHtmlUrl(billId: number): string {
   return `${API_BASE_URL}/payments/bills/${billId}/html`;
 }
 
+export async function fetchBillHtml(billId: number): Promise<string> {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${API_BASE_URL}/payments/bills/${billId}/html`, {
+    headers: {
+      Authorization: token ? `Bearer ${token}` : '',
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    try {
+      const json = JSON.parse(text);
+      throw new Error(json.message || 'Không thể tải hóa đơn');
+    } catch {
+      throw new Error(`Lỗi tải hóa đơn (${res.status})`);
+    }
+  }
+  return res.text();
+}
+
 // ── Notifications ──
 
 export function fetchNotifications(limit: number = 20): Promise<ApiResponse<NotificationItem[]>> {
@@ -320,6 +339,12 @@ export function markAllNotificationsRead(): Promise<ApiResponse<void>> {
 
 export function updateTechnicianCategoriesByAdmin(userId: string, categoryIds: number[]): Promise<ApiResponse<unknown>> {
   return api.put(`/admin/technicians/${userId}/categories`, { categoryIds });
+}
+
+// ── Technician Wallet Top-up ──
+
+export function topUpTechnicianWallet(amount: number): Promise<ApiResponse<{ newBalance: number; toppedUpAmount: number }>> {
+  return api.post<{ newBalance: number; toppedUpAmount: number }>('/technicians/me/wallet/topup', { amount });
 }
 
 

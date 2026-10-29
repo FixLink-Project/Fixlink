@@ -49,8 +49,10 @@ public class PaymentController {
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> confirmPayment(
             @PathVariable Long paymentId,
+            @RequestBody(required = false) Map<String, String> body,
             @AuthenticationPrincipal UserPrincipal principal) {
-        var bill = paymentService.confirmPayment(paymentId, principal.getId());
+        String method = (body != null && body.containsKey("paymentMethod")) ? body.get("paymentMethod") : "VIETQR";
+        var bill = paymentService.confirmPayment(paymentId, principal.getId(), method);
         return ResponseEntity.ok(ApiResponse.success("Đã xác nhận thanh toán.", toBillMap(bill)));
     }
 
@@ -108,6 +110,7 @@ public class PaymentController {
         m.put("status", p.getStatus());
         m.put("transferContent", p.getTransferContent());
         m.put("qrUrl", p.getQrUrl());
+        m.put("paymentMethod", p.getPaymentMethod() != null ? p.getPaymentMethod() : "VIETQR");
         m.put("createdAt", p.getCreatedAt());
         m.put("confirmedAt", p.getConfirmedAt());
         return m;
@@ -131,6 +134,7 @@ public class PaymentController {
         m.put("depositAmount", b.getDepositAmount());
         m.put("additionalCost", b.getAdditionalCost());
         m.put("totalAmount", b.getTotalAmount());
+        m.put("paymentMethod", b.getPaymentMethod() != null ? b.getPaymentMethod() : "VIETQR");
         m.put("createdAt", b.getCreatedAt());
         return m;
     }

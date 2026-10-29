@@ -177,6 +177,25 @@ public class TechnicianProfileService implements TechnicianProfileUseCase {
         return mapToResponse(profile, categories, loadAreas(profile.getAreaIds()));
     }
 
+    @Override
+    @Transactional
+    public java.math.BigDecimal topUpWallet(Long technicianUserId, java.math.BigDecimal amount) {
+        if (amount == null || amount.compareTo(new java.math.BigDecimal("10000")) < 0) {
+            throw new com.fixlink.domain.exception.DomainException("INVALID_TOPUP_AMOUNT", "Số tiền nạp tối thiểu là 10.000 VNĐ", 400);
+        }
+        TechnicianProfileJpaEntity profile = technicianProfileRepository.findById(technicianUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ kỹ thuật viên"));
+
+        java.math.BigDecimal current = profile.getWalletBalance() != null ? profile.getWalletBalance() : java.math.BigDecimal.ZERO;
+        java.math.BigDecimal updated = current.add(amount);
+        profile.setWalletBalance(updated);
+        profile.setUpdatedAt(LocalDateTime.now());
+        technicianProfileRepository.save(profile);
+        log.info("Technician #{} topped up wallet by {} VND (balance: {} -> {})",
+                technicianUserId, amount, current, updated);
+        return updated;
+    }
+
     private TechnicianProfileResponse mapToResponse(
             TechnicianProfileJpaEntity profile,
             List<CategorySimpleResponse> categories,
