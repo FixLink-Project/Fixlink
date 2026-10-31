@@ -267,4 +267,30 @@ class QuotationSwitchTechnicianAndBudgetTest {
         assertNotNull(res);
         assertEquals(99L, res.getId());
     }
+
+    @Test
+    @DisplayName("Khách chọn thợ 1: Báo giá thợ 1 thành ACCEPTED, không tự động REJECT các báo giá khác (giữ dự phòng)")
+    void acceptQuotation_keepsOtherQuotationsAsStandby() {
+        RepairRequestJpaEntity req = new RepairRequestJpaEntity();
+        req.setId(10L);
+        req.setCustomerId(1L);
+        req.setStatus(RequestStatus.OPEN);
+
+        QuotationJpaEntity chosen = new QuotationJpaEntity();
+        chosen.setId(101L);
+        chosen.setRequestId(10L);
+        chosen.setTechnicianId(2L);
+        chosen.setStatus(QuotationStatus.PENDING);
+        chosen.setPriceLaborVnd(new BigDecimal("500000"));
+
+        when(requestRepo.findById(10L)).thenReturn(Optional.of(req));
+        when(quotationRepo.findById(101L)).thenReturn(Optional.of(chosen));
+        when(techProfileRepo.findById(2L)).thenReturn(Optional.of(techProfileNew));
+
+        var res = quotationService.accept(10L, 101L, 1L);
+
+        assertNotNull(res);
+        assertEquals(QuotationStatus.ACCEPTED, chosen.getStatus());
+        verify(quotationRepo, times(1)).save(chosen);
+    }
 }

@@ -667,7 +667,7 @@ export default function TechnicianRequestDetailPage() {
                           onClick={() => handleTransition('IN_PROGRESS', 'Khảo sát hoàn tất, tiến hành sửa chữa theo ngân sách đã chốt')}
                           className="text-xs py-2 px-4 shadow-sm"
                         >
-                          🛠️ Bắt đầu sửa ngay (Đúng giá ban đầu)
+                          🛠️ Tiếp tục làm việc (Không phát sinh chi phí)
                         </Button>
                         <Button
                           variant="secondary"

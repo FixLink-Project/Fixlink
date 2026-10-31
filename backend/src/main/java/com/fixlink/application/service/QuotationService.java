@@ -376,15 +376,9 @@ public class QuotationService implements QuotationUseCase {
         chosen.setUpdatedBy(customerId);
         quotationRepo.save(chosen);
 
-        // 2. Reject all others
-        List<QuotationJpaEntity> others = quotationRepo.findByRequestIdAndStatus(requestId, QuotationStatus.PENDING);
-        for (QuotationJpaEntity other : others) {
-            if (!other.getId().equals(quotationId)) {
-                other.setStatus(QuotationStatus.REJECTED);
-                other.setUpdatedBy(customerId);
-                quotationRepo.save(other);
-            }
-        }
+        // 2. Các báo giá khác vẫn giữ PENDING làm dự phòng (không bị REJECTED sớm),
+        // để khách hàng vẫn có thể đổi sang thợ khác trong suốt giai đoạn khảo sát.
+        // Chỉ khi đơn chuyển sang IN_PROGRESS (bắt đầu thi công) thì các thợ dự phòng mới tự động chuyển sang REJECTED.
 
         // 3. Update request
         BigDecimal agreedPrice = (chosen.getPriceLaborVnd() != null ? chosen.getPriceLaborVnd() : BigDecimal.ZERO)

@@ -299,7 +299,7 @@ export function getBillHtmlUrl(billId: number): string {
 }
 
 export async function fetchBillHtml(billId: number): Promise<string> {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   const res = await fetch(`${API_BASE_URL}/payments/bills/${billId}/html`, {
     headers: {
       Authorization: token ? `Bearer ${token}` : '',
