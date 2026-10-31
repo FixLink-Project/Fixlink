@@ -303,7 +303,8 @@ public class RepairRequestService implements RepairRequestUseCase {
                     && currentStatus != RequestStatus.COMPLETED
                     && currentStatus != RequestStatus.CANCELLED;
             boolean publishDraft = targetStatus == RequestStatus.PENDING && currentStatus == RequestStatus.DRAFT;
-            boolean approveCost = targetStatus == RequestStatus.IN_PROGRESS && currentStatus == RequestStatus.AWAITING_COST_APPROVAL;
+            boolean startRepairCustomer = targetStatus == RequestStatus.IN_PROGRESS
+                    && (currentStatus == RequestStatus.AWAITING_COST_APPROVAL || currentStatus == RequestStatus.INSPECTING);
             boolean completeAcceptance = targetStatus == RequestStatus.COMPLETED && currentStatus == RequestStatus.AWAITING_ACCEPTANCE;
             boolean reopenRequest = targetStatus == RequestStatus.OPEN
                     && (currentStatus == RequestStatus.ASSIGNED
@@ -337,7 +338,7 @@ public class RepairRequestService implements RepairRequestUseCase {
                 entity.setTechnicianId(null);
             }
 
-            if (!cancelOwnRequest && !publishDraft && !approveCost && !completeAcceptance && !reopenRequest) {
+            if (!cancelOwnRequest && !publishDraft && !startRepairCustomer && !completeAcceptance && !reopenRequest) {
                 throw new InvalidStateTransitionException(currentStatus, targetStatus);
             }
         } else if (command.actorRole() == Role.TECHNICIAN) {
@@ -364,6 +365,24 @@ public class RepairRequestService implements RepairRequestUseCase {
         entity.setUpdatedBy(command.actorId());
         RepairRequestJpaEntity saved = requestRepo.save(entity);
 
+        // Rule: Khi chuyển sang IN_PROGRESS (chính thức bắt đầu làm việc):
+        // Tự động đóng tất cả các báo giá dự phòng (PENDING) còn lại thành REJECTED.
+        if (targetStatus == RequestStatus.IN_PROGRESS) {
+            try {
+                List<QuotationJpaEntity> standbyQuotes = quotationRepo.findByRequestIdAndStatus(saved.getId(), QuotationStatus.PENDING);
+                for (QuotationJpaEntity quote : standbyQuotes) {
+                    quote.setStatus(QuotationStatus.REJECTED);
+                    quote.setUpdatedBy(command.actorId());
+                    quotationRepo.save(quote);
+                }
+                if (!standbyQuotes.isEmpty()) {
+                    log.info("Request #{} entered IN_PROGRESS. Auto-closed {} standby quotations.", saved.getId(), standbyQuotes.size());
+                }
+            } catch (Exception e) {
+                log.warn("Auto-closing standby quotations error for request #{}: {}", saved.getId(), e.getMessage());
+            }
+        }
+
         // Rule: Tự động tạo mã QR thanh toán tổng cho khách hàng khi thợ báo hoàn thành sửa chữa
         if (targetStatus == RequestStatus.AWAITING_ACCEPTANCE) {
             try {
@@ -387,15 +406,18 @@ public class RepairRequestService implements RepairRequestUseCase {
 
                     BigDecimal walletAdjustment;
                     if (isCash) {
-                        BigDecimal depositPaid = saved.getDepositAmount() != null ? saved.getDepositAmount() : BigDecimal.ZERO;
-                        walletAdjustment = depositPaid.subtract(commission);
+                        // Khách thanh toán 100% tiền mặt tận tay cho thợ.
+                        // Sàn thu 10% hoa hồng bằng cách khấu trừ trực tiếp từ ví FixLink của thợ.
+                        walletAdjustment = commission.negate();
                         tech.setWalletBalance(currentBalance.add(walletAdjustment));
-                        log.info("Settled request #{} with CASH: Tech #{} wallet changed by {} (deposit held: {}, commission 10%: {}, previous balance: {}, new balance: {})",
-                                saved.getId(), tech.getUserId(), walletAdjustment, depositPaid, commission, currentBalance, tech.getWalletBalance());
+                        log.info("Settled request #{} with CASH: Tech #{} wallet deducted 10% commission {} (previous balance: {}, new balance: {})",
+                                saved.getId(), tech.getUserId(), commission, currentBalance, tech.getWalletBalance());
                     } else {
+                        // Khách thanh toán qua VietQR về Sàn.
+                        // Sàn giữ 10% hoa hồng và giải ngân 90% giá trị đơn vào ví FixLink của thợ.
                         walletAdjustment = totalJobPrice.subtract(commission);
                         tech.setWalletBalance(currentBalance.add(walletAdjustment));
-                        log.info("Settled request #{} with VIETQR: Tech #{} wallet disbursed {} (total: {}, commission 10%: {}, previous balance: {}, new balance: {})",
+                        log.info("Settled request #{} with VIETQR: Tech #{} wallet disbursed 90% {} (total: {}, commission 10%: {}, previous balance: {}, new balance: {})",
                                 saved.getId(), tech.getUserId(), walletAdjustment, totalJobPrice, commission, currentBalance, tech.getWalletBalance());
                     }
 
@@ -413,7 +435,7 @@ public class RepairRequestService implements RepairRequestUseCase {
                 case INSPECTING -> "Kỹ thuật viên đã có mặt tại hiện trường và bắt đầu khảo sát thiết bị";
                 case IN_PROGRESS -> (currentStatus == RequestStatus.AWAITING_COST_APPROVAL)
                         ? "Khách hàng đã đồng ý chi phí phát sinh, tiếp tục triển khai sửa chữa"
-                        : "Khảo sát hoàn tất, tiến hành sửa chữa theo ngân sách đã chốt";
+                        : "Xác nhận bắt đầu sửa chữa (không phát sinh chi phí), các báo giá dự phòng đã được đóng";
                 case AWAITING_COST_APPROVAL -> "Thợ đề xuất chi phí phát sinh sau khi tháo máy khảo sát thực tế";
                 case AWAITING_ACCEPTANCE -> "Thợ đã hoàn thành công việc sửa chữa và chạy thử nghiệm. Mời khách hàng nghiệm thu.";
                 case COMPLETED -> "Khách hàng đã nghiệm thu đạt chất lượng và kích hoạt bảo hành điện tử.";

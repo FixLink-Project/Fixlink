@@ -493,8 +493,8 @@ class RepairRequestServiceTest {
         var result = service.updateStatus(cmd);
 
         assertEquals(RequestStatus.COMPLETED, result.request().getStatus());
-        // 1.000.000 + (600.000 - 200.000) = 1.400.000
-        assertEquals(new BigDecimal("1400000"), tech.getWalletBalance());
+        // 1.000.000 - 200.000 = 800.000 (khấu trừ 10% hoa hồng sàn khi khách trả tiền mặt)
+        assertEquals(new BigDecimal("800000"), tech.getWalletBalance());
         assertEquals(6, tech.getCompletedJobs());
         verify(techProfileRepo).save(tech);
     }
@@ -581,5 +581,45 @@ class RepairRequestServiceTest {
         assertEquals(new BigDecimal("2300000"), tech.getWalletBalance());
         assertEquals(1, tech.getCompletedJobs());
         verify(techProfileRepo).save(tech);
+    }
+
+    @Test
+    @DisplayName("Khi chuyển sang IN_PROGRESS: Tự động đóng các báo giá dự phòng (PENDING) thành REJECTED")
+    void testUpdateStatus_ToInProgress_AutoClosesStandbyQuotations() {
+        sampleRequest.setStatus(RequestStatus.INSPECTING);
+        sampleRequest.setTechnicianId(2L);
+
+        QuotationJpaEntity standbyQuote1 = QuotationJpaEntity.builder()
+                .id(201L)
+                .requestId(100L)
+                .technicianId(3L)
+                .status(QuotationStatus.PENDING)
+                .build();
+        QuotationJpaEntity standbyQuote2 = QuotationJpaEntity.builder()
+                .id(202L)
+                .requestId(100L)
+                .technicianId(4L)
+                .status(QuotationStatus.PENDING)
+                .build();
+
+        when(requestRepo.findById(100L)).thenReturn(Optional.of(sampleRequest));
+        when(requestRepo.save(any(RepairRequestJpaEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(quotationRepo.findByRequestIdAndStatus(100L, QuotationStatus.PENDING))
+                .thenReturn(List.of(standbyQuote1, standbyQuote2));
+        when(repairRequestMapper.toDomain(any(RepairRequestJpaEntity.class))).thenReturn(
+                RepairRequest.builder().id(100L).status(RequestStatus.IN_PROGRESS).build()
+        );
+
+        var cmd = new RepairRequestUseCase.UpdateStatusCommand(
+                100L, RequestStatus.IN_PROGRESS, "Khách hàng xác nhận tiếp tục làm việc không phát sinh chi phí", 1L, Role.CUSTOMER
+        );
+
+        var result = service.updateStatus(cmd);
+
+        assertEquals(RequestStatus.IN_PROGRESS, result.request().getStatus());
+        assertEquals(QuotationStatus.REJECTED, standbyQuote1.getStatus());
+        assertEquals(QuotationStatus.REJECTED, standbyQuote2.getStatus());
+        verify(quotationRepo).save(standbyQuote1);
+        verify(quotationRepo).save(standbyQuote2);
     }
 }
