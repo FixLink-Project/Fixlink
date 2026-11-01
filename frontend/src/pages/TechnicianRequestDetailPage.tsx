@@ -302,6 +302,22 @@ export default function TechnicianRequestDetailPage() {
     ? req.media.map((m) => m.url)
     : req.mediaUrls || [];
 
+  const myQuote = detail.quotations?.find(
+    (q) => q.isMine || (numericUserId && q.technicianId === numericUserId)
+  );
+  const isAssignedToMe = Boolean(
+    (req.technicianId && numericUserId && req.technicianId === numericUserId) || (myQuote?.status === 'ACCEPTED')
+  );
+
+  const headerStatusLabel = (!isAssignedToMe && (
+    req.status === 'ASSIGNED' ||
+    req.status === 'DEPOSIT_PAID' ||
+    req.status === 'INSPECTING' ||
+    req.status === 'AWAITING_COST_APPROVAL' ||
+    req.status === 'IN_PROGRESS' ||
+    req.status === 'AWAITING_ACCEPTANCE'
+  )) ? 'Đã có thợ khác tiếp nhận' : (req.statusLabel || req.status);
+
   return (
     <DashboardLayout
       nav={TECHNICIAN_NAV}
@@ -326,7 +342,7 @@ export default function TechnicianRequestDetailPage() {
           <Link to="/tho">
             <Button variant="quiet">← Về Bảng điều khiển</Button>
           </Link>
-          <StatusChip status={req.status} label={req.statusLabel} />
+          <StatusChip status={req.status} label={headerStatusLabel} />
         </div>
       }
     >
@@ -1102,30 +1118,71 @@ export default function TechnicianRequestDetailPage() {
             );
           }
 
+          if (myQuote && myQuote.status === 'PENDING') {
+            return (
+              <div className="rounded-2xl border border-amber-300 bg-amber-50/80 p-5 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl">⏳</span>
+                    <div>
+                      <h3 className="font-display font-bold text-amber-950 text-sm">
+                        Báo giá của bạn đang ở chế độ DỰ PHÒNG
+                      </h3>
+                      <p className="text-xs text-amber-800 mt-0.5">
+                        Mức giá bạn đã gửi: <strong className="text-amber-900 font-bold">{formatCurrency(myQuote.totalPrice || myQuote.priceLaborVnd || 0)}</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
+                    Chế độ dự phòng
+                  </span>
+                </div>
+                <p className="text-xs text-amber-900/90 leading-relaxed">
+                  Khách hàng hiện đã chọn kỹ thuật viên khác để tiến hành khảo sát thiết bị. Tuy nhiên, mức báo giá của bạn vẫn được lưu giữ an toàn ở trạng thái dự phòng. Nếu khách hàng thực hiện đổi thợ trong quá trình khảo sát, bạn vẫn có cơ hội được chọn tiếp nhận đơn này.
+                </p>
+                <div className="pt-3 border-t border-amber-200/80 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] text-amber-800">
+                    💡 Bạn có thể quay lại sàn việc để tìm và nộp báo giá cho các đơn mới khác trong khu vực.
+                  </span>
+                  <Link to="/tho">
+                    <Button variant="secondary" className="text-xs py-1.5 px-3.5 bg-white border-amber-300 text-amber-900 hover:bg-amber-100">
+                      ← Quay lại sàn việc
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            );
+          }
+
           if (myQuote && myQuote.status === 'REJECTED') {
             return (
-              <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-5 shadow-xs space-y-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">🛠️</span>
-                    <h3 className="font-display font-bold text-slate-800 text-sm">
-                      Tiến độ đơn hàng: <span className="text-blue-700 font-bold">Đang xử lý</span>
-                    </h3>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl">📋</span>
+                    <div>
+                      <h3 className="font-display font-bold text-slate-800 text-sm">
+                        Báo giá chưa được chọn trong đợt này
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Mức giá bạn đã gửi: <strong className="text-slate-700 font-bold">{formatCurrency(myQuote.totalPrice || myQuote.priceLaborVnd || 0)}</strong>
+                      </p>
+                    </div>
                   </div>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                    Đang xử lý
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-200 text-slate-700">
+                    Không được chọn
                   </span>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Đơn hàng đang trong tiến trình triển khai thực hiện. Báo giá của bạn ({formatCurrency(myQuote.totalPrice || myQuote.priceLaborVnd || 0)}) đã được ghi nhận trong hệ thống.
+                  Khách hàng đã chính thức bắt đầu thi công với kỹ thuật viên khác. Báo giá của bạn đã kết thúc vòng đời dự phòng. Cảm ơn bạn đã tham gia báo giá!
                 </p>
-                <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between">
+                <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[11px] text-slate-500">
                     Bạn có thể quay lại sàn việc để nộp báo giá cho các đơn mới trong khu vực.
                   </span>
                   <Link to="/tho">
-                    <Button variant="secondary" className="text-xs py-1 px-3">
-                      Quay lại sàn việc
+                    <Button variant="secondary" className="text-xs py-1.5 px-3.5">
+                      ← Quay lại sàn việc
                     </Button>
                   </Link>
                 </div>
@@ -1135,8 +1192,17 @@ export default function TechnicianRequestDetailPage() {
 
           return (
             <Card title="Không thể gửi báo giá">
-              <div className="py-4 text-center text-sm text-slate-500">
-                Đơn này hiện không mở cho thợ nhận (Trạng thái: <strong>{req.statusLabel || req.status}</strong>).
+              <div className="py-4 text-center text-sm text-slate-500 space-y-3">
+                <p>
+                  Đơn này hiện không mở cho thợ nhận (Trạng thái: <strong>{req.status === 'ASSIGNED' ? 'Đã có thợ khác tiếp nhận' : (req.statusLabel || req.status)}</strong>).
+                </p>
+                <div>
+                  <Link to="/tho">
+                    <Button variant="secondary" className="text-xs py-1.5 px-3.5">
+                      ← Quay lại sàn việc
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </Card>
           );
