@@ -296,26 +296,24 @@ export default function TechnicianDashboardPage() {
                 <dd className={`mt-2 font-display text-2xl font-bold ${
                   profile.walletBalance < 0
                     ? 'text-rose-600'
-                    : profile.walletBalance < 500000
-                    ? 'text-amber-600'
                     : 'text-slate-900'
                 }`}>
                   {formatCurrency(profile.walletBalance)}
                 </dd>
                 <div className="mt-1 flex items-center gap-1.5">
                   {profile.walletBalance >= 500000 && (
-                    <span className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 border border-emerald-200">
-                      ✓ An toàn (&ge;500k)
+                    <span className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+                      ✓ Khả dụng (&ge;500k)
                     </span>
                   )}
                   {profile.walletBalance >= 0 && profile.walletBalance < 500000 && (
-                    <span className="inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 border border-amber-200">
-                      ⚠️ Dưới ngưỡng 500k
+                    <span className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+                      ✓ Khả dụng (Khuyến nghị 500k)
                     </span>
                   )}
                   {profile.walletBalance < 0 && (
-                    <span className="inline-block rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700 border border-rose-200">
-                      ⛔ Công nợ âm
+                    <span className="inline-block rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 border border-rose-200">
+                      ⛔ Công nợ ví (Cần nạp bù)
                     </span>
                   )}
                 </div>
@@ -369,15 +367,15 @@ export default function TechnicianDashboardPage() {
             </div>
           )}
 
-          {/* CẢNH BÁO DƯỚI NGƯỠNG AN TOÀN 500K (CHẾ ĐỘ HỖ TRỢ LINH HOẠT) */}
+          {/* THÔNG TIN SỐ DƯ KHUYẾN NGHỊ (CHẾ ĐỘ HỖ TRỢ LINH HOẠT) */}
           {profile.walletBalance >= 0 && profile.walletBalance < 500000 && (
-            <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 shadow-xs animate-fade-in">
+            <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 shadow-xs animate-fade-in">
               <div className="flex items-start gap-3">
-                <span className="text-2xl">⚠️</span>
+                <span className="text-2xl">💡</span>
                 <div className="flex-1">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <p className="text-xs font-bold text-amber-950 uppercase tracking-wider">
-                      Số dư ví dưới ngưỡng ký quỹ an toàn 500.000đ
+                    <p className="text-xs font-bold text-blue-950 uppercase tracking-wider">
+                      Ví đang hoạt động bình thường • Khuyến nghị duy trì số dư 500.000đ
                     </p>
                     <button
                       type="button"
@@ -387,13 +385,13 @@ export default function TechnicianDashboardPage() {
                         setCustomTopUpInput(String(need));
                         setShowTopUpModal(true);
                       }}
-                      className="self-start sm:self-auto text-xs font-bold text-amber-950 bg-amber-200/80 hover:bg-amber-300 border border-amber-300 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      className="self-start sm:self-auto text-xs font-bold text-blue-950 bg-blue-100 hover:bg-blue-200 border border-blue-300 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                     >
-                      + Nạp tiền bổ sung
+                      + Nạp thêm vào ví
                     </button>
                   </div>
-                  <p className="text-xs text-amber-900 mt-1.5 leading-relaxed">
-                    Số dư ví hiện tại là <strong>{formatCurrency(profile.walletBalance)}</strong> (thấp hơn ngưỡng tiêu chuẩn 500.000đ). Hệ thống đang kích hoạt <strong>Chế độ hỗ trợ linh hoạt</strong>: bạn vẫn có thể nhận việc và gửi báo giá bình thường. Vui lòng nạp thêm tiền vào ví để duy trì nhận việc ổn định và khấu trừ hoa hồng cho các đơn thanh toán tiền mặt tiếp theo.
+                  <p className="text-xs text-blue-900 mt-1.5 leading-relaxed">
+                    Số dư ví hiện tại là <strong>{formatCurrency(profile.walletBalance)}</strong>. Bạn vẫn có quyền gửi báo giá và nhận việc bình thường. Nạp thêm số dư giúp bạn chủ động khấu trừ hoa hồng cho các đơn thanh toán tiền mặt tiếp theo.
                   </p>
                 </div>
               </div>

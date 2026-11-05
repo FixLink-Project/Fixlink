@@ -1234,13 +1234,20 @@ export default function TechnicianRequestDetailPage() {
                 </Button>
               }
             >
-              {appointments.length === 0 ? (
-                <div className="py-6 text-center text-slate-500 text-sm">
-                  Chưa có lịch hẹn nào được thiết lập cho đơn này. Bấm nút + Đặt lịch hẹn mới để hẹn thời gian tới nhà khách hàng.
-                </div>
-              ) : (() => {
-                const activeList = appointments.filter((a) => a.status !== 'CANCELLED' && a.status !== 'REJECTED');
-                const cancelledList = appointments.filter((a) => a.status === 'CANCELLED' || a.status === 'REJECTED');
+              {(() => {
+                // Rule Bảo mật: Thợ chỉ xem lịch hẹn của chính mình, không thấy lịch hẹn của thợ cũ/thợ khác
+                const myAppts = appointments.filter((a) => !numericUserId || a.technicianId === numericUserId);
+                if (myAppts.length === 0) {
+                  return (
+                    <div className="py-6 text-center text-slate-500 text-sm">
+                      Chưa có lịch hẹn nào giữa bạn và khách hàng. Bấm nút <strong>+ Đặt lịch hẹn mới</strong> để hẹn thời gian tới nhà khách hàng.
+                    </div>
+                  );
+                }
+
+                const activeList = myAppts.filter((a) => a.status !== 'CANCELLED' && a.status !== 'REJECTED');
+                const cancelledList = myAppts.filter((a) => a.status === 'CANCELLED' || a.status === 'REJECTED');
+                const isReadOnlyCard = !isAssignedToMe || myQuote?.status === 'REJECTED';
 
                 return (
                   <div className="space-y-4 my-2">
@@ -1248,7 +1255,7 @@ export default function TechnicianRequestDetailPage() {
                       <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span>ℹ️</span>
-                          <span>Hiện chưa có lịch hẹn mới nào đang chờ. Bạn có thể bấm <strong>+ Đặt lịch hẹn mới</strong> ở góc trên để hẹn ngày khảo sát/thi công với khách.</span>
+                          <span>Hiện chưa có lịch hẹn nào giữa bạn và khách hàng. Bạn có thể bấm <strong>+ Đặt lịch hẹn mới</strong> ở góc trên để hẹn ngày khảo sát/thi công với khách.</span>
                         </div>
                       </div>
                     )}
@@ -1259,6 +1266,7 @@ export default function TechnicianRequestDetailPage() {
                         appointment={appt}
                         currentUserRole="TECHNICIAN"
                         requestStatus={detail.request.status}
+                        isReadOnly={isReadOnlyCard}
                         onUpdated={loadDetail}
                       />
                     ))}
@@ -1287,6 +1295,7 @@ export default function TechnicianRequestDetailPage() {
                                 appointment={appt}
                                 currentUserRole="TECHNICIAN"
                                 requestStatus={detail.request.status}
+                                isReadOnly={isReadOnlyCard}
                                 onUpdated={loadDetail}
                               />
                             ))}

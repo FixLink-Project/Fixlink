@@ -10,6 +10,7 @@ interface AppointmentCardProps {
   appointment: Appointment;
   currentUserRole?: 'CUSTOMER' | 'TECHNICIAN' | 'ADMIN';
   requestStatus?: string;
+  isReadOnly?: boolean;
   onUpdated?: () => void;
 }
 
@@ -17,6 +18,7 @@ export default function AppointmentCard({
   appointment: appt,
   currentUserRole,
   requestStatus,
+  isReadOnly = false,
   onUpdated
 }: AppointmentCardProps) {
   // Modal states
@@ -283,7 +285,11 @@ export default function AppointmentCard({
 
       {/* Footer Hành động theo vòng đời */}
       <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-        {isInspectionDone ? (
+        {isReadOnly ? (
+          <span className="text-xs text-slate-500 italic">
+            🔒 Cuộc hẹn ở chế độ chỉ xem (Báo giá đã kết thúc hoặc bạn không phụ trách đơn này).
+          </span>
+        ) : isInspectionDone ? (
           <span className="text-xs text-emerald-800 font-medium flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
             <span>✅</span> Cuộc hẹn đã hoàn thành khảo sát thực tế (Đã khóa cuộc hẹn, không thể đổi hoặc hủy lịch).
           </span>
