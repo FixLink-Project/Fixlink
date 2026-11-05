@@ -58,7 +58,7 @@ public class RepairRequestService implements RepairRequestUseCase {
             Set.of("createdAt", "requestedTime", "status", "title", "agreedPrice", "budgetRef");
     private static final int DEFAULT_PAGE_SIZE = 10;
     private static final int MAX_PAGE_SIZE = 100;
-    private static final int MAX_MEDIA_PER_REQUEST = 6;
+    private static final int MAX_MEDIA_PER_REQUEST = 20;
     private static final DateTimeFormatter CODE_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final SpringDataRepairRequestRepository requestRepo;

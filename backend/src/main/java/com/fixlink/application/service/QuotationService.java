@@ -472,12 +472,6 @@ public class QuotationService implements QuotationUseCase {
         BigDecimal deposit = agreedPrice.multiply(DEPOSIT_RATE).setScale(0, RoundingMode.CEILING);
 
         RequestStatus oldStatus = request.getStatus();
-        // Nếu đã thanh toán cọc thì giữ ở DEPOSIT_PAID để thợ mới nhận việc và bắt đầu khảo sát
-        RequestStatus newStatus = (oldStatus == RequestStatus.ASSIGNED) ? RequestStatus.ASSIGNED : RequestStatus.DEPOSIT_PAID;
-
-        request.setSelectedQuotationId(quotationId);
-        request.setTechnicianId(targetQuote.getTechnicianId());
-        request.setAgreedPrice(agreedPrice);
 
         // Rule Escrow: Nếu khách hàng đã từng thanh toán tiền cọc thành công (ở thợ trước), bảo lưu 100% số tiền cọc thực tế đó
         BigDecimal actualPaidDeposit = paymentRepo
@@ -486,7 +480,15 @@ public class QuotationService implements QuotationUseCase {
                 .map(PaymentJpaEntity::getAmount)
                 .orElse(null);
 
-        if (actualPaidDeposit != null && actualPaidDeposit.signum() > 0) {
+        boolean isDepositAlreadyPaid = (oldStatus != RequestStatus.ASSIGNED)
+                || (actualPaidDeposit != null && actualPaidDeposit.signum() > 0);
+        RequestStatus newStatus = isDepositAlreadyPaid ? RequestStatus.DEPOSIT_PAID : RequestStatus.ASSIGNED;
+
+        request.setSelectedQuotationId(quotationId);
+        request.setTechnicianId(targetQuote.getTechnicianId());
+        request.setAgreedPrice(agreedPrice);
+
+        if (isDepositAlreadyPaid) {
             request.setDepositAmount(actualPaidDeposit);
         } else {
             request.setDepositAmount(deposit);

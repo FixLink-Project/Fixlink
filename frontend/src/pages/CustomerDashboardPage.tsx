@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Alert from '../components/Alert';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -19,23 +19,7 @@ interface CustomerProfile {
   updatedAt: string;
 }
 
-interface AuditEntry {
-  id: number;
-  userId: number;
-  action: string;
-  entityName: string;
-  entityId: string;
-  oldValues: string | null;
-  newValues: string | null;
-  createdAt: string;
-}
 
-const FIELD_LABELS: Record<string, string> = {
-  fullName: 'Họ và tên',
-  phone: 'Số điện thoại',
-  email: 'Email',
-  avatarUrl: 'Ảnh đại diện'
-};
 
 function formatDateTime(iso: string): string {
   const date = new Date(iso);
@@ -49,25 +33,7 @@ function formatDateTime(iso: string): string {
   }).format(date);
 }
 
-/** So hai khối JSON cũ/mới để chỉ hiện những trường thực sự thay đổi. */
-function diffFields(oldRaw: string | null, newRaw: string | null) {
-  let before: Record<string, unknown> = {};
-  let after: Record<string, unknown> = {};
-  try {
-    before = oldRaw ? JSON.parse(oldRaw) : {};
-    after = newRaw ? JSON.parse(newRaw) : {};
-  } catch {
-    return [];
-  }
 
-  return Object.keys({ ...before, ...after })
-    .filter((key) => String(before[key] ?? '') !== String(after[key] ?? ''))
-    .map((key) => ({
-      field: FIELD_LABELS[key] ?? key,
-      before: String(before[key] ?? '(trống)'),
-      after: String(after[key] ?? '(trống)')
-    }));
-}
 
 const CUSTOMER_NAV = [
   { to: '/khach-hang', label: 'Bảng điều khiển' },
@@ -80,7 +46,6 @@ export default function CustomerDashboardPage() {
   const userId = user ? user.id.replace('usr_', '') : '';
 
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
-  const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -89,11 +54,6 @@ export default function CustomerDashboardPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-
-  const loadAudit = useCallback(async () => {
-    const res = await api.get<AuditEntry[]>(`/customers/${userId}/audit-trail`);
-    setAudit(res.data);
-  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -111,7 +71,6 @@ export default function CustomerDashboardPage() {
           avatarUrl: res.data.avatarUrl ?? ''
         });
         setStatus('ready');
-        await loadAudit();
       } catch (err) {
         if (!alive) return;
         setLoadError(
@@ -124,7 +83,7 @@ export default function CustomerDashboardPage() {
     return () => {
       alive = false;
     };
-  }, [userId, loadAudit]);
+  }, [userId]);
 
   function update(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -166,7 +125,6 @@ export default function CustomerDashboardPage() {
       setProfile(res.data);
       updateUser({ fullName: res.data.fullName, avatarUrl: res.data.avatarUrl });
       setSaved(true);
-      await loadAudit();
     } catch (err) {
       const fieldErrors = toFieldErrors(err);
       if (Object.keys(fieldErrors).length > 0) {
@@ -303,49 +261,6 @@ export default function CustomerDashboardPage() {
                 )}
               </div>
             </form>
-          </Card>
-
-          <Card
-            title="Lịch sử thay đổi tài khoản"
-            description="Mọi chỉnh sửa hồ sơ đều được ghi lại an toàn trên hệ thống."
-          >
-            {audit.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-3xl">📋</p>
-                <p className="mt-2 font-bold text-slate-800">Chưa có thay đổi nào được ghi nhận</p>
-                <p className="mt-1 text-xs text-slate-500 max-w-xs mx-auto">
-                  Lần đầu bạn sửa đổi thông tin cá nhân, bản ghi đối chiếu sẽ xuất hiện ở đây.
-                </p>
-              </div>
-            ) : (
-              <ol className="divide-y divide-slate-100">
-                {audit.map((entry) => {
-                  const changes = diffFields(entry.oldValues, entry.newValues);
-                  return (
-                    <li key={entry.id} className="py-3.5 first:pt-0 last:pb-0">
-                      <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <p className="font-bold text-slate-800 text-sm">Cập nhật hồ sơ</p>
-                        <time className="text-xs text-slate-400" dateTime={entry.createdAt}>
-                          {formatDateTime(entry.createdAt)}
-                        </time>
-                      </div>
-                      {changes.length > 0 ? (
-                        <ul className="mt-2 space-y-1 text-xs">
-                          {changes.map((change) => (
-                            <li key={change.field} className="text-slate-600">
-                              <span className="font-semibold text-slate-700">{change.field}:</span> {change.before}{' '}
-                              → <span className="font-bold text-brand">{change.after}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-1 text-xs text-slate-400">Không có trường nào đổi giá trị.</p>
-                      )}
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
           </Card>
         </div>
       )}

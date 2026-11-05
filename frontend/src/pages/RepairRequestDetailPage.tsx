@@ -173,7 +173,8 @@ export default function RepairRequestDetailPage() {
     const currentReq = detail.request;
 
     // Rule: Tự động tạo mã QR đặt cọc khi khách hàng đã xác nhận lịch hẹn và đang ở trạng thái ASSIGNED (chờ cọc)
-    if (currentReq.status === 'ASSIGNED' && hasConfirmedAppointment && !autoDepositQR && !loadingDepositQR) {
+    const isDepositAlreadyPaid = payments.some((p) => p.paymentType === 'DEPOSIT' && p.status === 'CONFIRMED');
+    if (currentReq.status === 'ASSIGNED' && !isDepositAlreadyPaid && hasConfirmedAppointment && !autoDepositQR && !loadingDepositQR) {
       setLoadingDepositQR(true);
       createDepositPayment(currentReq.id)
         .then((res) => setAutoDepositQR(res.data))
@@ -189,7 +190,7 @@ export default function RepairRequestDetailPage() {
         .catch((err) => console.warn('Auto final QR notice:', err))
         .finally(() => setLoadingFinalQR(false));
     }
-  }, [detail?.request.status, hasConfirmedAppointment, autoDepositQR, autoFinalQR, loadingDepositQR, loadingFinalQR]);
+  }, [detail?.request.status, hasConfirmedAppointment, autoDepositQR, autoFinalQR, loadingDepositQR, loadingFinalQR, payments]);
 
   async function handleConfirmInlinePayment(paymentId: number, paymentMethod: string = 'VIETQR') {
     setConfirmingPayment(true);
@@ -373,9 +374,10 @@ export default function RepairRequestDetailPage() {
   const isDraft = req.status === 'DRAFT';
 
   // Nhóm trạng thái (Status Grouping Pattern)
+  const isDepositPaid = payments.some((p) => p.paymentType === 'DEPOSIT' && p.status === 'CONFIRMED');
   const canInspect = req.status === 'ASSIGNED' || req.status === 'DEPOSIT_PAID';
   const canSwitchTechnician = ['ASSIGNED', 'DEPOSIT_PAID', 'INSPECTING', 'AWAITING_COST_APPROVAL'].includes(req.status);
-  const otherQuotes = detail.quotations.filter((q) => q.technicianId !== req.technicianId && q.status !== 'ACCEPTED');
+  const otherQuotes = detail.quotations.filter((q) => q.technicianId !== req.technicianId && q.status === 'PENDING');
   const currentSelectedQuote = detail.quotations.find((q) => q.status === 'ACCEPTED' || q.technicianId === req.technicianId);
 
   // 1. Ảnh do khách hàng tải lên ban đầu mô tả lỗi thiết bị (không tính ảnh thợ tải lên sau)
@@ -429,7 +431,7 @@ export default function RepairRequestDetailPage() {
         />
 
         {/* BANNER HƯỚNG DẪN CỌC 30% ĐỂ MỞ TIẾN TRÌNH KHẢO SÁT */}
-        {req.status === 'ASSIGNED' && (
+        {req.status === 'ASSIGNED' && !isDepositPaid && (
           <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-4 shadow-sm flex items-start gap-3 animate-scale-in">
             <span className="text-2xl">⏳</span>
             <div>
@@ -438,6 +440,21 @@ export default function RepairRequestDetailPage() {
               </h3>
               <p className="text-xs text-amber-800 mt-1 leading-relaxed">
                 Đơn hàng đã được bàn giao cho kỹ thuật viên <strong>{currentSelectedQuote?.technicianName || 'phụ trách'}</strong>. Sau khi hoàn tất đặt cọc 30% ({formatCurrency(req.depositAmount > 0 ? req.depositAmount : Math.round(req.agreedPrice * 0.3))}), thợ sẽ liên hệ đặt lịch và bắt đầu khảo sát hiện trường.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* BANNER BẢO LƯU TIỀN CỌC KHI ĐÃ GIAO THỢ MỚI VÀ ĐÃ CỌC */}
+        {req.status === 'ASSIGNED' && isDepositPaid && (
+          <div className="rounded-2xl border-2 border-teal-300 bg-teal-50/90 p-4 shadow-sm flex items-start gap-3 animate-scale-in">
+            <span className="text-2xl">🛡️</span>
+            <div>
+              <h3 className="font-display font-bold text-teal-950 text-sm">
+                Đã bảo lưu tiền cọc 30% • Đã chuyển giao việc cho kỹ thuật viên mới
+              </h3>
+              <p className="text-xs text-teal-800 mt-1 leading-relaxed">
+                Khoản đặt cọc trước đó ({formatCurrency(req.depositAmount > 0 ? req.depositAmount : Math.round(req.agreedPrice * 0.3))}) đã được FixLink Escrow bảo lưu an toàn và tự động áp dụng cho kỹ thuật viên <strong>{currentSelectedQuote?.technicianName || 'mới'}</strong>. Thợ sẽ liên hệ đặt lịch hẹn khảo sát với bạn.
               </p>
             </div>
           </div>
@@ -890,8 +907,8 @@ export default function RepairRequestDetailPage() {
           onQuoteAccepted={loadDetail}
         />
 
-        {/* Đặt cọc QR khi đã giao thợ */}
-        {req.status === 'ASSIGNED' && (
+        {/* Đặt cọc QR khi đã giao thợ (chỉ hiện khi chưa thanh toán cọc) */}
+        {req.status === 'ASSIGNED' && !isDepositPaid && (
           <Card title="Thanh toán đặt cọc (30%)">
             <div className="space-y-4 py-2">
               <p className="text-sm text-slate-600 text-center">
@@ -979,6 +996,21 @@ export default function RepairRequestDetailPage() {
                   </Button>
                 </div>
               )}
+            </div>
+          </Card>
+        )}
+
+        {/* Khối xác nhận bảo lưu cọc khi đã giao thợ mới */}
+        {req.status === 'ASSIGNED' && isDepositPaid && (
+          <Card title="Tiền cọc bảo chứng (30%)">
+            <div className="rounded-xl border border-teal-200 bg-teal-50/80 p-4 text-teal-900 space-y-2">
+              <div className="flex items-center gap-2 font-semibold text-sm text-teal-950">
+                <span>🛡️</span>
+                <span>Tiền cọc 30% ({formatCurrency(req.depositAmount > 0 ? req.depositAmount : Math.round(req.agreedPrice * 0.3))}) đã được bảo lưu an toàn</span>
+              </div>
+              <p className="text-xs text-teal-800 leading-relaxed">
+                Bạn đã thanh toán cọc trước đó. Khoản tiền cọc này đang được giữ an toàn tại hệ thống ký quỹ FixLink và được tự động áp dụng cho kỹ thuật viên mới mà không cần chuyển khoản lại.
+              </p>
             </div>
           </Card>
         )}
@@ -1819,7 +1851,7 @@ function QuotationCard({
               </div>
             </div>
           </div>
-          {canSwitch ? (
+          {canSwitch && q.status === 'PENDING' ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Sẵn sàng nhận việc
@@ -1869,7 +1901,7 @@ function QuotationCard({
         </div>
       )}
 
-      {canSwitch && q.status !== 'ACCEPTED' && (
+      {canSwitch && q.status === 'PENDING' && (
         <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
           <Button
             variant="primary"
