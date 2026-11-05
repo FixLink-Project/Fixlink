@@ -193,6 +193,8 @@ export default function AppointmentCard({
     }
   }
 
+  const isFloorOpen = requestStatus === 'OPEN' || requestStatus === 'BIDDING_OPEN';
+
   const todayStr = new Date().toISOString().split('T')[0];
 
   return (
@@ -285,9 +287,9 @@ export default function AppointmentCard({
 
       {/* Footer Hành động theo vòng đời */}
       <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-        {isReadOnly ? (
+        {isReadOnly || isFloorOpen ? (
           <span className="text-xs text-slate-500 italic">
-            🔒 Cuộc hẹn ở chế độ chỉ xem (Báo giá đã kết thúc hoặc bạn không phụ trách đơn này).
+            🔒 Cuộc hẹn ở chế độ chỉ xem ({isFloorOpen ? 'Yêu cầu đang mở sàn đấu giá' : 'Báo giá đã kết thúc hoặc bạn không phụ trách đơn này'}).
           </span>
         ) : isInspectionDone ? (
           <span className="text-xs text-emerald-800 font-medium flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">

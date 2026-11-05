@@ -562,7 +562,7 @@ export default function HomePage() {
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-semibold text-blue-200 mb-4 border border-white/15">
               <span>🛡️ An tâm 100% khi gọi thợ qua FixLink</span>
             </span>
-            <h2 className="font-display text-2xl sm:text-4xl font-bold leading-tight">
+            <h2 className="font-display text-2xl sm:text-4xl font-bold leading-tight text-white">
               3 Tấm lá chắn bảo vệ quyền lợi khách hàng
             </h2>
             <p className="mt-3 text-sm sm:text-base text-blue-100/90 leading-relaxed">

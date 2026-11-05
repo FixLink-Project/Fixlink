@@ -233,6 +233,10 @@ export default function TechnicianRequestDetailPage() {
       setQuoteError('Vui lòng nhập mức giá báo hợp lệ (> 0 đ).');
       return;
     }
+    if (techWalletBalance !== null && techWalletBalance < 500000) {
+      setQuoteError('Số dư ví FixLink của bạn hiện chưa đạt mức tối thiểu 500.000đ để gửi hoặc điều chỉnh báo giá. Vui lòng nạp thêm tiền vào ví.');
+      return;
+    }
 
     setSubmittingQuote(true);
     setQuoteError(null);
@@ -1026,10 +1030,18 @@ export default function TechnicianRequestDetailPage() {
                 {/* 2. FORM GỬI HOẶC ĐIỀU CHỈNH MỨC GIÁ (CHỈ NHẬP GIÁ THUẦN TÚY) */}
                 {(!myQuote || isEditingQuote) ? (
                   <Card
-                    title={isEditingQuote ? '✏️ Điều chỉnh mức giá / Trả giá lại' : '🚀 Gửi mức giá cạnh tranh'}
+                    title={
+                      isEditingQuote
+                        ? myQuote?.status === 'WITHDRAWN'
+                          ? '🚀 Tham gia đấu giá lại'
+                          : '✏️ Điều chỉnh mức giá / Trả giá lại'
+                        : '🚀 Gửi mức giá cạnh tranh'
+                    }
                     description={
                       isEditingQuote
-                        ? 'Nhập lại mức giá bạn đề xuất để cạnh tranh giành quyền làm việc với khách hàng.'
+                        ? myQuote?.status === 'WITHDRAWN'
+                          ? 'Nhập mức giá bạn đề xuất để quay lại phiên đấu giá công khai.'
+                          : 'Nhập lại mức giá bạn đề xuất để cạnh tranh giành quyền làm việc với khách hàng.'
                         : 'Nhập mức giá bạn đề xuất để tham gia vào phiên đấu giá công khai.'
                     }
                   >
@@ -1119,12 +1131,33 @@ export default function TechnicianRequestDetailPage() {
                             : techWalletBalance !== null && techWalletBalance < 500000
                               ? '⛔ Số dư ví dưới 500k (Cần nạp thêm)'
                               : isEditingQuote
-                                ? '💾 Lưu mức giá mới'
+                                ? myQuote?.status === 'WITHDRAWN'
+                                  ? '🚀 Gửi lại mức giá đấu thầu'
+                                  : '💾 Lưu mức giá mới'
                                 : '🚀 Gửi giá đấu thầu'}
                         </Button>
                       </div>
                     </form>
                   </Card>
+                ) : myQuote.status === 'WITHDRAWN' ? (
+                  /* Thợ đã rút báo giá: Hiển thị trạng thái rút và nút tham gia lại */
+                  <div className="rounded-2xl border border-amber-300 bg-amber-50/80 p-5 shadow-xs flex flex-wrap items-center justify-between gap-3">
+                    <div className="text-xs text-amber-950 space-y-1">
+                      <p className="font-bold flex items-center gap-1.5 text-sm">
+                        <span>↩️</span> Bạn đã rút báo giá ({formatCurrency(myQuote.totalPrice || myQuote.priceLaborVnd)}) trước đó.
+                      </p>
+                      <p className="text-amber-800 leading-relaxed">
+                        Yêu cầu này vẫn đang trong thời hạn mở sàn nhận báo giá. Bạn có toàn quyền tham gia đấu giá lại với mức giá mới phù hợp.
+                      </p>
+                    </div>
+                    <Button
+                      variant="primary"
+                      onClick={() => handleStartEditQuote(myQuote)}
+                      className="text-xs py-2 px-4 shadow-sm bg-brand hover:bg-brand-strong text-white font-bold"
+                    >
+                      🚀 Tham gia đấu giá lại
+                    </Button>
+                  </div>
                 ) : (
                   /* Thợ đã có báo giá và không trong chế độ edit */
                   <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-4 flex flex-wrap items-center justify-between gap-3">

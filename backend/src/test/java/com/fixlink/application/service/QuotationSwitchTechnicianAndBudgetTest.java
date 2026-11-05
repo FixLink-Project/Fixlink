@@ -49,6 +49,9 @@ class QuotationSwitchTechnicianAndBudgetTest {
     private SpringDataPaymentRepository paymentRepo;
 
     @Mock
+    private com.fixlink.adapter.out.persistence.repository.SpringDataMediaRepository mediaRepo;
+
+    @Mock
     private RepairRequestService repairRequestService;
 
     @Mock
@@ -322,5 +325,95 @@ class QuotationSwitchTechnicianAndBudgetTest {
         assertNotNull(res);
         assertEquals(QuotationStatus.ACCEPTED, chosen.getStatus());
         verify(quotationRepo, times(1)).save(chosen);
+    }
+
+    @Test
+    @DisplayName("Khách chọn thợ khi tiền cọc đã được thanh toán đợt trước: Chuyển thẳng sang DEPOSIT_PAID")
+    void acceptQuotation_depositAlreadyPaid_transitionsDirectlyToDepositPaid() {
+        RepairRequestJpaEntity req = new RepairRequestJpaEntity();
+        req.setId(10L);
+        req.setCustomerId(1L);
+        req.setStatus(RequestStatus.OPEN);
+
+        QuotationJpaEntity chosen = new QuotationJpaEntity();
+        chosen.setId(101L);
+        chosen.setRequestId(10L);
+        chosen.setTechnicianId(2L);
+        chosen.setStatus(QuotationStatus.PENDING);
+        chosen.setPriceLaborVnd(new BigDecimal("500000"));
+
+        com.fixlink.adapter.out.persistence.entity.PaymentJpaEntity depositPayment = new com.fixlink.adapter.out.persistence.entity.PaymentJpaEntity();
+        depositPayment.setStatus(com.fixlink.domain.model.PaymentStatus.CONFIRMED);
+
+        when(requestRepo.findById(10L)).thenReturn(Optional.of(req));
+        when(quotationRepo.findById(101L)).thenReturn(Optional.of(chosen));
+        when(techProfileRepo.findById(2L)).thenReturn(Optional.of(techProfileNew));
+        when(paymentRepo.findByRequestIdAndPaymentTypeAndDeletedAtIsNull(10L, com.fixlink.domain.model.PaymentType.DEPOSIT))
+                .thenReturn(Optional.of(depositPayment));
+
+        var res = quotationService.accept(10L, 101L, 1L);
+
+        assertNotNull(res);
+        assertEquals(RequestStatus.DEPOSIT_PAID, res.getStatus());
+        assertEquals(RequestStatus.DEPOSIT_PAID, req.getStatus());
+    }
+
+    @Test
+    @DisplayName("Thợ cập nhật mức giá khi số dư ví dưới 500k: ném lỗi TECH_WALLET_BELOW_THRESHOLD 403")
+    void updateQuotation_walletBelow500k_throws403() {
+        QuotationJpaEntity quote = new QuotationJpaEntity();
+        quote.setId(101L);
+        quote.setRequestId(10L);
+        quote.setTechnicianId(2L);
+        quote.setStatus(QuotationStatus.PENDING);
+
+        TechnicianProfileJpaEntity tech = new TechnicianProfileJpaEntity();
+        tech.setUserId(2L);
+        tech.setWalletBalance(new BigDecimal("328000")); // < 500k
+
+        when(quotationRepo.findById(101L)).thenReturn(Optional.of(quote));
+        when(techProfileRepo.findById(2L)).thenReturn(Optional.of(tech));
+
+        QuotationUseCase.UpdateQuotationCommand cmd = QuotationUseCase.UpdateQuotationCommand.builder()
+                .priceLaborVnd(new BigDecimal("400000"))
+                .build();
+
+        DomainException ex = assertThrows(DomainException.class, () ->
+                quotationService.update(10L, 101L, cmd, 2L));
+        assertEquals("TECH_WALLET_BELOW_THRESHOLD", ex.getErrorCode());
+        assertEquals(403, ex.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("Thợ đã tự rút báo giá (WITHDRAWN): Khi sàn mở lại, được phép cập nhật và kích hoạt lại thành PENDING")
+    void updateQuotation_withdrawnQuotation_reactivatesToPending() {
+        RepairRequestJpaEntity req = new RepairRequestJpaEntity();
+        req.setId(10L);
+        req.setStatus(RequestStatus.OPEN);
+
+        QuotationJpaEntity quote = new QuotationJpaEntity();
+        quote.setId(101L);
+        quote.setRequestId(10L);
+        quote.setTechnicianId(2L);
+        quote.setStatus(QuotationStatus.WITHDRAWN);
+
+        TechnicianProfileJpaEntity tech = new TechnicianProfileJpaEntity();
+        tech.setUserId(2L);
+        tech.setWalletBalance(new BigDecimal("1000000"));
+
+        when(quotationRepo.findById(101L)).thenReturn(Optional.of(quote));
+        when(techProfileRepo.findById(2L)).thenReturn(Optional.of(tech));
+        when(requestRepo.findById(10L)).thenReturn(Optional.of(req));
+        when(quotationRepo.save(any())).thenReturn(quote);
+
+        QuotationUseCase.UpdateQuotationCommand cmd = QuotationUseCase.UpdateQuotationCommand.builder()
+                .priceLaborVnd(new BigDecimal("400000"))
+                .solution("Báo giá mới sau khi rút")
+                .build();
+
+        var res = quotationService.update(10L, 101L, cmd, 2L);
+        assertNotNull(res);
+        assertEquals(QuotationStatus.PENDING, quote.getStatus());
+        assertEquals("Báo giá mới sau khi rút", quote.getSolution());
     }
 }

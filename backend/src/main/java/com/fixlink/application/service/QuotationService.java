@@ -3,6 +3,7 @@ package com.fixlink.application.service;
 import com.fixlink.adapter.in.web.dto.response.AcceptQuotationResponse;
 import com.fixlink.adapter.in.web.dto.response.QuotationResponse;
 import com.fixlink.adapter.out.persistence.entity.AppointmentJpaEntity;
+import com.fixlink.adapter.out.persistence.entity.MediaJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.PaymentJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.QuotationJpaEntity;
 import com.fixlink.adapter.out.persistence.entity.RepairRequestJpaEntity;
@@ -12,6 +13,7 @@ import com.fixlink.application.port.in.QuotationUseCase;
 import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.exception.ResourceNotFoundException;
 import com.fixlink.domain.model.AppointmentStatus;
+import com.fixlink.domain.model.Media;
 import com.fixlink.domain.model.PaymentStatus;
 import com.fixlink.domain.model.PaymentType;
 import com.fixlink.domain.model.QuotationStatus;
@@ -39,6 +41,7 @@ public class QuotationService implements QuotationUseCase {
     private final SpringDataTechnicianProfileRepository techProfileRepo;
     private final SpringDataAppointmentRepository appointmentRepo;
     private final SpringDataPaymentRepository paymentRepo;
+    private final SpringDataMediaRepository mediaRepo;
     private final RepairRequestService repairRequestService;
     private final com.fixlink.application.port.in.NotificationUseCase notificationUseCase;
 
@@ -111,12 +114,21 @@ public class QuotationService implements QuotationUseCase {
         request.setSelectedQuotationId(record.getId());
         request.setAgreedPrice(agreedPrice);
         request.setDepositAmount(deposit);
-        request.setStatus(RequestStatus.ASSIGNED);
+
+        boolean isDepositAlreadyPaid = paymentRepo
+                .findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.DEPOSIT)
+                .filter(p -> p.getStatus() == PaymentStatus.CONFIRMED)
+                .isPresent();
+        RequestStatus newStatus = isDepositAlreadyPaid ? RequestStatus.DEPOSIT_PAID : RequestStatus.ASSIGNED;
+        request.setStatus(newStatus);
         request.setUpdatedBy(technicianId);
         requestRepo.save(request);
 
-        repairRequestService.recordProgress(requestId, oldStatus, RequestStatus.ASSIGNED,
-                "Thợ đã nhận việc", technicianId);
+        String progressMsg = isDepositAlreadyPaid
+                ? "Thợ đã nhận việc. Tiền cọc đợt 1 đã được bảo lưu thành công, sẵn sàng khảo sát và thi công."
+                : "Thợ đã nhận việc";
+        repairRequestService.recordProgress(requestId, oldStatus, newStatus,
+                progressMsg, technicianId);
 
         notificationUseCase.sendNotification(
                 request.getCustomerId(),
@@ -237,8 +249,17 @@ public class QuotationService implements QuotationUseCase {
         if (!entity.getRequestId().equals(requestId)) {
             throw new ResourceNotFoundException("Báo giá không thuộc yêu cầu này");
         }
-        if (entity.getStatus() != QuotationStatus.PENDING) {
-            throw new DomainException("INVALID_OPERATION", "Chỉ sửa được báo giá đang chờ duyệt");
+
+        TechnicianProfileJpaEntity tech = techProfileRepo.findById(technicianId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ thợ"));
+        BigDecimal walletBalance = tech.getWalletBalance() != null ? tech.getWalletBalance() : BigDecimal.ZERO;
+        if (walletBalance.compareTo(MIN_WALLET_BALANCE_TO_BID) < 0) {
+            throw new DomainException("TECH_WALLET_BELOW_THRESHOLD",
+                    "Số dư ví FixLink của bạn hiện là " + formatVnd(walletBalance) + " (chưa đạt mức tối thiểu 500.000đ). Vui lòng nạp thêm tiền vào ví để điều chỉnh báo giá.", 403);
+        }
+
+        if (entity.getStatus() != QuotationStatus.PENDING && entity.getStatus() != QuotationStatus.WITHDRAWN) {
+            throw new DomainException("INVALID_OPERATION", "Chỉ sửa được báo giá đang chờ duyệt hoặc báo giá đã rút");
         }
 
         RepairRequestJpaEntity request = findRequest(requestId);
@@ -267,6 +288,7 @@ public class QuotationService implements QuotationUseCase {
         entity.setInspectionTime(cmd.getInspectionTime());
         entity.setEstimatedFinish(cmd.getEstimatedFinish());
         entity.setNote(cmd.getNote());
+        entity.setStatus(QuotationStatus.PENDING);
         entity.setUpdatedBy(technicianId);
 
         entity = quotationRepo.save(entity);
@@ -388,12 +410,18 @@ public class QuotationService implements QuotationUseCase {
                 .add(chosen.getPriceMaterialsVnd() != null ? chosen.getPriceMaterialsVnd() : BigDecimal.ZERO);
         BigDecimal deposit = agreedPrice.multiply(DEPOSIT_RATE).setScale(0, RoundingMode.CEILING);
 
+        boolean isDepositAlreadyPaid = paymentRepo
+                .findByRequestIdAndPaymentTypeAndDeletedAtIsNull(requestId, PaymentType.DEPOSIT)
+                .filter(p -> p.getStatus() == PaymentStatus.CONFIRMED)
+                .isPresent();
+
         RequestStatus oldStatus = request.getStatus();
         request.setSelectedQuotationId(quotationId);
         request.setTechnicianId(chosen.getTechnicianId());
         request.setAgreedPrice(agreedPrice);
         request.setDepositAmount(deposit);
-        request.setStatus(RequestStatus.ASSIGNED);
+        RequestStatus newStatus = isDepositAlreadyPaid ? RequestStatus.DEPOSIT_PAID : RequestStatus.ASSIGNED;
+        request.setStatus(newStatus);
         request.setUpdatedBy(customerId);
         requestRepo.save(request);
 
@@ -401,8 +429,12 @@ public class QuotationService implements QuotationUseCase {
         String techName = techProfileRepo.findById(chosen.getTechnicianId())
                 .map(TechnicianProfileJpaEntity::getFullName).orElse("Thợ");
 
-        repairRequestService.recordProgress(requestId, oldStatus, RequestStatus.ASSIGNED,
-                "Khách hàng đã chọn báo giá của thợ " + techName, customerId);
+        String progressMsg = isDepositAlreadyPaid
+                ? "Khách hàng đã chọn báo giá của thợ " + techName + ". Tiền cọc đợt 1 đã được bảo lưu thành công, sẵn sàng khảo sát hiện trường."
+                : "Khách hàng đã chọn báo giá của thợ " + techName;
+
+        repairRequestService.recordProgress(requestId, oldStatus, newStatus,
+                progressMsg, customerId);
 
         notificationUseCase.sendNotification(
                 chosen.getTechnicianId(),
@@ -419,7 +451,7 @@ public class QuotationService implements QuotationUseCase {
                 .technicianName(techName)
                 .agreedPrice(agreedPrice)
                 .depositAmount(deposit)
-                .status(RequestStatus.ASSIGNED)
+                .status(newStatus)
                 .build();
     }
 
@@ -513,6 +545,15 @@ public class QuotationService implements QuotationUseCase {
                 appt.setUpdatedBy(customerId);
                 appointmentRepo.save(appt);
             }
+        }
+
+        // Dọn dẹp ảnh linh kiện phát sinh của thợ cũ để thợ mới bắt đầu với hiện trường sạch sẽ
+        List<MediaJpaEntity> oldMedia = mediaRepo.findByOwnerTypeAndOwnerId(Media.OWNER_REPAIR_REQUEST, requestId);
+        List<MediaJpaEntity> techMediaToDelete = oldMedia.stream()
+                .filter(m -> m.getUploadedBy() != null && !m.getUploadedBy().equals(customerId))
+                .toList();
+        if (!techMediaToDelete.isEmpty()) {
+            mediaRepo.deleteAll(techMediaToDelete);
         }
 
         repairRequestService.recordProgress(requestId, oldStatus, newStatus,
