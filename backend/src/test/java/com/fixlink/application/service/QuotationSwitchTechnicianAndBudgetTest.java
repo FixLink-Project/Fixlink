@@ -182,6 +182,7 @@ class QuotationSwitchTechnicianAndBudgetTest {
         TechnicianProfileJpaEntity tech = new TechnicianProfileJpaEntity();
         tech.setUserId(3L);
         tech.setVerificationStatus(com.fixlink.domain.model.VerificationStatus.APPROVED);
+        tech.setWalletBalance(new BigDecimal("1000000"));
         tech.setCategoryIds(java.util.Set.of());
         when(techProfileRepo.findById(3L)).thenReturn(Optional.of(tech));
 
@@ -226,13 +227,13 @@ class QuotationSwitchTechnicianAndBudgetTest {
 
         DomainException ex = assertThrows(DomainException.class,
                 () -> quotationService.create(10L, cmd, 3L));
-        assertEquals("TECH_WALLET_NEGATIVE", ex.getErrorCode());
+        assertEquals("TECH_WALLET_BELOW_THRESHOLD", ex.getErrorCode());
         assertEquals(403, ex.getStatusCode());
     }
 
     @Test
-    @DisplayName("Thợ có số dư ví < 500k nhưng >= 0đ (chế độ hỗ trợ linh hoạt) được phép gửi báo giá")
-    void createQuotation_walletBalanceBelow500k_allowed() {
+    @DisplayName("Thợ có số dư ví < 500k (ví dụ 150k) bị chặn không được gửi báo giá")
+    void createQuotation_walletBalanceBelow500k_throwsForbidden() {
         RepairRequestJpaEntity req = new RepairRequestJpaEntity();
         req.setId(10L);
         req.setStatus(RequestStatus.BIDDING_OPEN);
@@ -242,7 +243,36 @@ class QuotationSwitchTechnicianAndBudgetTest {
         tech.setUserId(3L);
         tech.setVerificationStatus(VerificationStatus.APPROVED);
         tech.setCategoryIds(Set.of(1L));
-        tech.setWalletBalance(new BigDecimal("150000")); // Dưới 500k nhưng >= 0
+        tech.setWalletBalance(new BigDecimal("150000")); // Dưới 500k
+
+        when(requestRepo.findById(10L)).thenReturn(Optional.of(req));
+        when(techProfileRepo.findById(3L)).thenReturn(Optional.of(tech));
+
+        QuotationUseCase.CreateQuotationCommand cmd = QuotationUseCase.CreateQuotationCommand.builder()
+                .priceLaborVnd(new BigDecimal("300000"))
+                .priceMaterialsVnd(BigDecimal.ZERO)
+                .solution("Sửa dây điện")
+                .build();
+
+        DomainException ex = assertThrows(DomainException.class,
+                () -> quotationService.create(10L, cmd, 3L));
+        assertEquals("TECH_WALLET_BELOW_THRESHOLD", ex.getErrorCode());
+        assertEquals(403, ex.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("Thợ có số dư ví >= 500k (ví dụ 600k) được phép gửi báo giá thành công")
+    void createQuotation_walletBalanceAboveOrEqual500k_allowed() {
+        RepairRequestJpaEntity req = new RepairRequestJpaEntity();
+        req.setId(10L);
+        req.setStatus(RequestStatus.BIDDING_OPEN);
+        req.setCategoryId(1L);
+
+        TechnicianProfileJpaEntity tech = new TechnicianProfileJpaEntity();
+        tech.setUserId(3L);
+        tech.setVerificationStatus(VerificationStatus.APPROVED);
+        tech.setCategoryIds(Set.of(1L));
+        tech.setWalletBalance(new BigDecimal("600000")); // >= 500k
 
         QuotationJpaEntity savedEntity = new QuotationJpaEntity();
         savedEntity.setId(99L);

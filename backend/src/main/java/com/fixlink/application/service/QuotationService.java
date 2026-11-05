@@ -32,6 +32,7 @@ import java.util.List;
 public class QuotationService implements QuotationUseCase {
 
     private static final BigDecimal DEPOSIT_RATE = new BigDecimal("0.30");
+    public static final BigDecimal MIN_WALLET_BALANCE_TO_BID = new BigDecimal("500000");
 
     private final SpringDataQuotationRepository quotationRepo;
     private final SpringDataRepairRequestRepository requestRepo;
@@ -72,9 +73,10 @@ public class QuotationService implements QuotationUseCase {
         if (tech.getVerificationStatus() != VerificationStatus.APPROVED) {
             throw new DomainException("UNVERIFIED_TECHNICIAN", "Tài khoản chưa được xác minh", 403);
         }
-        if (tech.getWalletBalance() != null && tech.getWalletBalance().compareTo(BigDecimal.ZERO) < 0) {
-            throw new DomainException("TECH_WALLET_NEGATIVE",
-                    "Số dư ví FixLink của bạn đang âm do khấu trừ phí hoa hồng các đơn tiền mặt. Vui lòng nạp tiền vào ví để tiếp tục nhận việc mới.", 403);
+        BigDecimal walletBalance = tech.getWalletBalance() != null ? tech.getWalletBalance() : BigDecimal.ZERO;
+        if (walletBalance.compareTo(MIN_WALLET_BALANCE_TO_BID) < 0) {
+            throw new DomainException("TECH_WALLET_BELOW_THRESHOLD",
+                    "Số dư ví FixLink của bạn hiện là " + formatVnd(walletBalance) + " (chưa đạt mức tối thiểu 500.000đ). Vui lòng nạp thêm tiền vào ví để nhận việc mới.", 403);
         }
         if (!tech.getCategoryIds().contains(request.getCategoryId())) {
             throw new DomainException("INVALID_OPERATION", "Chuyên môn của bạn không khớp với danh mục yêu cầu");
@@ -157,9 +159,10 @@ public class QuotationService implements QuotationUseCase {
         if (tech.getVerificationStatus() != VerificationStatus.APPROVED) {
             throw new DomainException("UNVERIFIED_TECHNICIAN", "Tài khoản chưa được xác minh", 403);
         }
-        if (tech.getWalletBalance() != null && tech.getWalletBalance().compareTo(BigDecimal.ZERO) < 0) {
-            throw new DomainException("TECH_WALLET_NEGATIVE",
-                    "Số dư ví FixLink của bạn đang âm do khấu trừ phí hoa hồng các đơn tiền mặt. Vui lòng nạp tiền vào ví để tiếp tục gửi báo giá mới.", 403);
+        BigDecimal walletBalance = tech.getWalletBalance() != null ? tech.getWalletBalance() : BigDecimal.ZERO;
+        if (walletBalance.compareTo(MIN_WALLET_BALANCE_TO_BID) < 0) {
+            throw new DomainException("TECH_WALLET_BELOW_THRESHOLD",
+                    "Số dư ví FixLink của bạn hiện là " + formatVnd(walletBalance) + " (chưa đạt mức tối thiểu 500.000đ). Vui lòng nạp thêm tiền vào ví để gửi báo giá mới.", 403);
         }
 
         if (!tech.getCategoryIds().contains(request.getCategoryId())) {

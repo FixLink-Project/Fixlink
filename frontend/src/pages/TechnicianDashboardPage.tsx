@@ -307,8 +307,8 @@ export default function TechnicianDashboardPage() {
                     </span>
                   )}
                   {profile.walletBalance >= 0 && profile.walletBalance < 500000 && (
-                    <span className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                      ✓ Khả dụng (Khuyến nghị 500k)
+                    <span className="inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 border border-amber-300">
+                      ⚠️ Dưới mức 500k (Cần nạp để nhận đơn)
                     </span>
                   )}
                   {profile.walletBalance < 0 && (
@@ -367,15 +367,15 @@ export default function TechnicianDashboardPage() {
             </div>
           )}
 
-          {/* THÔNG TIN SỐ DƯ KHUYẾN NGHỊ (CHẾ ĐỘ HỖ TRỢ LINH HOẠT) */}
+          {/* CẢNH BÁO SỐ DƯ DƯỚI 500K - TẠM KHÓA NHẬN ĐƠN */}
           {profile.walletBalance >= 0 && profile.walletBalance < 500000 && (
-            <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 shadow-xs animate-fade-in">
+            <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 shadow-xs animate-fade-in">
               <div className="flex items-start gap-3">
-                <span className="text-2xl">💡</span>
+                <span className="text-2xl">⚠️</span>
                 <div className="flex-1">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <p className="text-xs font-bold text-blue-950 uppercase tracking-wider">
-                      Ví đang hoạt động bình thường • Khuyến nghị duy trì số dư 500.000đ
+                    <p className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                      Số dư ví dưới 500.000đ • Tạm khóa quyền nhận đơn & gửi báo giá
                     </p>
                     <button
                       type="button"
@@ -385,13 +385,13 @@ export default function TechnicianDashboardPage() {
                         setCustomTopUpInput(String(need));
                         setShowTopUpModal(true);
                       }}
-                      className="self-start sm:self-auto text-xs font-bold text-blue-950 bg-blue-100 hover:bg-blue-200 border border-blue-300 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      className="self-start sm:self-auto text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded-lg shadow-xs transition-colors cursor-pointer"
                     >
-                      + Nạp thêm vào ví
+                      + Nạp ngay {formatCurrency(500000 - profile.walletBalance)}
                     </button>
                   </div>
-                  <p className="text-xs text-blue-900 mt-1.5 leading-relaxed">
-                    Số dư ví hiện tại là <strong>{formatCurrency(profile.walletBalance)}</strong>. Bạn vẫn có quyền gửi báo giá và nhận việc bình thường. Nạp thêm số dư giúp bạn chủ động khấu trừ hoa hồng cho các đơn thanh toán tiền mặt tiếp theo.
+                  <p className="text-xs text-amber-900 mt-1.5 leading-relaxed">
+                    Số dư ví hiện tại là <strong>{formatCurrency(profile.walletBalance)}</strong> (chưa đạt mức tối thiểu <strong>500.000đ</strong> để nhận việc). Vui lòng nạp thêm ít nhất <strong>{formatCurrency(500000 - profile.walletBalance)}</strong> để mở quyền nhận đơn và gửi báo giá cạnh tranh.
                   </p>
                 </div>
               </div>
