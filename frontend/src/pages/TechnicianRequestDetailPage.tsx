@@ -38,6 +38,7 @@ export default function TechnicianRequestDetailPage() {
   const [detail, setDetail] = useState<RepairRequestDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [techWalletBalance, setTechWalletBalance] = useState<number | null>(null);
 
   // Appointments (RC-48)
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -188,6 +189,16 @@ export default function TechnicianRequestDetailPage() {
       fetchAppointmentsForRequest(Number(id))
         .then((res) => setAppointments(res.data || []))
         .catch(() => setAppointments([]));
+
+      if (numericUserId) {
+        api.get<{ walletBalance?: number }>(`/technicians/${numericUserId}/profile`)
+          .then((res) => {
+            if (res.data && res.data.walletBalance !== undefined) {
+              setTechWalletBalance(res.data.walletBalance);
+            }
+          })
+          .catch(() => {});
+      }
     }
   }
 
@@ -1022,6 +1033,24 @@ export default function TechnicianRequestDetailPage() {
                         : 'Nhập mức giá bạn đề xuất để tham gia vào phiên đấu giá công khai.'
                     }
                   >
+                    {techWalletBalance !== null && techWalletBalance < 500000 && (
+                      <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-4 space-y-2 mb-4 animate-fade-in">
+                        <div className="flex items-center gap-2 font-bold text-amber-950 text-xs sm:text-sm">
+                          <span>⚠️</span>
+                          <span>Số dư ví hiện tại ({formatCurrency(techWalletBalance)}) chưa đạt mức tối thiểu 500.000đ</span>
+                        </div>
+                        <p className="text-xs text-amber-900 leading-relaxed">
+                          Theo quy định hệ thống FixLink, kỹ thuật viên cần duy trì số dư ví tối thiểu <strong>500.000đ</strong> để tham gia gửi báo giá hoặc nhận việc. Vui lòng nạp thêm ít nhất <strong>{formatCurrency(500000 - techWalletBalance)}</strong> vào ví để tiếp tục.
+                        </p>
+                        <div className="pt-1">
+                          <Link to="/tho">
+                            <Button variant="primary" className="text-xs py-1.5 px-3.5 bg-amber-600 hover:bg-amber-700 text-white font-bold">
+                              + Nạp tiền vào ví ngay
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    )}
                     <form onSubmit={handleSubmitQuote} className="space-y-4">
                       <div>
                         <TextField
@@ -1083,13 +1112,15 @@ export default function TechnicianRequestDetailPage() {
                           variant="primary"
                           type="submit"
                           loading={submittingQuote}
-                          disabled={isDeadlineExpired || (req.budgetRef > 0 && bidPrice > req.budgetRef)}
+                          disabled={isDeadlineExpired || (req.budgetRef > 0 && bidPrice > req.budgetRef) || (techWalletBalance !== null && techWalletBalance < 500000)}
                         >
                           {submittingQuote
                             ? 'Đang gửi...'
-                            : isEditingQuote
-                              ? '💾 Lưu mức giá mới'
-                              : '🚀 Gửi giá đấu thầu'}
+                            : techWalletBalance !== null && techWalletBalance < 500000
+                              ? '⛔ Số dư ví dưới 500k (Cần nạp thêm)'
+                              : isEditingQuote
+                                ? '💾 Lưu mức giá mới'
+                                : '🚀 Gửi giá đấu thầu'}
                         </Button>
                       </div>
                     </form>
