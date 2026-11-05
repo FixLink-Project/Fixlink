@@ -382,7 +382,7 @@ export default function RepairRequestDetailPage() {
 
   // 1. Ảnh do khách hàng tải lên ban đầu mô tả lỗi thiết bị (không tính ảnh thợ tải lên sau)
   const customerPhotos: string[] = req.media && req.media.length > 0
-    ? req.media.filter(m => !req.technicianId || m.uploadedBy !== req.technicianId).map(m => m.url)
+    ? req.media.filter(m => m.uploadedBy === req.customerId).map(m => m.url)
     : req.mediaUrls || [];
 
   // 2. Ảnh bằng chứng do thợ tải lên tại hiện trường (phát sinh linh kiện/khảo sát)
@@ -475,7 +475,7 @@ export default function RepairRequestDetailPage() {
           </div>
         )}
 
-        {/* BANNER THÔNG BÁO THỢ ĐANG KHẢO SÁT & NÚT TIẾP TỤC LÀM VIỆC KHÔNG PHÁT SINH CHI PHÍ */}
+        {/* BANNER THÔNG BÁO THỢ ĐANG KHẢO SÁT HIỆN TRƯỜNG */}
         {req.status === 'INSPECTING' && (
           <div className="rounded-2xl border-2 border-indigo-300 bg-indigo-50/90 p-4 sm:p-5 shadow-sm space-y-3 animate-scale-in">
             <div className="flex items-start gap-3">
@@ -485,24 +485,16 @@ export default function RepairRequestDetailPage() {
                   Kỹ thuật viên đang khảo sát thiết bị thực tế tại hiện trường
                 </h3>
                 <p className="text-xs text-indigo-800 mt-1 leading-relaxed">
-                  Kỹ thuật viên đang kiểm tra lỗi. Nếu hai bên đã thống nhất phương án và không có phát sinh chi phí linh kiện, bạn có thể bấm nút xác nhận bắt đầu làm việc để thợ tiến hành sửa chữa ngay.
+                  Kỹ thuật viên đang kiểm tra lỗi thiết bị. Vui lòng chờ thợ kiểm tra xong và thông báo phương án xử lý (tiến hành sửa chữa theo ngân sách ban đầu hoặc báo giá chi phí linh kiện phát sinh nếu có).
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-indigo-200/80">
-              <div className="text-xs text-indigo-700 italic">
-                * Khi bắt đầu làm việc, các báo giá dự phòng sẽ được đóng và bạn sẽ chính thức chốt thợ này.
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="primary"
-                  loading={updatingLifecycle}
-                  onClick={() => handleCustomerAction('IN_PROGRESS', 'Khách hàng xác nhận tiếp tục làm việc không phát sinh chi phí')}
-                  className="text-xs py-2 px-4 shadow-sm bg-indigo-600 hover:bg-indigo-700 font-semibold"
-                >
-                  🛠️ Tiếp tục làm việc (Không phát sinh chi phí)
-                </Button>
-                {canSwitchTechnician && (
+            {canSwitchTechnician && (
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-indigo-200/80">
+                <div className="text-xs text-indigo-700 italic">
+                  * Nếu kỹ thuật viên không đến theo lịch hoặc không đáp ứng yêu cầu, bạn có thể chọn đổi sang thợ khác.
+                </div>
+                <div>
                   <Button
                     variant="secondary"
                     onClick={() => {
@@ -513,9 +505,9 @@ export default function RepairRequestDetailPage() {
                   >
                     🔄 Đổi thợ khác
                   </Button>
-                )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 

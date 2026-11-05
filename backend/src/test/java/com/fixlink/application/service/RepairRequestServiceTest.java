@@ -70,6 +70,9 @@ class RepairRequestServiceTest {
     private SpringDataPaymentRepository paymentRepo;
 
     @Mock
+    private com.fixlink.adapter.out.persistence.repository.SpringDataAppointmentRepository appointmentRepo;
+
+    @Mock
     private PaymentService paymentService;
 
     @Mock

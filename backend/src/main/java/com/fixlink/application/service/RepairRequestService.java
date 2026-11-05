@@ -9,6 +9,7 @@ import com.fixlink.domain.exception.DomainException;
 import com.fixlink.domain.exception.InvalidStateTransitionException;
 import com.fixlink.domain.exception.ResourceNotFoundException;
 import com.fixlink.domain.exception.ValidationFailedException;
+import com.fixlink.domain.model.AppointmentStatus;
 import com.fixlink.domain.model.Media;
 import com.fixlink.domain.model.PaymentStatus;
 import com.fixlink.domain.model.PaymentType;
@@ -72,6 +73,7 @@ public class RepairRequestService implements RepairRequestUseCase {
     private final SpringDataCustomerProfileRepository customerProfileRepo;
     private final SpringDataUserRepository userRepo;
     private final SpringDataPaymentRepository paymentRepo;
+    private final SpringDataAppointmentRepository appointmentRepo;
     private final PaymentService paymentService;
     private final com.fixlink.application.port.in.NotificationUseCase notificationUseCase;
     private final RepairRequestMapper repairRequestMapper;
@@ -329,21 +331,45 @@ public class RepairRequestService implements RepairRequestUseCase {
                 }
             }
 
-            if (reopenRequest && entity.getSelectedQuotationId() != null) {
-                quotationRepo.findById(entity.getSelectedQuotationId()).ifPresent(q -> {
-                    q.setStatus(QuotationStatus.REJECTED);
-                    quotationRepo.save(q);
-                });
-                entity.setSelectedQuotationId(null);
-                entity.setTechnicianId(null);
+            if (reopenRequest) {
+                if (entity.getSelectedQuotationId() != null) {
+                    quotationRepo.findById(entity.getSelectedQuotationId()).ifPresent(q -> {
+                        q.setStatus(QuotationStatus.REJECTED);
+                        quotationRepo.save(q);
+                    });
+                    entity.setSelectedQuotationId(null);
+                    entity.setTechnicianId(null);
+                }
+
+                // Hủy toàn bộ lịch hẹn cũ chưa hoàn thành để tránh kẹt luồng
+                List<AppointmentJpaEntity> oldAppointments = appointmentRepo.findByRepairRequestIdOrderByScheduledDateAscScheduledTimeAsc(entity.getId());
+                for (AppointmentJpaEntity appt : oldAppointments) {
+                    if (appt.getStatus() != AppointmentStatus.COMPLETED && appt.getStatus() != AppointmentStatus.CANCELLED) {
+                        appt.setStatus(AppointmentStatus.CANCELLED);
+                        appt.setCancelReason("Hệ thống tự động hủy lịch cũ do mở lại sàn đấu giá");
+                        appt.setUpdatedBy(command.actorId());
+                        appointmentRepo.save(appt);
+                    }
+                }
+
+                // Dọn dẹp các tệp ảnh phát sinh do thợ cũ tải lên
+                List<MediaJpaEntity> oldMedia = mediaRepo.findByOwnerTypeAndOwnerId(Media.OWNER_REPAIR_REQUEST, entity.getId());
+                List<MediaJpaEntity> techMediaToDelete = oldMedia.stream()
+                        .filter(m -> m.getUploadedBy() != null && !m.getUploadedBy().equals(entity.getCustomerId()))
+                        .toList();
+                if (!techMediaToDelete.isEmpty()) {
+                    mediaRepo.deleteAll(techMediaToDelete);
+                }
             }
 
             if (!cancelOwnRequest && !publishDraft && !startRepairCustomer && !completeAcceptance && !reopenRequest) {
                 throw new InvalidStateTransitionException(currentStatus, targetStatus);
             }
         } else if (command.actorRole() == Role.TECHNICIAN) {
+            boolean isDepositPaid = paymentRepo.findByRequestIdAndPaymentTypeAndDeletedAtIsNull(entity.getId(), PaymentType.DEPOSIT)
+                    .filter(p -> p.getStatus() == PaymentStatus.CONFIRMED).isPresent();
             boolean startInspecting = targetStatus == RequestStatus.INSPECTING
-                    && currentStatus == RequestStatus.DEPOSIT_PAID;
+                    && (currentStatus == RequestStatus.DEPOSIT_PAID || (currentStatus == RequestStatus.ASSIGNED && isDepositPaid));
             boolean startRepair = targetStatus == RequestStatus.IN_PROGRESS && currentStatus == RequestStatus.INSPECTING;
             boolean requestCostApproval = targetStatus == RequestStatus.AWAITING_COST_APPROVAL && currentStatus == RequestStatus.INSPECTING;
             boolean requestAcceptance = targetStatus == RequestStatus.AWAITING_ACCEPTANCE && currentStatus == RequestStatus.IN_PROGRESS;
