@@ -1189,6 +1189,12 @@ class FixLinkApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.categories", hasSize(2)))
                 .andExpect(jsonPath("$.data.areas", hasSize(2)));
+
+        mockMvc.perform(post("/api/v1/technicians/me/wallet/topup")
+                        .header("Authorization", techToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\": 1000000}"))
+                .andExpect(status().isOk());
     }
 
     @Test

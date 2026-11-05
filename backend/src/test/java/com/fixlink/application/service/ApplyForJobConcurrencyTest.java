@@ -171,6 +171,7 @@ class ApplyForJobConcurrencyTest {
             profile.setEmail("race_tech_" + index + "_" + unique + "@test.local");
             profile.setCitizenId(String.format("%012d", unique % 1_000_000_000_000L));
             profile.setVerificationStatus(VerificationStatus.APPROVED);
+            profile.setWalletBalance(new BigDecimal("1000000"));
             profile.setCategoryIds(new LinkedHashSet<>(List.of(CATEGORY_ID)));
             profile.setAreaIds(new LinkedHashSet<>(List.of(AREA_ID)));
             techProfileRepo.save(profile);
@@ -189,6 +190,7 @@ class ApplyForJobConcurrencyTest {
         originalCategories.put(user.getId(), new LinkedHashSet<>(profile.getCategoryIds()));
         originalAreas.put(user.getId(), new LinkedHashSet<>(profile.getAreaIds()));
         profile.setVerificationStatus(VerificationStatus.APPROVED);
+        profile.setWalletBalance(new BigDecimal("1000000"));
         profile.setCategoryIds(new LinkedHashSet<>(List.of(CATEGORY_ID)));
         profile.setAreaIds(new LinkedHashSet<>(List.of(AREA_ID)));
         techProfileRepo.save(profile);
