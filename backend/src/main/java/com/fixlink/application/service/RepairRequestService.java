@@ -355,7 +355,10 @@ public class RepairRequestService implements RepairRequestUseCase {
                 // Dọn dẹp các tệp ảnh phát sinh do thợ cũ tải lên
                 List<MediaJpaEntity> oldMedia = mediaRepo.findByOwnerTypeAndOwnerId(Media.OWNER_REPAIR_REQUEST, entity.getId());
                 List<MediaJpaEntity> techMediaToDelete = oldMedia.stream()
-                        .filter(m -> m.getUploadedBy() != null && !m.getUploadedBy().equals(entity.getCustomerId()))
+                        .filter(m -> {
+                            Long uploader = m.getUploadedBy() != null ? m.getUploadedBy() : m.getCreatedBy();
+                            return uploader != null && !uploader.equals(entity.getCustomerId());
+                        })
                         .toList();
                 if (!techMediaToDelete.isEmpty()) {
                     mediaRepo.deleteAll(techMediaToDelete);

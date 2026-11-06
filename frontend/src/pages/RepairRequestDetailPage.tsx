@@ -382,12 +382,22 @@ export default function RepairRequestDetailPage() {
 
   // 1. Ảnh do khách hàng tải lên ban đầu mô tả lỗi thiết bị (không tính ảnh thợ tải lên sau)
   const customerPhotos: string[] = req.media && req.media.length > 0
-    ? req.media.filter(m => m.uploadedBy === req.customerId).map(m => m.url)
+    ? req.media
+        .filter((m) => !m.uploadedBy || (req.customerId && Number(m.uploadedBy) === Number(req.customerId)))
+        .map((m) => m.url)
     : req.mediaUrls || [];
 
   // 2. Ảnh bằng chứng do thợ tải lên tại hiện trường (phát sinh linh kiện/khảo sát)
   const technicianProofPhotos: string[] = req.media && req.media.length > 0
-    ? req.media.filter(m => req.technicianId && m.uploadedBy === req.technicianId).map(m => m.url)
+    ? req.media
+        .filter((m) => {
+          if (!m.uploadedBy) return false;
+          const uploader = Number(m.uploadedBy);
+          if (req.customerId && uploader === Number(req.customerId)) return false;
+          if (req.technicianId) return uploader === Number(req.technicianId);
+          return true;
+        })
+        .map((m) => m.url)
     : [];
 
   return (
@@ -786,6 +796,39 @@ export default function RepairRequestDetailPage() {
               <p className="text-xs text-slate-400 italic">Chưa có ảnh đính kèm cho đơn này.</p>
             )}
           </div>
+
+          {/* Technician Proof Photos Gallery */}
+          {technicianProofPhotos.length > 0 && (
+            <div className="mt-5 border-t border-amber-200 bg-amber-50/60 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                  <span>🛠️</span> Hình ảnh khảo sát & linh kiện phát sinh từ kỹ thuật viên ({technicianProofPhotos.length})
+                </p>
+                <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300 shadow-2xs">
+                  Bằng chứng hiện trường
+                </span>
+              </div>
+              <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-6 gap-3">
+                {technicianProofPhotos.map((url, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setActiveMediaUrl(url)}
+                    className="aspect-square rounded-xl border border-amber-300 overflow-hidden shadow-xs hover:border-amber-500 hover:shadow-card transition-all group relative bg-white"
+                  >
+                    <img
+                      src={url}
+                      alt={`Ảnh linh kiện phụ thu ${i + 1}`}
+                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
+                    />
+                    <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-amber-950/70 text-[10px] text-white font-medium">
+                      Phóng to 🔍
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Danh sách báo giá từ các thợ (Mô hình đấu thầu & chọn thợ) */}

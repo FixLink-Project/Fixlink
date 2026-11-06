@@ -312,9 +312,15 @@ export default function TechnicianRequestDetailPage() {
 
   const req = detail.request;
 
-  // Danh sách hình ảnh
+  // Danh sách hình ảnh hiện trường (chỉ ảnh khách tải lên ban đầu hoặc ảnh chính thợ này tải lên, loại bỏ ảnh thợ khác bị từ chối)
   const displayPhotos: string[] = req.media && req.media.length > 0
-    ? req.media.map((m) => m.url)
+    ? req.media
+        .filter((m) => {
+          if (!m.uploadedBy) return true;
+          const uploader = Number(m.uploadedBy);
+          return (req.customerId && uploader === Number(req.customerId)) || (numericUserId && uploader === Number(numericUserId));
+        })
+        .map((m) => m.url)
     : req.mediaUrls || [];
 
   const myQuote = detail.quotations?.find(
@@ -1184,32 +1190,32 @@ export default function TechnicianRequestDetailPage() {
 
           if (myQuote && myQuote.status === 'PENDING') {
             return (
-              <div className="rounded-2xl border border-amber-300 bg-amber-50/80 p-5 shadow-xs space-y-3">
+              <div className="rounded-2xl border border-sky-300 bg-sky-50/80 p-5 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-xl">⏳</span>
+                    <span className="text-xl">🔄</span>
                     <div>
-                      <h3 className="font-display font-bold text-amber-950 text-sm">
-                        Báo giá của bạn đang ở chế độ DỰ PHÒNG
+                      <h3 className="font-display font-bold text-sky-950 text-sm">
+                        Báo giá của bạn đang xử lý (Giữ chỗ dự phòng)
                       </h3>
-                      <p className="text-xs text-amber-800 mt-0.5">
-                        Mức giá bạn đã gửi: <strong className="text-amber-900 font-bold">{formatCurrency(myQuote.totalPrice || myQuote.priceLaborVnd || 0)}</strong>
+                      <p className="text-xs text-sky-800 mt-0.5">
+                        Mức giá bạn đã gửi: <strong className="text-sky-900 font-bold">{formatCurrency(myQuote.totalPrice || myQuote.priceLaborVnd || 0)}</strong>
                       </p>
                     </div>
                   </div>
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
-                    Chế độ dự phòng
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-sky-200/90 text-sky-900 border border-sky-300 shadow-xs">
+                    Đang xử lý
                   </span>
                 </div>
-                <p className="text-xs text-amber-900/90 leading-relaxed">
-                  Khách hàng hiện đã chọn kỹ thuật viên khác để tiến hành khảo sát thiết bị. Tuy nhiên, mức báo giá của bạn vẫn được lưu giữ an toàn ở trạng thái dự phòng. Nếu khách hàng thực hiện đổi thợ trong quá trình khảo sát, bạn vẫn có cơ hội được chọn tiếp nhận đơn này.
+                <p className="text-xs text-sky-900/90 leading-relaxed">
+                  Khách hàng hiện đã chọn kỹ thuật viên khác để tiến hành khảo sát thiết bị. Tuy nhiên, mức báo giá của bạn vẫn đang được hệ thống ưu tiên lưu giữ và xử lý an toàn. Nếu khách hàng thực hiện đổi thợ trong quá trình khảo sát, bạn vẫn có cơ hội được chọn tiếp nhận đơn này.
                 </p>
-                <div className="pt-3 border-t border-amber-200/80 flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-[11px] text-amber-800">
+                <div className="pt-3 border-t border-sky-200/80 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] text-sky-800">
                     💡 Bạn có thể quay lại sàn việc để tìm và nộp báo giá cho các đơn mới khác trong khu vực.
                   </span>
                   <Link to="/tho">
-                    <Button variant="secondary" className="text-xs py-1.5 px-3.5 bg-white border-amber-300 text-amber-900 hover:bg-amber-100">
+                    <Button variant="secondary" className="text-xs py-1.5 px-3.5 bg-white border-sky-300 text-sky-900 hover:bg-sky-100">
                       ← Quay lại sàn việc
                     </Button>
                   </Link>
@@ -1534,11 +1540,17 @@ export default function TechnicianRequestDetailPage() {
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
+                if (extraPartsCost <= 0) {
+                  setLifecycleError('Vui lòng nhập chi phí phát sinh hợp lệ (> 0 đ).');
+                  return;
+                }
                 if (extraCostImages.length > 0) {
                   try {
                     await attachRequestMedia(detail.request.id, extraCostImages);
-                  } catch (err) {
+                  } catch (err: any) {
                     console.warn('Attach media warning:', err);
+                    setLifecycleError(err?.message || 'Có lỗi xảy ra khi tải ảnh bằng chứng linh kiện. Vui lòng thử lại.');
+                    return;
                   }
                 }
                 if (willRescheduleWithCost && newRepairDate) {
@@ -1557,7 +1569,7 @@ export default function TechnicianRequestDetailPage() {
                   }
                 }
                 const calculatedTotal = (req.agreedPrice || req.budgetRef || 0) + extraPartsCost;
-                handleTransition(
+                await handleTransition(
                   'AWAITING_COST_APPROVAL',
                   extraCostReason || 'Thợ đề xuất phát sinh linh kiện sau khảo sát thực tế',
                   calculatedTotal
