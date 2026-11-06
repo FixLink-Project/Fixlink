@@ -550,7 +550,10 @@ public class QuotationService implements QuotationUseCase {
         // Dọn dẹp ảnh linh kiện phát sinh của thợ cũ để thợ mới bắt đầu với hiện trường sạch sẽ
         List<MediaJpaEntity> oldMedia = mediaRepo.findByOwnerTypeAndOwnerId(Media.OWNER_REPAIR_REQUEST, requestId);
         List<MediaJpaEntity> techMediaToDelete = oldMedia.stream()
-                .filter(m -> m.getUploadedBy() != null && !m.getUploadedBy().equals(customerId))
+                .filter(m -> {
+                    Long uploader = m.getUploadedBy() != null ? m.getUploadedBy() : m.getCreatedBy();
+                    return uploader != null && !uploader.equals(customerId);
+                })
                 .toList();
         if (!techMediaToDelete.isEmpty()) {
             mediaRepo.deleteAll(techMediaToDelete);
