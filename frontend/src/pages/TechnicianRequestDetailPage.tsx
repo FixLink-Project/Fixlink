@@ -1196,7 +1196,7 @@ export default function TechnicianRequestDetailPage() {
                     <span className="text-xl">🔄</span>
                     <div>
                       <h3 className="font-display font-bold text-sky-950 text-sm">
-                        Báo giá của bạn đang xử lý (Giữ chỗ dự phòng)
+                        Báo giá của bạn đang xử lý
                       </h3>
                       <p className="text-xs text-sky-800 mt-0.5">
                         Mức giá bạn đã gửi: <strong className="text-sky-900 font-bold">{formatCurrency(myQuote.totalPrice || myQuote.priceLaborVnd || 0)}</strong>

@@ -7,7 +7,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import Pagination from '../components/Pagination';
 import StatusChip from '../components/StatusChip';
 import Tabs from '../components/Tabs';
-import { ApiError, api, fetchCategories, formatCurrency, updateTechnicianCategoriesByAdmin } from '../lib/api';
+import { ApiError, api, fetchCategories, fetchTechnicianReviews, formatCurrency, updateTechnicianCategoriesByAdmin, type TechnicianReviewItem } from '../lib/api';
 import type { PageMeta, Role, ServiceCategory, UserStatus, VerificationStatus } from '../lib/types';
 
 interface TechnicianProfileBrief {
@@ -118,6 +118,11 @@ export default function AdminUsersPage() {
   const [savingCategories, setSavingCategories] = useState(false);
   const [categorySaveSuccess, setCategorySaveSuccess] = useState(false);
 
+  // Đánh giá của thợ (để Admin theo dõi chất lượng, kiểm tra thợ 1 sao hay 5 sao)
+  const [techReviews, setTechReviews] = useState<TechnicianReviewItem[]>([]);
+  const [loadingTechReviews, setLoadingTechReviews] = useState(false);
+  const [reviewFilterRating, setReviewFilterRating] = useState<number | 'ALL'>('ALL');
+
   useEffect(() => {
     fetchCategories()
       .then((res) => setCategories(res.data.filter((c) => c.isActive)))
@@ -131,6 +136,18 @@ export default function AdminUsersPage() {
       setSelectedCategoryIds([]);
     }
     setCategorySaveSuccess(false);
+
+    if (detail && detail.role === 'TECHNICIAN' && detail.id) {
+      setLoadingTechReviews(true);
+      setReviewFilterRating('ALL');
+      fetchTechnicianReviews(Number(detail.id))
+        .then((res) => setTechReviews(res.data || []))
+        .catch(() => setTechReviews([]))
+        .finally(() => setLoadingTechReviews(false));
+    } else {
+      setTechReviews([]);
+      setLoadingTechReviews(false);
+    }
   }, [detail]);
 
   async function handleSaveCategories() {
@@ -470,6 +487,11 @@ export default function AdminUsersPage() {
                                   {user.technicianProfile.specialization}
                                 </span>
                               )}
+                              {user.role === 'TECHNICIAN' && user.technicianProfile && (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 border border-amber-200 shadow-2xs">
+                                  ⭐ {user.technicianProfile.avgRating ? user.technicianProfile.avgRating.toFixed(1) : '5.0'} ({user.technicianProfile.completedJobs || 0} đơn)
+                                </span>
+                              )}
                             </div>
                             <p className="mt-1 text-sm text-ink-soft">
                               {user.technicianProfile?.fullName ?? user.customerProfile?.fullName ? (
@@ -801,6 +823,121 @@ export default function AdminUsersPage() {
                               Lưu chuyên môn thợ
                             </Button>
                           </div>
+                        </div>
+
+                        {/* ⭐ Đánh giá & Phản hồi chất lượng từ khách hàng */}
+                        <div className="rounded-xl border border-amber-200/90 bg-amber-50/40 p-4 space-y-3 sm:col-span-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                <span>⭐ Đánh giá chất lượng từ khách hàng</span>
+                                <span className="text-2xs font-bold uppercase tracking-wider text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                                  {techReviews.length} lượt đánh giá
+                                </span>
+                              </h4>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                Giám sát điểm số, phản hồi khen ngợi (5 sao) hoặc khiếu nại/chất lượng kém (1 sao) để quản trị viên theo dõi.
+                              </p>
+                            </div>
+                            {techReviews.length > 0 && (
+                              <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-amber-200 shadow-2xs">
+                                <span className="text-amber-500 text-sm">★</span>
+                                <span className="text-sm font-black text-amber-950">
+                                  {(techReviews.reduce((sum, r) => sum + r.rating, 0) / techReviews.length).toFixed(1)}
+                                </span>
+                                <span className="text-xs text-slate-400">/ 5.0</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Bộ lọc theo số sao: Tất cả | 5 sao | 4 sao | 3 sao | 2 sao | 1 sao */}
+                          {techReviews.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                              <span className="text-xs text-slate-500 font-medium mr-1">Lọc theo sao:</span>
+                              {(['ALL', 5, 4, 3, 2, 1] as const).map((rKey) => {
+                                const count = rKey === 'ALL'
+                                  ? techReviews.length
+                                  : techReviews.filter((r) => r.rating === rKey).length;
+                                const isSelected = reviewFilterRating === rKey;
+                                return (
+                                  <button
+                                    key={String(rKey)}
+                                    type="button"
+                                    onClick={() => setReviewFilterRating(rKey)}
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+                                      isSelected
+                                        ? rKey === 1
+                                          ? 'bg-rose-600 text-white shadow-xs'
+                                          : 'bg-amber-600 text-white shadow-xs'
+                                        : rKey === 1 && count > 0
+                                          ? 'bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100'
+                                          : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
+                                    }`}
+                                  >
+                                    <span>{rKey === 'ALL' ? 'Tất cả' : `${rKey} ★`}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                                      isSelected
+                                        ? 'bg-white/20 text-white'
+                                        : 'bg-slate-100 text-slate-600'
+                                    }`}>
+                                      {count}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Danh sách các bài đánh giá */}
+                          {loadingTechReviews ? (
+                            <div className="py-6 text-center text-xs text-slate-400">
+                              Đang tải danh sách đánh giá...
+                            </div>
+                          ) : techReviews.length === 0 ? (
+                            <div className="py-6 text-center text-xs text-slate-500 bg-white/70 rounded-xl border border-dashed border-slate-200">
+                              Kỹ thuật viên này chưa có đánh giá nào từ khách hàng.
+                            </div>
+                          ) : (
+                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                              {techReviews
+                                .filter((rev) => reviewFilterRating === 'ALL' || rev.rating === reviewFilterRating)
+                                .map((rev) => (
+                                  <div
+                                    key={rev.id}
+                                    className={`p-3 rounded-xl border bg-white transition-all space-y-1 ${
+                                      rev.rating <= 2
+                                        ? 'border-rose-200 bg-rose-50/20'
+                                        : 'border-slate-200/80'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between text-xs">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-slate-900">{rev.customerName || 'Khách hàng'}</span>
+                                        {rev.requestId && (
+                                          <span className="text-slate-400 font-mono text-[11px]">• Đơn #{rev.requestId}</span>
+                                        )}
+                                      </div>
+                                      <span className={rev.rating <= 2 ? 'text-rose-600 font-bold' : 'text-amber-500 font-bold'}>
+                                        {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                                      "{rev.comment || 'Khách hàng không để lại nhận xét chi tiết.'}"
+                                    </p>
+                                    {rev.createdAt && (
+                                      <p className="text-[11px] text-slate-400">
+                                        {new Date(rev.createdAt).toLocaleString('vi-VN')}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              {techReviews.filter((rev) => reviewFilterRating === 'ALL' || rev.rating === reviewFilterRating).length === 0 && (
+                                <p className="text-xs text-slate-400 italic text-center py-3">
+                                  Không có đánh giá nào {reviewFilterRating} sao.
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Ảnh CCCD 2 mặt */}
