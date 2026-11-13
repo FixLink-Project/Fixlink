@@ -97,27 +97,77 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<ApiResp
   return payload as ApiResponse<T>;
 }
 
+interface CacheEntry<T> {
+  data: ApiResponse<T>;
+  expiresAt: number;
+}
+
+const getCache = new Map<string, CacheEntry<unknown>>();
+const inflightGetRequests = new Map<string, Promise<any>>();
+
+export function clearApiCache(): void {
+  getCache.clear();
+}
+
 export const api = {
-  get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
-  put: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
-  patch: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
-  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' })
+  get: <T>(path: string, options?: { cacheTtlMs?: number; bypassCache?: boolean }): Promise<ApiResponse<T>> => {
+    const token = getToken();
+    const cacheKey = `${token || 'anon'}:${path}`;
+    const now = Date.now();
+
+    if (!options?.bypassCache) {
+      const cached = getCache.get(cacheKey);
+      if (cached && cached.expiresAt > now) {
+        return Promise.resolve(cached.data as ApiResponse<T>);
+      }
+      const inflight = inflightGetRequests.get(cacheKey);
+      if (inflight) {
+        return inflight as Promise<ApiResponse<T>>;
+      }
+    }
+
+    const promise = request<T>(path)
+      .then((res) => {
+        if (options?.cacheTtlMs && options.cacheTtlMs > 0) {
+          getCache.set(cacheKey, { data: res, expiresAt: Date.now() + options.cacheTtlMs });
+        }
+        return res;
+      })
+      .finally(() => {
+        inflightGetRequests.delete(cacheKey);
+      });
+
+    inflightGetRequests.set(cacheKey, promise);
+    return promise;
+  },
+  post: <T>(path: string, body?: unknown) => {
+    clearApiCache();
+    return request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined });
+  },
+  put: <T>(path: string, body?: unknown) => {
+    clearApiCache();
+    return request<T>(path, { method: 'PUT', body: body ? JSON.stringify(body) : undefined });
+  },
+  patch: <T>(path: string, body?: unknown) => {
+    clearApiCache();
+    return request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
+  },
+  delete: <T>(path: string) => {
+    clearApiCache();
+    return request<T>(path, { method: 'DELETE' });
+  }
 };
 
 export function fetchCategories(): Promise<ApiResponse<ServiceCategory[]>> {
-  return api.get<ServiceCategory[]>('/categories');
+  return api.get<ServiceCategory[]>('/categories', { cacheTtlMs: 60000 });
 }
 
 export function fetchAreas(): Promise<ApiResponse<ServiceArea[]>> {
-  return api.get<ServiceArea[]>('/areas');
+  return api.get<ServiceArea[]>('/areas', { cacheTtlMs: 60000 });
 }
 
 export function fetchRequestTabs(): Promise<ApiResponse<Array<{ code: string; label: string; statuses: string[] }>>> {
-  return api.get('/repair-requests/tabs');
+  return api.get('/repair-requests/tabs', { cacheTtlMs: 30000 });
 }
 
 export function attachRequestMedia(requestId: number, mediaUrls: string[]): Promise<ApiResponse<any>> {
