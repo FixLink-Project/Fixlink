@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import AdditionalCostPanel from '../components/AdditionalCostPanel';
 import Alert from '../components/Alert';
@@ -61,6 +61,7 @@ export default function RepairRequestDetailPage() {
   const [newApptTime, setNewApptTime] = useState('09:00');
   const [newApptNotes, setNewApptNotes] = useState('');
   const [creatingAppt, setCreatingAppt] = useState(false);
+  const creatingApptRef = useRef(false);
   const [createApptError, setCreateApptError] = useState<string | null>(null);
   const [showCancelledAppts, setShowCancelledAppts] = useState(false);
 
@@ -299,7 +300,8 @@ export default function RepairRequestDetailPage() {
 
   async function handleCreateAppointment(e: React.FormEvent) {
     e.preventDefault();
-    if (!detail) return;
+    if (!detail || creatingApptRef.current) return;
+    creatingApptRef.current = true;
     setCreatingAppt(true);
     setCreateApptError(null);
     try {
@@ -317,6 +319,7 @@ export default function RepairRequestDetailPage() {
       setCreateApptError(err instanceof ApiError ? err.message : 'Không tạo được lịch hẹn.');
     } finally {
       setCreatingAppt(false);
+      creatingApptRef.current = false;
     }
   }
 

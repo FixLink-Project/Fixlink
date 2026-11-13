@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Alert from '../components/Alert';
 import AppointmentCard from '../components/AppointmentCard';
@@ -52,6 +52,7 @@ export default function TechnicianRequestDetailPage() {
   const [newApptType, setNewApptType] = useState<'SURVEY' | 'REPAIR' | 'WARRANTY'>('REPAIR');
   const [newApptNotes, setNewApptNotes] = useState('');
   const [creatingAppt, setCreatingAppt] = useState(false);
+  const creatingApptRef = useRef(false);
   const [createApptError, setCreateApptError] = useState<string | null>(null);
   const [showCancelledAppts, setShowCancelledAppts] = useState(false);
 
@@ -73,7 +74,18 @@ export default function TechnicianRequestDetailPage() {
   const [newRepairTime, setNewRepairTime] = useState('09:00');
   const [rescheduleRepairNote, setRescheduleRepairNote] = useState('');
   const [submittingReschedule, setSubmittingReschedule] = useState(false);
+  const submittingRescheduleRef = useRef(false);
   const [rescheduleSuccessMsg, setRescheduleSuccessMsg] = useState<string | null>(null);
+
+  const latestSurveyDate = appointments
+    .filter((a) => a.appointmentType === 'SURVEY' && (a.status === 'CONFIRMED' || a.status === 'COMPLETED'))
+    .map((a) => a.scheduledDate)
+    .sort()
+    .pop();
+
+  const minRepairDate = latestSurveyDate
+    ? new Date(new Date(latestSurveyDate).getTime() + 86400000).toISOString().split('T')[0]
+    : new Date().toISOString().split('T')[0];
 
   // Modal Hoàn thành & Mời nghiệm thu
   const [showAcceptanceModal, setShowAcceptanceModal] = useState(false);
@@ -81,7 +93,8 @@ export default function TechnicianRequestDetailPage() {
 
   async function handleRescheduleRepair(e: React.FormEvent) {
     e.preventDefault();
-    if (!detail) return;
+    if (!detail || submittingRescheduleRef.current) return;
+    submittingRescheduleRef.current = true;
     setSubmittingReschedule(true);
     setLifecycleError(null);
     try {
@@ -101,6 +114,7 @@ export default function TechnicianRequestDetailPage() {
       setLifecycleError(err instanceof ApiError ? err.message : 'Không tạo được lịch hẹn thi công mới.');
     } finally {
       setSubmittingReschedule(false);
+      submittingRescheduleRef.current = false;
     }
   }
 
@@ -122,7 +136,8 @@ export default function TechnicianRequestDetailPage() {
 
   async function handleCreateAppointment(e: React.FormEvent) {
     e.preventDefault();
-    if (!detail) return;
+    if (!detail || creatingApptRef.current) return;
+    creatingApptRef.current = true;
     setCreatingAppt(true);
     setCreateApptError(null);
     try {
@@ -142,6 +157,7 @@ export default function TechnicianRequestDetailPage() {
       setCreateApptError(err instanceof ApiError ? err.message : 'Không tạo được lịch hẹn.');
     } finally {
       setCreatingAppt(false);
+      creatingApptRef.current = false;
     }
   }
 
@@ -1486,11 +1502,16 @@ export default function TechnicianRequestDetailPage() {
               <TextField
                 label="Ngày hẹn *"
                 type="date"
-                min={new Date().toISOString().split('T')[0]}
+                min={newApptType === 'REPAIR' ? minRepairDate : new Date().toISOString().split('T')[0]}
                 value={newApptDate}
                 onChange={(e) => setNewApptDate(e.target.value)}
                 required
               />
+              {newApptType === 'REPAIR' && latestSurveyDate && (
+                <p className="text-[11px] text-amber-700 mt-1">
+                  ⚠️ Lịch sửa chữa phải sau ngày khảo sát ({latestSurveyDate}).
+                </p>
+              )}
 
               <TextField
                 label="Giờ hẹn *"
@@ -1802,10 +1823,15 @@ export default function TechnicianRequestDetailPage() {
                     label="Ngày hẹn thi công lại *"
                     type="date"
                     required
-                    min={new Date().toISOString().split('T')[0]}
+                    min={minRepairDate}
                     value={newRepairDate}
                     onChange={(e) => setNewRepairDate(e.target.value)}
                   />
+                  {latestSurveyDate && (
+                    <p className="text-[11px] text-amber-700 mt-1">
+                      ⚠️ Lịch thi công phải sau ngày khảo sát ({latestSurveyDate}).
+                    </p>
+                  )}
                 </div>
                 <div>
                   <TextField

@@ -86,8 +86,54 @@ public class AppointmentService implements AppointmentUseCase {
             requestRepo.save(request);
         }
 
+        // Rule 1: Chống trùng lịch hẹn / Race condition (1 booking chỉ được 1 request lịch hẹn đang hoạt động)
+        List<AppointmentJpaEntity> existingAppointments = appointmentRepo.findByRepairRequestIdOrderByScheduledDateAscScheduledTimeAsc(request.getId());
+        List<AppointmentJpaEntity> activeAppointments = existingAppointments.stream()
+                .filter(a -> a.getDeletedAt() == null && !a.getStatus().isTerminal())
+                .toList();
+
+        if (!activeAppointments.isEmpty()) {
+            AppointmentJpaEntity activeAppt = activeAppointments.get(0);
+            throw new DomainException("APPOINTMENT_ALREADY_EXISTS",
+                    "Đơn sửa chữa này đã có một lịch hẹn đang hoạt động (" + activeAppt.getStatus().getLabel() +
+                            " vào ngày " + activeAppt.getScheduledDate() + " lúc " + activeAppt.getScheduledTime() +
+                            "). Vui lòng xác nhận, dời lịch hoặc hủy lịch hiện tại trước khi tạo lịch mới.", 409);
+        }
+
         String apptType = (cmd.getAppointmentType() != null && !cmd.getAppointmentType().isBlank())
                 ? cmd.getAppointmentType().toUpperCase() : "REPAIR";
+
+        // Rule 2: Chống trùng ngày/giờ giữa lịch Khảo sát (SURVEY) và lịch Sửa chữa (REPAIR)
+        if ("REPAIR".equalsIgnoreCase(apptType)) {
+            List<AppointmentJpaEntity> surveyAppointments = existingAppointments.stream()
+                    .filter(a -> a.getDeletedAt() == null && "SURVEY".equalsIgnoreCase(a.getAppointmentType()))
+                    .filter(a -> a.getStatus() == AppointmentStatus.CONFIRMED || a.getStatus() == AppointmentStatus.COMPLETED)
+                    .toList();
+
+            for (AppointmentJpaEntity surveyAppt : surveyAppointments) {
+                if (cmd.getScheduledDate().isBefore(surveyAppt.getScheduledDate())) {
+                    throw new DomainException("INVALID_OPERATION",
+                            "Lịch sửa chữa không thể diễn ra trước ngày khảo sát (" + surveyAppt.getScheduledDate() + ").", 400);
+                }
+                if (cmd.getScheduledDate().isEqual(surveyAppt.getScheduledDate())) {
+                    throw new DomainException("INVALID_OPERATION",
+                            "Lịch khảo sát và lịch sửa chữa không được trùng ngày với nhau (" + surveyAppt.getScheduledDate() + "). Vui lòng chọn ngày thi công sau ngày khảo sát.", 400);
+                }
+            }
+        } else if ("SURVEY".equalsIgnoreCase(apptType)) {
+            List<AppointmentJpaEntity> repairAppointments = existingAppointments.stream()
+                    .filter(a -> a.getDeletedAt() == null && "REPAIR".equalsIgnoreCase(a.getAppointmentType()))
+                    .filter(a -> a.getStatus() == AppointmentStatus.CONFIRMED || a.getStatus() == AppointmentStatus.COMPLETED)
+                    .toList();
+
+            for (AppointmentJpaEntity repairAppt : repairAppointments) {
+                if (cmd.getScheduledDate().isAfter(repairAppt.getScheduledDate()) || cmd.getScheduledDate().isEqual(repairAppt.getScheduledDate())) {
+                    throw new DomainException("INVALID_OPERATION",
+                            "Lịch khảo sát không thể đặt trùng ngày hoặc sau ngày sửa chữa (" + repairAppt.getScheduledDate() + ").", 400);
+                }
+            }
+        }
+
         String address = (cmd.getAddress() != null && !cmd.getAddress().isBlank())
                 ? cmd.getAddress() : request.getAddress();
 
@@ -215,6 +261,13 @@ public class AppointmentService implements AppointmentUseCase {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lịch hẹn"));
 
         checkParticipantAccess(appointment, actorId, role);
+
+        // Rule: Chặn hẹn lại / dời lịch trùng ngày và cùng giờ với lịch hẹn hiện tại
+        if (appointment.getScheduledDate().equals(cmd.getScheduledDate())
+                && appointment.getScheduledTime().equals(cmd.getScheduledTime())) {
+            throw new DomainException("INVALID_OPERATION",
+                    "Thời gian hẹn lại phải khác thời gian hẹn hiện tại (" + appointment.getScheduledDate() + " lúc " + appointment.getScheduledTime() + ").", 400);
+        }
 
         if (!appointment.getStatus().canTransitionTo(AppointmentStatus.RESCHEDULED)) {
             throw new DomainException("INVALID_OPERATION",
