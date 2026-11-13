@@ -37,9 +37,9 @@ public enum AppointmentStatus {
             return false;
         }
         return switch (this) {
-            case PENDING_APPROVAL -> nextStatus == CONFIRMED || nextStatus == REJECTED || nextStatus == CANCELLED;
+            case PENDING_APPROVAL -> nextStatus == CONFIRMED || nextStatus == REJECTED || nextStatus == CANCELLED || nextStatus == RESCHEDULED;
             case CONFIRMED -> nextStatus == RESCHEDULED || nextStatus == COMPLETED || nextStatus == CANCELLED;
-            case RESCHEDULED -> nextStatus == RESCHEDULED || nextStatus == COMPLETED || nextStatus == CANCELLED;
+            case RESCHEDULED -> nextStatus == RESCHEDULED || nextStatus == COMPLETED || nextStatus == CANCELLED || nextStatus == CONFIRMED;
             default -> false;
         };
     }

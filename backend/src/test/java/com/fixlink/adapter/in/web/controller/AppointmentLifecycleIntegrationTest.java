@@ -42,6 +42,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AppointmentLifecycleIntegrationTest {
 
+    static {
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+    }
+
     private static final String TECH_01 = "tech01";
     private static final String TECH_OTHER = "tho_dien_lanh_01";
     private static final String CUSTOMER_01 = "customer01";
@@ -355,5 +359,73 @@ class AppointmentLifecycleIntegrationTest {
                         .content(objectMapper.writeValueAsString(cancelReq)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message", notNullValue()));
+    }
+
+    @Test
+    @Order(9)
+    @DisplayName("TC-48-09: Chặn tạo 2 lịch hẹn cùng lúc cho 1 đơn (Chống Double Click / 1 Booking 1 Request) -> 409 Conflict")
+    void test09_CannotCreateMultipleActiveAppointmentsForSameRequest() throws Exception {
+        // Tạo 1 lịch hẹn mới
+        LocalDate apptDate = LocalDate.now().plusDays(4);
+        LocalTime apptTime = LocalTime.of(8, 30);
+
+        CreateAppointmentRequest req1 = CreateAppointmentRequest.builder()
+                .repairRequestId(testRequestId)
+                .technicianId(tech01Id)
+                .appointmentType("REPAIR")
+                .scheduledDate(apptDate)
+                .scheduledTime(apptTime)
+                .notes("Hẹn khảo sát lần 1")
+                .build();
+
+        MvcResult res1 = mockMvc.perform(post("/api/v1/appointments")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req1)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long activeApptId = objectMapper.readTree(res1.getResponse().getContentAsString()).path("data").path("id").asLong();
+
+        // Cố tình tạo thêm lịch thứ 2 khi lịch 1 đang PENDING_APPROVAL -> 409 Conflict
+        CreateAppointmentRequest req2 = CreateAppointmentRequest.builder()
+                .repairRequestId(testRequestId)
+                .technicianId(tech01Id)
+                .appointmentType("REPAIR")
+                .scheduledDate(apptDate.plusDays(1))
+                .scheduledTime(LocalTime.of(10, 0))
+                .notes("Bấm đúp hoặc tạo lịch thứ 2")
+                .build();
+
+        mockMvc.perform(post("/api/v1/appointments")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req2)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message", containsString("đã có một lịch hẹn đang hoạt động")));
+
+        // Hẹn lại trùng ngày giờ hiện tại -> 400 Bad Request
+        RescheduleAppointmentRequest sameTimeResched = RescheduleAppointmentRequest.builder()
+                .scheduledDate(apptDate)
+                .scheduledTime(apptTime)
+                .notes("Hẹn lại đúng giờ cũ")
+                .build();
+
+        mockMvc.perform(patch("/api/v1/appointments/" + activeApptId + "/reschedule")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(sameTimeResched)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("Thời gian hẹn lại phải khác thời gian hẹn hiện tại")));
+
+        // Dọn dẹp: Hủy cuộc hẹn để không ảnh hưởng dữ liệu
+        CancelAppointmentRequest cancelReq = CancelAppointmentRequest.builder()
+                .cancelReason("Dọn dẹp sau test")
+                .build();
+        mockMvc.perform(patch("/api/v1/appointments/" + activeApptId + "/cancel")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(cancelReq)))
+                .andExpect(status().isOk());
     }
 }
