@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Script giữ ấm máy chủ Render & Database Neon phục vụ buổi Demo Đồ án FixLink.
     Đảm bảo Web Service luôn ở trạng thái ACTIVE trên RAM, loại bỏ hoàn toàn Cold Start (độ trễ 50-90s).
@@ -10,11 +10,11 @@
 .EXAMPLE
     .\keep_alive_render.ps1
     .\keep_alive_render.ps1 -IntervalSeconds 120
-    .\keep_alive_render.ps1 -Url "https://fixlink-api.onrender.com/api/v1/health"
+    .\keep_alive_render.ps1 -Url "https://fixlink-6eh2.onrender.com/api/v1/health"
 #>
 
 param(
-    [string]$Url = "https://fixlink-api.onrender.com/api/v1/health",
+    [string]$Url = "https://fixlink-6eh2.onrender.com/api/v1/health",
     [int]$IntervalSeconds = 180
 )
 
