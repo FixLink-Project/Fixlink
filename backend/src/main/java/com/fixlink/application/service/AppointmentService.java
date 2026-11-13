@@ -263,8 +263,9 @@ public class AppointmentService implements AppointmentUseCase {
         checkParticipantAccess(appointment, actorId, role);
 
         // Rule: Chặn hẹn lại / dời lịch trùng ngày và cùng giờ với lịch hẹn hiện tại
-        if (appointment.getScheduledDate().equals(cmd.getScheduledDate())
-                && appointment.getScheduledTime().equals(cmd.getScheduledTime())) {
+        boolean isSameDate = appointment.getScheduledDate().isEqual(cmd.getScheduledDate());
+        boolean isSameTime = appointment.getScheduledTime().toSecondOfDay() == cmd.getScheduledTime().toSecondOfDay();
+        if (isSameDate && isSameTime) {
             throw new DomainException("INVALID_OPERATION",
                     "Thời gian hẹn lại phải khác thời gian hẹn hiện tại (" + appointment.getScheduledDate() + " lúc " + appointment.getScheduledTime() + ").", 400);
         }
