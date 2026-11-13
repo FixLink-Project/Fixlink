@@ -85,37 +85,6 @@ const PRICE_BENCHMARKS = [
   { service: 'Sửa nguồn Smart TV (Sony, Samsung, LG)', price: '400.000đ – 850.000đ', note: 'Kiểm tra linh kiện tại chỗ' }
 ];
 
-// Thợ tiêu biểu đã xác minh CCCD
-const VERIFIED_TECHNICIANS = [
-  {
-    name: 'Trần Văn Bình',
-    specialty: 'Chuyên gia Điện Lạnh Inverter',
-    experience: '8 năm kinh nghiệm',
-    rating: '4.95',
-    jobs: '284',
-    areas: 'Q.1, Q.3, Bình Thạnh, Phú Nhuận',
-    verified: true
-  },
-  {
-    name: 'Nguyễn Quốc Cường',
-    specialty: 'Kỹ sư Bo mạch Điện tử & Smart TV',
-    experience: '10 năm kinh nghiệm',
-    rating: '4.98',
-    jobs: '342',
-    areas: 'TP. Thủ Đức, Q.7, Tân Bình',
-    verified: true
-  },
-  {
-    name: 'Lê Minh Tuấn',
-    specialty: 'Sửa Bếp Từ & Thiết Bị Gia Dụng',
-    experience: '6 năm kinh nghiệm',
-    rating: '4.91',
-    jobs: '196',
-    areas: 'Gò Vấp, Tân Bình, Q.12',
-    verified: true
-  }
-];
-
 export default function HomePage() {
   const { user } = useAuth();
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
@@ -169,7 +138,6 @@ export default function HomePage() {
             <a href="#danh-muc" className="transition-colors hover:text-brand">Dịch vụ sửa chữa</a>
             <a href="#bang-gia" className="transition-colors hover:text-brand">Bảng giá niêm yết</a>
             <a href="#quy-trinh" className="transition-colors hover:text-brand">Quy trình 4 bước</a>
-            <a href="#tho-uy-tin" className="transition-colors hover:text-brand">Đội ngũ thợ eKYC</a>
           </nav>
 
           {/* Right Action Buttons */}
@@ -475,82 +443,6 @@ export default function HomePage() {
               <p className="text-xs text-slate-500 mt-2 leading-relaxed">{item.body}</p>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* ===== VERIFIED TECHNICIANS SHOWCASE ===== */}
-      <section id="tho-uy-tin" className="bg-slate-50 border-t border-line py-16 sm:py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-brand">Đội ngũ tay nghề cao</span>
-              <h2 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 mt-1">
-                Kỹ thuật viên tiêu biểu đã xác minh eKYC
-              </h2>
-              <p className="text-sm text-slate-600 mt-2">
-                Hồ sơ lý lịch rõ ràng, có chứng chỉ hành nghề và được đánh giá thực tế bởi khách hàng.
-              </p>
-            </div>
-            <Link
-              to="/dang-ky-tho"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 hover:border-brand hover:text-brand shadow-xs transition-colors"
-            >
-              <span>Bạn là thợ có tay nghề? Đăng ký nhận việc</span>
-              <span>→</span>
-            </Link>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-3">
-            {VERIFIED_TECHNICIANS.map((tech, idx) => (
-              <div
-                key={idx}
-                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-all"
-              >
-                <div className="flex items-center gap-3.5 mb-4">
-                  <div className="h-12 w-12 rounded-full bg-blue-100 text-brand-strong font-bold flex items-center justify-center text-base">
-                    {tech.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="font-display text-base font-bold text-slate-900">{tech.name}</h3>
-                      <span className="inline-flex items-center text-[11px] font-semibold text-emerald-600" title="Đã đối soát CCCD">
-                        ✓ eKYC
-                      </span>
-                    </div>
-                    <p className="text-xs font-medium text-brand">{tech.specialty}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Kinh nghiệm:</span>
-                    <span className="font-semibold text-slate-800">{tech.experience}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Đánh giá khách hàng:</span>
-                    <span className="font-bold text-amber-500">★ {tech.rating} / 5.0 ({tech.jobs} đơn)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Khu vực phục vụ:</span>
-                    <span className="font-medium text-slate-700">{tech.areas}</span>
-                  </div>
-                </div>
-
-                <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    Sẵn sàng nhận việc
-                  </span>
-                  <Link
-                    to="/dang-yeu-cau"
-                    className="text-xs font-bold text-brand hover:text-brand-strong"
-                  >
-                    Gửi yêu cầu →
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 

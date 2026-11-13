@@ -328,16 +328,24 @@ export default function TechnicianRequestDetailPage() {
 
   const req = detail.request;
 
-  // Danh sách hình ảnh hiện trường (chỉ ảnh khách tải lên ban đầu hoặc ảnh chính thợ này tải lên, loại bỏ ảnh thợ khác bị từ chối)
-  const displayPhotos: string[] = req.media && req.media.length > 0
+  // 1. Ảnh khách hàng tải lên ban đầu khi tạo đơn
+  const customerPhotos: string[] = req.media && req.media.length > 0
     ? req.media
-        .filter((m) => {
-          if (!m.uploadedBy) return true;
-          const uploader = Number(m.uploadedBy);
-          return (req.customerId && uploader === Number(req.customerId)) || (numericUserId && uploader === Number(numericUserId));
-        })
+        .filter((m) => !m.uploadedBy || (req.customerId && Number(m.uploadedBy) === Number(req.customerId)))
         .map((m) => m.url)
     : req.mediaUrls || [];
+
+  // 2. Ảnh bằng chứng khảo sát / phụ thu linh kiện do thợ tải lên
+  const technicianProofPhotos: string[] = req.media && req.media.length > 0
+    ? req.media
+        .filter((m) => {
+          if (!m.uploadedBy) return false;
+          const uploader = Number(m.uploadedBy);
+          if (req.customerId && uploader === Number(req.customerId)) return false;
+          return (numericUserId && uploader === Number(numericUserId)) || (req.technicianId && uploader === Number(req.technicianId));
+        })
+        .map((m) => m.url)
+    : [];
 
   const myQuote = detail.quotations?.find(
     (q) => q.isMine || (numericUserId && q.technicianId === numericUserId)
@@ -415,14 +423,14 @@ export default function TechnicianRequestDetailPage() {
           </dl>
         </Card>
 
-        {/* Hình ảnh hiện trường */}
-        {displayPhotos.length > 0 && (
+        {/* Bảng 1: Hình ảnh & Video hiện trường ban đầu (khách gửi) */}
+        {customerPhotos.length > 0 && (
           <Card
-            title={`Hình ảnh & Video hiện trường (${displayPhotos.length})`}
-            description="Bấm vào từng ảnh để phóng to kiểm tra kỹ linh kiện và vị trí hỏng hóc."
+            title={`Hình ảnh & Video hiện trường ban đầu (${customerPhotos.length})`}
+            description="Ảnh và tệp đính kèm do khách hàng cung cấp khi tạo yêu cầu sửa chữa."
           >
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {displayPhotos.map((url, idx) => (
+              {customerPhotos.map((url, idx) => (
                 <div
                   key={idx}
                   onClick={() => setActiveMediaUrl(url)}
@@ -430,11 +438,40 @@ export default function TechnicianRequestDetailPage() {
                 >
                   <img
                     src={url}
-                    alt={`Hiện trường ${idx + 1}`}
+                    alt={`Hiện trường ban đầu ${idx + 1}`}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-slate-900/20 opacity-0 transition group-hover:opacity-100 flex items-center justify-center">
                     <span className="rounded-full bg-white/90 p-2 text-xs font-bold text-slate-800 shadow-sm">
+                      🔍 Phóng to
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Bảng 2: Hình ảnh khảo sát & linh kiện phát sinh (thợ tải lên) */}
+        {technicianProofPhotos.length > 0 && (
+          <Card
+            title={`Hình ảnh khảo sát & linh kiện phát sinh (${technicianProofPhotos.length})`}
+            description="Bằng chứng linh kiện hỏng hóc thực tế tại hiện trường do thợ chụp gửi kèm chi phí phát sinh."
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {technicianProofPhotos.map((url, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => setActiveMediaUrl(url)}
+                  className="group relative aspect-4/3 cursor-pointer overflow-hidden rounded-2xl border border-amber-300 bg-amber-50/50 shadow-xs transition hover:border-amber-500 hover:shadow-md"
+                >
+                  <img
+                    src={url}
+                    alt={`Linh kiện phát sinh ${idx + 1}`}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-amber-950/20 opacity-0 transition group-hover:opacity-100 flex items-center justify-center">
+                    <span className="rounded-full bg-white/95 p-2 text-xs font-bold text-amber-950 shadow-sm">
                       🔍 Phóng to
                     </span>
                   </div>

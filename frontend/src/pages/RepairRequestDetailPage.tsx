@@ -14,7 +14,7 @@ import RequestStatusStepper from '../components/RequestStatusStepper';
 import StatusChip from '../components/StatusChip';
 import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
-import { ApiError, acceptQuotation, api, attachRequestMedia, confirmPayment, createAppointment, createDepositPayment, createFinalPayment, fetchAdditionalCosts, fetchAppointmentsForRequest, fetchPayments, fetchTechnicianReviews, formatCurrency, switchTechnician, type TechnicianReviewItem, updateRequestStatus } from '../lib/api';
+import { ApiError, acceptQuotation, api, approveAppointment, attachRequestMedia, confirmPayment, createAppointment, createDepositPayment, createFinalPayment, fetchAdditionalCosts, fetchAppointmentsForRequest, fetchPayments, fetchTechnicianReviews, formatCurrency, rescheduleAppointment, switchTechnician, type TechnicianReviewItem, updateRequestStatus } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { AdditionalCost, Appointment, Bill, Payment, PaymentResult, Quotation, RepairRequestDetail } from '../lib/types';
 
@@ -64,6 +64,15 @@ export default function RepairRequestDetailPage() {
   const creatingApptRef = useRef(false);
   const [createApptError, setCreateApptError] = useState<string | null>(null);
   const [showCancelledAppts, setShowCancelledAppts] = useState(false);
+  const [confirmingApptId, setConfirmingApptId] = useState<number | null>(null);
+  const confirmingApptRef = useRef(false);
+  const [apptSuccessMessage, setApptSuccessMessage] = useState<string | null>(null);
+  const [reschedulingAppt, setReschedulingAppt] = useState<Appointment | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('09:00');
+  const [rescheduleNotes, setRescheduleNotes] = useState('');
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
 
   // Modal xem ảnh phóng to
   const [activeMediaUrl, setActiveMediaUrl] = useState<string | null>(null);
@@ -323,6 +332,48 @@ export default function RepairRequestDetailPage() {
     }
   }
 
+  async function handleApproveAppointmentInline(apptId: number) {
+    if (confirmingApptRef.current) return;
+    confirmingApptRef.current = true;
+    setConfirmingApptId(apptId);
+    setApptSuccessMessage(null);
+    try {
+      await approveAppointment(apptId);
+      setApptSuccessMessage('Đã xác nhận lịch hẹn thành công!');
+      await loadDetail();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Không thể xác nhận lịch hẹn.');
+    } finally {
+      confirmingApptRef.current = false;
+      setConfirmingApptId(null);
+    }
+  }
+
+  async function handleInlineReschedule(e: React.FormEvent) {
+    e.preventDefault();
+    if (!reschedulingAppt) return;
+    if (!rescheduleDate || !rescheduleTime) {
+      setRescheduleError('Vui lòng chọn ngày và giờ hẹn mới.');
+      return;
+    }
+    setRescheduling(true);
+    setRescheduleError(null);
+    try {
+      await rescheduleAppointment(reschedulingAppt.id, {
+        scheduledDate: rescheduleDate,
+        scheduledTime: rescheduleTime.length === 5 ? `${rescheduleTime}:00` : rescheduleTime,
+        notes: rescheduleNotes.trim() || undefined
+      });
+      setApptSuccessMessage('Đã dời lịch hẹn thành công!');
+      setReschedulingAppt(null);
+      await loadDetail();
+    } catch (err) {
+      setRescheduleError(err instanceof ApiError ? err.message : 'Lỗi khi dời lịch hẹn.');
+    } finally {
+      setRescheduling(false);
+    }
+  }
+
   async function handleCreateDeposit() {
     if (!detail) return;
     setCreatingPayment(true);
@@ -530,6 +581,8 @@ export default function RepairRequestDetailPage() {
           const initialPrice = currentSelectedQuote?.totalPrice || (req.depositAmount > 0 ? Math.round(req.depositAmount / 0.3) : req.budgetRef);
           const surchargeAmount = Math.max(0, req.agreedPrice - initialPrice);
           const remainingAfterAcceptance = Math.max(0, req.agreedPrice - depositPaid);
+          const activeAppts = appointments.filter((a) => a.status !== 'CANCELLED' && a.status !== 'REJECTED');
+          const repairAppt = activeAppts.find((a) => a.appointmentType === 'REPAIR') || activeAppts[activeAppts.length - 1];
 
           return (
             <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-5 shadow-sm space-y-4 animate-scale-in">
@@ -572,6 +625,133 @@ export default function RepairRequestDetailPage() {
                   <span>5. Số tiền còn lại bạn sẽ trả khi nghiệm thu hoàn tất:</span>
                   <span className="text-emerald-800 text-base">{formatCurrency(remainingAfterAcceptance)}</span>
                 </div>
+              </div>
+
+              {/* Sub-table: Lịch hẹn quay lại sửa chữa (Tích hợp ngay dưới bảng chiết tính) */}
+              <div className="rounded-xl bg-white border border-amber-200 p-4 space-y-3 text-xs shadow-xs">
+                <div className="flex items-center justify-between border-b border-amber-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">📅</span>
+                    <span className="font-bold text-slate-900 text-sm">Lịch hẹn quay lại sửa chữa & thi công</span>
+                  </div>
+                  {repairAppt ? (
+                    repairAppt.status === 'PENDING_APPROVAL' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold bg-amber-50 text-amber-700 border border-amber-200 text-[11px]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        Chờ bạn xác nhận
+                      </span>
+                    ) : repairAppt.status === 'CONFIRMED' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200 text-[11px]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                        Đã xác nhận
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full font-bold bg-slate-100 text-slate-700 text-[11px]">
+                        {repairAppt.statusLabel || repairAppt.status}
+                      </span>
+                    )
+                  ) : (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 text-[11px]">
+                      Chưa đặt lịch
+                    </span>
+                  )}
+                </div>
+
+                {apptSuccessMessage && (
+                  <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center justify-between">
+                    <span>✓ {apptSuccessMessage}</span>
+                    <button type="button" onClick={() => setApptSuccessMessage(null)} className="text-emerald-600 font-bold ml-2">✕</button>
+                  </div>
+                )}
+
+                {repairAppt ? (
+                  <div className="space-y-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-400">🕒</span>
+                        <span className="text-slate-500">Thời gian hẹn:</span>
+                        <strong className="text-slate-900">{repairAppt.scheduledDate} lúc {repairAppt.scheduledTime ? repairAppt.scheduledTime.slice(0, 5) : ''}</strong>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-400">👨‍🔧</span>
+                        <span className="text-slate-500">Kỹ thuật viên:</span>
+                        <strong className="text-slate-900">{repairAppt.technicianName || detail.request.technicianName || 'Kỹ thuật viên phụ trách'}</strong>
+                      </div>
+                    </div>
+                    {repairAppt.notes && (
+                      <div className="text-slate-600 bg-amber-50/50 p-2 rounded-lg border border-amber-100">
+                        <span className="font-semibold text-slate-700">Ghi chú từ thợ:</span> {repairAppt.notes}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                      {repairAppt.status === 'PENDING_APPROVAL' ? (
+                        <>
+                          <div className="text-[11px] text-amber-800 italic">
+                            * Thợ đã đề xuất thời gian quay lại ở trên. Bạn có thể bấm xác nhận hoặc dời lịch khác.
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="primary"
+                              loading={confirmingApptId === repairAppt.id}
+                              onClick={() => handleApproveAppointmentInline(repairAppt.id)}
+                              className="text-xs py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 font-bold shadow-xs"
+                            >
+                              ✓ Xác nhận lịch hẹn này
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                setReschedulingAppt(repairAppt);
+                                setRescheduleDate(repairAppt.scheduledDate);
+                                setRescheduleTime(repairAppt.scheduledTime ? repairAppt.scheduledTime.slice(0, 5) : '09:00');
+                                setRescheduleNotes(repairAppt.notes || '');
+                                setRescheduleError(null);
+                              }}
+                              className="text-xs py-1.5 px-3 text-slate-700 border-slate-300 hover:bg-slate-50"
+                            >
+                              📅 Đổi giờ khác
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-[11px] text-emerald-700 font-medium">
+                            ✓ Lịch hẹn đã được chốt. Kỹ thuật viên sẽ tới nhà theo khung giờ trên.
+                          </div>
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setReschedulingAppt(repairAppt);
+                              setRescheduleDate(repairAppt.scheduledDate);
+                              setRescheduleTime(repairAppt.scheduledTime ? repairAppt.scheduledTime.slice(0, 5) : '09:00');
+                              setRescheduleNotes(repairAppt.notes || '');
+                              setRescheduleError(null);
+                            }}
+                            className="text-xs py-1.5 px-3 text-slate-700 border-slate-300 hover:bg-slate-50"
+                          >
+                            📅 Yêu cầu đổi lịch
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-amber-50/50 border border-amber-100 text-slate-600">
+                    <span className="italic">Chưa có lịch hẹn quay lại sửa chữa sau khảo sát.</span>
+                    <Button
+                      variant="primary"
+                      className="text-xs py-1.5 px-3"
+                      onClick={() => {
+                        setCreateApptError(null);
+                        setNewApptNotes('Lịch hẹn quay lại sửa chữa sau khi chốt linh kiện');
+                        setShowCreateApptModal(true);
+                      }}
+                    >
+                      + Đặt lịch hẹn sửa chữa
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Hình ảnh bằng chứng linh kiện hỏng do thợ chụp gửi */}
@@ -1466,6 +1646,62 @@ export default function RepairRequestDetailPage() {
                 </Button>
                 <Button type="submit" loading={creatingAppt}>
                   Xác nhận đặt lịch
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Dời lịch hẹn quay lại sửa chữa */}
+      {reschedulingAppt && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-in">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-900 text-base">Đổi lịch hẹn quay lại sửa chữa</h3>
+              <button
+                type="button"
+                onClick={() => setReschedulingAppt(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {rescheduleError && <Alert tone="error">{rescheduleError}</Alert>}
+
+            <form onSubmit={handleInlineReschedule} className="space-y-4">
+              <TextField
+                label="Ngày hẹn mới *"
+                type="date"
+                min={new Date().toISOString().split('T')[0]}
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+                required
+              />
+
+              <TextField
+                label="Giờ hẹn mới *"
+                type="time"
+                value={rescheduleTime}
+                onChange={(e) => setRescheduleTime(e.target.value)}
+                required
+              />
+
+              <TextArea
+                label="Lý do đổi lịch / Ghi chú cho thợ"
+                value={rescheduleNotes}
+                onChange={(e) => setRescheduleNotes(e.target.value)}
+                rows={3}
+                placeholder="Ví dụ: Xin chuyển sang sáng mai do bận đột xuất..."
+              />
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <Button variant="secondary" type="button" onClick={() => setReschedulingAppt(null)}>
+                  Hủy
+                </Button>
+                <Button type="submit" loading={rescheduling}>
+                  Lưu thay đổi lịch hẹn
                 </Button>
               </div>
             </form>
