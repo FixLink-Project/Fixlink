@@ -42,6 +42,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AppointmentLifecycleIntegrationTest {
 
+    static {
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+    }
+
     private static final String TECH_01 = "tech01";
     private static final String TECH_OTHER = "tho_dien_lanh_01";
     private static final String CUSTOMER_01 = "customer01";
