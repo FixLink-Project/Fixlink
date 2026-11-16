@@ -170,6 +170,10 @@ export function fetchRequestTabs(): Promise<ApiResponse<Array<{ code: string; la
   return api.get('/repair-requests/tabs', { cacheTtlMs: 30000 });
 }
 
+export function prefetchRepairRequest(id: number | string): void {
+  api.get(`/repair-requests/${id}`, { cacheTtlMs: 15000 }).catch(() => {});
+}
+
 export function attachRequestMedia(requestId: number, mediaUrls: string[]): Promise<ApiResponse<any>> {
   return api.post(`/repair-requests/${requestId}/media`, { mediaUrls });
 }

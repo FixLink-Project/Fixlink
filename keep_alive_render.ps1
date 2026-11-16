@@ -15,7 +15,7 @@
 
 param(
     [string]$Url = "https://fixlink-6eh2.onrender.com/api/v1/health",
-    [int]$IntervalSeconds = 180
+    [int]$IntervalSeconds = 60
 )
 
 $Host.UI.RawUI.WindowTitle = "FixLink - Render Keep-Alive Monitor (Demo Ready)"

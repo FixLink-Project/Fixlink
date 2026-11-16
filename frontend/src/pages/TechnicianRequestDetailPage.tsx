@@ -23,7 +23,7 @@ import {
   withdrawQuotation
 } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { parseNumericUserId, type Appointment, type Quotation, type RepairRequestDetail } from '../lib/types';
+import { parseNumericUserId, type Appointment, type Quotation, type RepairRequestDetail, type RequestStatus } from '../lib/types';
 
 const TECHNICIAN_NAV = [
   { to: '/tho', label: 'Bảng điều khiển' },
@@ -66,6 +66,8 @@ export default function TechnicianRequestDetailPage() {
   const [extraPartsCost, setExtraPartsCost] = useState<number>(150000);
   const [extraCostImages, setExtraCostImages] = useState<string[]>([]);
   const [willRescheduleWithCost, setWillRescheduleWithCost] = useState(false);
+  const [submittingCost, setSubmittingCost] = useState(false);
+  const submittingCostRef = useRef(false);
 
   // Modal Hẹn lại ngày thi công (Luồng mới sau khảo sát: Cần chuẩn bị linh kiện/dụng cụ)
   const [showRescheduleRepairModal, setShowRescheduleRepairModal] = useState(false);
@@ -120,6 +122,16 @@ export default function TechnicianRequestDetailPage() {
 
   async function handleTransition(newStatus: string, note?: string, price?: number) {
     if (!detail) return;
+    const previousDetail = detail;
+    // Optimistic UI update: hiển thị trạng thái mới ngay lập tức
+    setDetail({
+      ...detail,
+      request: {
+        ...detail.request,
+        status: newStatus as RequestStatus,
+        agreedPrice: price ?? detail.request.agreedPrice
+      }
+    });
     setUpdatingLifecycle(true);
     setLifecycleError(null);
     try {
@@ -128,6 +140,7 @@ export default function TechnicianRequestDetailPage() {
       setShowCostApprovalModal(false);
       setShowAcceptanceModal(false);
     } catch (err: any) {
+      setDetail(previousDetail);
       setLifecycleError(err?.message || 'Có lỗi xảy ra khi cập nhật tiến trình');
     } finally {
       setUpdatingLifecycle(false);
@@ -328,24 +341,30 @@ export default function TechnicianRequestDetailPage() {
 
   const req = detail.request;
 
-  // 1. Ảnh khách hàng tải lên ban đầu khi tạo đơn
-  const customerPhotos: string[] = req.media && req.media.length > 0
-    ? req.media
-        .filter((m) => !m.uploadedBy || (req.customerId && Number(m.uploadedBy) === Number(req.customerId)))
-        .map((m) => m.url)
-    : req.mediaUrls || [];
+  // 1. Ảnh khách hàng tải lên ban đầu khi tạo đơn (lọc trùng lặp)
+  const customerPhotos: string[] = Array.from(new Set(
+    (req.media && req.media.length > 0
+      ? req.media
+          .filter((m) => !m.uploadedBy || (req.customerId && Number(m.uploadedBy) === Number(req.customerId)))
+          .map((m) => m.url)
+      : req.mediaUrls || []
+    ).filter(Boolean)
+  ));
 
-  // 2. Ảnh bằng chứng khảo sát / phụ thu linh kiện do thợ tải lên
-  const technicianProofPhotos: string[] = req.media && req.media.length > 0
-    ? req.media
-        .filter((m) => {
-          if (!m.uploadedBy) return false;
-          const uploader = Number(m.uploadedBy);
-          if (req.customerId && uploader === Number(req.customerId)) return false;
-          return (numericUserId && uploader === Number(numericUserId)) || (req.technicianId && uploader === Number(req.technicianId));
-        })
-        .map((m) => m.url)
-    : [];
+  // 2. Ảnh bằng chứng khảo sát / phụ thu linh kiện do thợ tải lên (lọc trùng lặp)
+  const technicianProofPhotos: string[] = Array.from(new Set(
+    (req.media && req.media.length > 0
+      ? req.media
+          .filter((m) => {
+            if (!m.uploadedBy) return false;
+            const uploader = Number(m.uploadedBy);
+            if (req.customerId && uploader === Number(req.customerId)) return false;
+            return (numericUserId && uploader === Number(numericUserId)) || (req.technicianId && uploader === Number(req.technicianId));
+          })
+          .map((m) => m.url)
+      : []
+    ).filter(Boolean)
+  ));
 
   const myQuote = detail.quotations?.find(
     (q) => q.isMine || (numericUserId && q.technicianId === numericUserId)
@@ -1598,40 +1617,50 @@ export default function TechnicianRequestDetailPage() {
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
+                if (submittingCostRef.current) return;
                 if (extraPartsCost <= 0) {
                   setLifecycleError('Vui lòng nhập chi phí phát sinh hợp lệ (> 0 đ).');
                   return;
                 }
-                if (extraCostImages.length > 0) {
-                  try {
-                    await attachRequestMedia(detail.request.id, extraCostImages);
-                  } catch (err: any) {
-                    console.warn('Attach media warning:', err);
-                    setLifecycleError(err?.message || 'Có lỗi xảy ra khi tải ảnh bằng chứng linh kiện. Vui lòng thử lại.');
-                    return;
+                submittingCostRef.current = true;
+                setSubmittingCost(true);
+                setLifecycleError(null);
+                try {
+                  if (extraCostImages.length > 0) {
+                    try {
+                      await attachRequestMedia(detail.request.id, extraCostImages);
+                    } catch (err: any) {
+                      console.warn('Attach media warning:', err);
+                      setLifecycleError(err?.message || 'Có lỗi xảy ra khi tải ảnh bằng chứng linh kiện. Vui lòng thử lại.');
+                      return;
+                    }
                   }
-                }
-                if (willRescheduleWithCost && newRepairDate) {
-                  try {
-                    const numericUserId = parseNumericUserId(user?.id) ?? undefined;
-                    await createAppointment({
-                      repairRequestId: detail.request.id,
-                      technicianId: numericUserId,
-                      appointmentType: 'REPAIR',
-                      scheduledDate: newRepairDate,
-                      scheduledTime: newRepairTime.length === 5 ? `${newRepairTime}:00` : newRepairTime,
-                      notes: `Lịch thi công sau khảo sát: Cần mua/chuẩn bị linh kiện phát sinh (${extraCostReason || 'Linh kiện thay thế'}).`
-                    });
-                  } catch (err) {
-                    console.warn('Create appointment on surcharge warning:', err);
+                  if (willRescheduleWithCost && newRepairDate) {
+                    try {
+                      const numericUserId = parseNumericUserId(user?.id) ?? undefined;
+                      await createAppointment({
+                        repairRequestId: detail.request.id,
+                        technicianId: numericUserId,
+                        appointmentType: 'REPAIR',
+                        scheduledDate: newRepairDate,
+                        scheduledTime: newRepairTime.length === 5 ? `${newRepairTime}:00` : newRepairTime,
+                        notes: `Lịch thi công sau khảo sát: Cần mua/chuẩn bị linh kiện phát sinh (${extraCostReason || 'Linh kiện thay thế'}).`
+                      });
+                    } catch (err) {
+                      console.warn('Create appointment on surcharge warning:', err);
+                    }
                   }
+                  const calculatedTotal = (req.agreedPrice || req.budgetRef || 0) + extraPartsCost;
+                  await handleTransition(
+                    'AWAITING_COST_APPROVAL',
+                    extraCostReason || 'Thợ đề xuất phát sinh linh kiện sau khảo sát thực tế',
+                    calculatedTotal
+                  );
+                  setShowCostApprovalModal(false);
+                } finally {
+                  submittingCostRef.current = false;
+                  setSubmittingCost(false);
                 }
-                const calculatedTotal = (req.agreedPrice || req.budgetRef || 0) + extraPartsCost;
-                await handleTransition(
-                  'AWAITING_COST_APPROVAL',
-                  extraCostReason || 'Thợ đề xuất phát sinh linh kiện sau khảo sát thực tế',
-                  calculatedTotal
-                );
               }}
               className="space-y-4"
             >
@@ -1746,7 +1775,12 @@ export default function TechnicianRequestDetailPage() {
                 <Button variant="secondary" type="button" onClick={() => setShowCostApprovalModal(false)}>
                   Hủy
                 </Button>
-                <Button variant="primary" type="submit" loading={updatingLifecycle}>
+                <Button
+                  variant="primary"
+                  type="submit"
+                  loading={submittingCost || updatingLifecycle}
+                  disabled={submittingCost || updatingLifecycle}
+                >
                   Gửi khách hàng duyệt
                 </Button>
               </div>

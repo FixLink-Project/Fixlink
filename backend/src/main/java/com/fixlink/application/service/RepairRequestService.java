@@ -297,7 +297,13 @@ public class RepairRequestService implements RepairRequestUseCase {
                     Map.of("status", "Trạng thái mới không hợp lệ"));
         }
         if (targetStatus == currentStatus) {
-            throw new InvalidStateTransitionException(currentStatus, targetStatus);
+            log.info(">>> [Idempotent] updateStatus cho yêu cầu {} đã ở trạng thái {} (actorId={}, role={})",
+                    entity.getRequestCode(), currentStatus, command.actorId(), command.actorRole());
+            if (command.newAgreedPrice() != null && command.newAgreedPrice().compareTo(BigDecimal.ZERO) > 0) {
+                entity.setAgreedPrice(command.newAgreedPrice());
+                requestRepo.save(entity);
+            }
+            return toDetails(List.of(entity)).get(0);
         }
 
         if (command.actorRole() == Role.CUSTOMER) {
@@ -520,18 +526,29 @@ public class RepairRequestService implements RepairRequestUseCase {
         assertPermission(entity, command.actorId(), command.actorRole(), Permission.ATTACH_MEDIA);
 
         List<String> mediaUrls = normalizeMediaUrls(command.mediaUrls());
-        long storedMedia = mediaRepo.countByOwnerTypeAndOwnerId(Media.OWNER_REPAIR_REQUEST, entity.getId());
+        List<MediaJpaEntity> existingMedia = mediaRepo.findByOwnerTypeAndOwnerId(Media.OWNER_REPAIR_REQUEST, entity.getId());
+        Set<String> existingUrls = existingMedia.stream()
+                .map(MediaJpaEntity::getUrl)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-        if (storedMedia + mediaUrls.size() > MAX_MEDIA_PER_REQUEST) {
+        List<String> trulyNewUrls = mediaUrls.stream()
+                .filter(url -> !existingUrls.contains(url))
+                .distinct()
+                .toList();
+
+        if (existingMedia.size() + trulyNewUrls.size() > MAX_MEDIA_PER_REQUEST) {
             throw new ValidationFailedException(
                     "Mỗi yêu cầu chỉ được đính kèm tối đa " + MAX_MEDIA_PER_REQUEST + " tệp",
-                    Map.of("mediaUrls", "Đã có " + storedMedia + " tệp, chỉ có thể thêm tối đa "
-                            + Math.max(MAX_MEDIA_PER_REQUEST - storedMedia, 0) + " tệp"));
+                    Map.of("mediaUrls", "Đã có " + existingMedia.size() + " tệp, chỉ có thể thêm tối đa "
+                            + Math.max(MAX_MEDIA_PER_REQUEST - existingMedia.size(), 0) + " tệp"));
         }
 
-        saveMedia(entity.getId(), mediaUrls, command.actorId());
-        log.info(">>> User {} ({}) đã gắn thêm {} tệp bằng chứng vào yêu cầu {}",
-                command.actorId(), command.actorRole(), mediaUrls.size(), entity.getRequestCode());
+        if (!trulyNewUrls.isEmpty()) {
+            saveMedia(entity.getId(), trulyNewUrls, command.actorId());
+            log.info(">>> User {} ({}) đã gắn thêm {} tệp bằng chứng vào yêu cầu {}",
+                    command.actorId(), command.actorRole(), trulyNewUrls.size(), entity.getRequestCode());
+        }
 
         return toDetails(List.of(entity)).get(0);
     }
@@ -891,16 +908,31 @@ public class RepairRequestService implements RepairRequestUseCase {
             return List.of();
         }
 
-        List<MediaJpaEntity> entities = mediaUrls.stream().map(url -> {
-            MediaJpaEntity media = new MediaJpaEntity();
-            media.setOwnerType(Media.OWNER_REPAIR_REQUEST);
-            media.setOwnerId(requestId);
-            media.setMediaType(resolveMediaType(url));
-            media.setUrl(url);
-            media.setUploadedBy(uploaderId);
-            media.setCreatedBy(uploaderId);
-            return media;
-        }).toList();
+        List<MediaJpaEntity> existingMedia = mediaRepo.findByOwnerTypeAndOwnerId(Media.OWNER_REPAIR_REQUEST, requestId);
+        Set<String> existingUrls = existingMedia.stream()
+                .map(MediaJpaEntity::getUrl)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        List<MediaJpaEntity> entities = mediaUrls.stream()
+                .filter(url -> url != null && !url.isBlank() && !existingUrls.contains(url))
+                .distinct()
+                .map(url -> {
+                    MediaJpaEntity media = new MediaJpaEntity();
+                    media.setOwnerType(Media.OWNER_REPAIR_REQUEST);
+                    media.setOwnerId(requestId);
+                    media.setMediaType(resolveMediaType(url));
+                    media.setUrl(url);
+                    media.setUploadedBy(uploaderId);
+                    media.setCreatedBy(uploaderId);
+                    return media;
+                }).toList();
+
+        if (entities.isEmpty()) {
+            return existingMedia.stream()
+                    .map(repairRequestMapper::toDomain)
+                    .toList();
+        }
 
         return mediaRepo.saveAll(entities).stream()
                 .map(repairRequestMapper::toDomain)
