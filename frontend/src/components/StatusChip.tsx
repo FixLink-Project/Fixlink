@@ -36,8 +36,8 @@ const LABELS: Record<string, { label: string; tone: Tone }> = {
   AWAITING_ACCEPTANCE: { label: 'Chờ nghiệm thu', tone: 'pending' },
   COMPLETED: { label: 'Đã hoàn tất', tone: 'success' },
   CANCELLED: { label: 'Đã huỷ', tone: 'neutral' },
-  // Trạng thái lịch hẹn
-  PENDING_APPROVAL: { label: 'Chờ xác nhận', tone: 'pending' },
+  // Trạng thái lịch hẹn & tài khoản chờ duyệt
+  PENDING_APPROVAL: { label: 'Chờ duyệt', tone: 'pending' },
   // Trạng thái báo giá
   ACCEPTED: { label: 'Đã chọn', tone: 'success' },
   WITHDRAWN: { label: 'Đã rút', tone: 'neutral' },
