@@ -73,12 +73,11 @@ const SELECT_CLASS =
  * Mỗi tab là một bộ lọc đặt sẵn. Bộ lọc vai trò và từ khóa bên dưới vẫn áp thêm
  * lên kết quả của tab đang chọn.
  */
-type TabId = 'ALL' | 'PENDING_APPROVAL' | 'PENDING' | 'ACTIVE' | 'BLOCKED';
+type TabId = 'ALL' | 'PENDING_APPROVAL' | 'ACTIVE' | 'BLOCKED';
 
 const TABS: Array<{ id: TabId; label: string; status: string }> = [
   { id: 'ALL', label: 'Tất cả', status: 'ALL' },
   { id: 'PENDING_APPROVAL', label: 'Chờ duyệt', status: 'PENDING_APPROVAL' },
-  { id: 'PENDING', label: 'Chờ duyệt KYC', status: 'PENDING' },
   { id: 'ACTIVE', label: 'Đang hoạt động', status: 'ACTIVE' },
   { id: 'BLOCKED', label: 'Đã khoá', status: 'BLOCKED' }
 ];
@@ -103,7 +102,6 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('ALL');
   const [tab, setTab] = useState<TabId>('ALL');
-  const [pendingCount, setPendingCount] = useState(0);
   const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
 
   const [detail, setDetail] = useState<AdminUser | null>(null);
@@ -220,17 +218,12 @@ export default function AdminUsersPage() {
     void load(true);
   }, [load]);
 
-  // Con số trên tab "Chờ duyệt KYC" và "Chờ duyệt" đếm bằng lượt gọi riêng
+  // Con số trên tab "Chờ duyệt" đếm bằng lượt gọi riêng
   const refreshPendingCount = useCallback(async () => {
     try {
-      const [resKyc, resApprove] = await Promise.all([
-        api.get<AdminUser[]>('/admin/users?page=1&limit=1&status=PENDING'),
-        api.get<AdminUser[]>('/admin/users?page=1&limit=1&status=PENDING_APPROVAL')
-      ]);
-      setPendingCount(resKyc.meta?.totalItems ?? 0);
+      const resApprove = await api.get<AdminUser[]>('/admin/users?page=1&limit=1&status=PENDING_APPROVAL');
       setPendingApprovalCount(resApprove.meta?.totalItems ?? 0);
     } catch {
-      setPendingCount(0);
       setPendingApprovalCount(0);
     }
   }, []);
@@ -378,12 +371,7 @@ export default function AdminUsersPage() {
           items={TABS.map((t) => ({
             id: t.id,
             label: t.label,
-            badge:
-              t.id === 'PENDING_APPROVAL'
-                ? pendingApprovalCount
-                : t.id === 'PENDING'
-                ? pendingCount
-                : undefined
+            badge: t.id === 'PENDING_APPROVAL' ? pendingApprovalCount : undefined
           }))}
           active={tab}
           onChange={(next) => applyFilter(() => setTab(next))}
