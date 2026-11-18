@@ -32,6 +32,9 @@ export default function RepairRequestDetailPage() {
   const isTechnician = currentRole === 'TECHNICIAN';
 
   const [detail, setDetail] = useState<RepairRequestDetail | null>(null);
+  const detailRef = useRef<RepairRequestDetail | null>(null);
+  const appointmentsRef = useRef<Appointment[]>([]);
+  const isPollingRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -144,63 +147,113 @@ export default function RepairRequestDetailPage() {
   }
 
   useEffect(() => {
+    detailRef.current = detail;
+  }, [detail]);
+
+  useEffect(() => {
+    appointmentsRef.current = appointments;
+  }, [appointments]);
+
+  useEffect(() => {
     loadDetail(false);
   }, [id]);
 
-  // Tự động đồng bộ ngầm thời gian thực (mỗi 3s) giữa Khách hàng và Thợ
+  // Tự động đồng bộ ngầm thời gian thực (chu kỳ thích ứng 5s) giữa Khách hàng và Thợ
   useEffect(() => {
     if (!id) return;
     const intervalId = setInterval(() => {
+      // Tự ngắt polling khi người dùng ẩn tab/thu nhỏ để tiết kiệm 100% CPU máy chủ
+      if (typeof document !== 'undefined' && document.hidden) return;
       // Chỉ đồng bộ ngầm khi đơn chưa kết thúc hoặc chưa bị hủy
-      if (detail && detail.request.status !== 'COMPLETED' && detail.request.status !== 'CANCELLED') {
+      if (detailRef.current && detailRef.current.request.status !== 'COMPLETED' && detailRef.current.request.status !== 'CANCELLED') {
         loadDetail(true);
       }
-    }, 3000);
+    }, 5000);
 
     return () => clearInterval(intervalId);
-  }, [id, detail?.request?.status]);
+  }, [id]);
 
-  function loadDetail(silent = false) {
-    if (!silent) setLoading(true);
-    api.get<RepairRequestDetail>(`/repair-requests/${id}`, { bypassCache: true })
-      .then((res) => {
-        setDetail(res.data);
-        setError(null);
-        if (id && (res.data.request.status === 'AWAITING_ACCEPTANCE' || res.data.request.status === 'COMPLETED')) {
-          api.get<{ rating: number; comment: string } | null>(`/repair-requests/${id}/review`, { bypassCache: true })
-            .then((review) => {
-              if (review.data) {
-                setReviewRating(review.data.rating);
-                setReviewComment(review.data.comment);
-                setReviewSubmitted(true);
+  async function loadDetail(silent = false) {
+    if (silent) {
+      if (isPollingRef.current) return;
+      isPollingRef.current = true;
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const res = await api.get<RepairRequestDetail>(`/repair-requests/${id}`, { bypassCache: true });
+      const next = res.data;
+      const prev = detailRef.current;
+
+      // So sánh dữ liệu trước khi setState để loại bỏ 100% re-render ảo
+      const hasDetailChanged = !prev ||
+        prev.request.status !== next.request.status ||
+        prev.request.agreedPrice !== next.request.agreedPrice ||
+        prev.request.updatedAt !== next.request.updatedAt ||
+        prev.request.technicianId !== next.request.technicianId ||
+        (prev.request.media?.length ?? 0) !== (next.request.media?.length ?? 0) ||
+        (prev.quotations?.length ?? 0) !== (next.quotations?.length ?? 0) ||
+        (prev.workProgress?.length ?? 0) !== (next.workProgress?.length ?? 0);
+
+      if (!silent || hasDetailChanged) {
+        setDetail(next);
+        detailRef.current = next;
+      }
+      setError(null);
+
+      if (id && (next.request.status === 'AWAITING_ACCEPTANCE' || next.request.status === 'COMPLETED')) {
+        api.get<{ rating: number; comment: string } | null>(`/repair-requests/${id}/review`, { bypassCache: true })
+          .then((review) => {
+            if (review.data) {
+              setReviewRating(review.data.rating);
+              setReviewComment(review.data.comment);
+              setReviewSubmitted(true);
+            }
+          })
+          .catch(() => setReviewSubmitted(false));
+      }
+
+      if (id) {
+        // Chỉ tải lại lịch hẹn khi không silent hoặc khi dữ liệu yêu cầu thực sự thay đổi
+        if (!silent || hasDetailChanged) {
+          fetchAppointmentsForRequest(Number(id))
+            .then((apptsRes) => {
+              const newAppts = apptsRes.data || [];
+              const prevAppts = appointmentsRef.current;
+              const hasApptsChanged = newAppts.length !== prevAppts.length ||
+                newAppts.some((a, i) => !prevAppts[i] || a.id !== prevAppts[i].id || a.status !== prevAppts[i].status || a.scheduledDate !== prevAppts[i].scheduledDate || a.scheduledTime !== prevAppts[i].scheduledTime);
+              if (!silent || hasApptsChanged) {
+                setAppointments(newAppts);
+                appointmentsRef.current = newAppts;
               }
-            }).catch(() => setReviewSubmitted(false));
+            })
+            .catch(() => setAppointments([]));
         }
-      })
-      .catch((err) => {
-        if (!silent) {
-          setError(err instanceof ApiError ? err.message : 'Không tải được chi tiết yêu cầu.');
-        }
-      })
-      .finally(() => {
-        if (!silent) setLoading(false);
-      });
 
-    if (id) {
-      fetchPayments(Number(id))
-        .then((res) => setPayments(res.data || []))
-        .catch(() => setPayments([]));
-      fetchAppointmentsForRequest(Number(id))
-        .then((res) => setAppointments(res.data || []))
-        .catch(() => setAppointments([]));
-      fetchAdditionalCosts(Number(id))
-        .then((res) => {
-          const total = (res.data || [])
-            .filter((c: AdditionalCost) => c.status === 'APPROVED')
-            .reduce((sum: number, c: AdditionalCost) => sum + c.amount, 0);
-          setApprovedCostTotal(total);
-        })
-        .catch(() => setApprovedCostTotal(0));
+        // fetchPayments và fetchAdditionalCosts chỉ cần khi tải ban đầu hoặc khi trạng thái thay đổi
+        if (!silent || hasDetailChanged) {
+          fetchPayments(Number(id))
+            .then((paymentsRes) => setPayments(paymentsRes.data || []))
+            .catch(() => setPayments([]));
+
+          fetchAdditionalCosts(Number(id))
+            .then((costRes) => {
+              const total = (costRes.data || [])
+                .filter((c: AdditionalCost) => c.status === 'APPROVED')
+                .reduce((sum: number, c: AdditionalCost) => sum + c.amount, 0);
+              setApprovedCostTotal(total);
+            })
+            .catch(() => setApprovedCostTotal(0));
+        }
+      }
+    } catch (err) {
+      if (!silent) {
+        setError(err instanceof ApiError ? err.message : 'Không tải được chi tiết yêu cầu.');
+      }
+    } finally {
+      if (!silent) setLoading(false);
+      if (silent) isPollingRef.current = false;
     }
   }
 
