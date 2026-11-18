@@ -56,7 +56,7 @@ export default function MultiImageUploadField({
         });
         newUrls.push(res.url);
       }
-      onChange([...value, ...newUrls]);
+      onChange(Array.from(new Set([...value, ...newUrls])));
     } catch (err: any) {
       setUploadError(err?.message || 'Tải ảnh thất bại. Vui lòng thử lại.');
     } finally {

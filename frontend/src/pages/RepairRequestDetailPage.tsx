@@ -16,7 +16,7 @@ import TextArea from '../components/TextArea';
 import TextField from '../components/TextField';
 import { ApiError, acceptQuotation, api, approveAppointment, attachRequestMedia, confirmPayment, createAppointment, createDepositPayment, createFinalPayment, fetchAdditionalCosts, fetchAppointmentsForRequest, fetchPayments, fetchTechnicianReviews, formatCurrency, rescheduleAppointment, switchTechnician, type TechnicianReviewItem, updateRequestStatus } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import type { AdditionalCost, Appointment, Bill, Payment, PaymentResult, Quotation, RepairRequestDetail } from '../lib/types';
+import type { AdditionalCost, Appointment, Bill, Payment, PaymentResult, Quotation, RepairRequestDetail, RequestStatus } from '../lib/types';
 
 const CUSTOMER_NAV = [
   { to: '/khach-hang', label: 'Bảng điều khiển' },
@@ -106,6 +106,17 @@ export default function RepairRequestDetailPage() {
 
   async function handleCustomerAction(targetStatus: string, note?: string) {
     if (!detail) return;
+    const previousDetail = detail;
+    // Optimistic UI update: cập nhật tức thời giao diện tại 0ms
+    if (targetStatus !== 'COMPLETED') {
+      setDetail({
+        ...detail,
+        request: {
+          ...detail.request,
+          status: targetStatus as RequestStatus
+        }
+      });
+    }
     setUpdatingLifecycle(true);
     setActionError(null);
     setLifecycleMessage(null);
@@ -125,6 +136,7 @@ export default function RepairRequestDetailPage() {
         setLifecycleMessage('Đã chấp thuận chi phí phát sinh. Kỹ thuật viên sẽ tiếp tục sửa chữa.');
       }
     } catch (err: any) {
+      setDetail(previousDetail);
       setActionError(err?.message || 'Có lỗi xảy ra khi thực hiện thao tác');
     } finally {
       setUpdatingLifecycle(false);
@@ -132,17 +144,30 @@ export default function RepairRequestDetailPage() {
   }
 
   useEffect(() => {
-    loadDetail();
+    loadDetail(false);
   }, [id]);
 
-  function loadDetail() {
-    setLoading(true);
-    api.get<RepairRequestDetail>(`/repair-requests/${id}`)
+  // Tự động đồng bộ ngầm thời gian thực (mỗi 3s) giữa Khách hàng và Thợ
+  useEffect(() => {
+    if (!id) return;
+    const intervalId = setInterval(() => {
+      // Chỉ đồng bộ ngầm khi đơn chưa kết thúc hoặc chưa bị hủy
+      if (detail && detail.request.status !== 'COMPLETED' && detail.request.status !== 'CANCELLED') {
+        loadDetail(true);
+      }
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [id, detail?.request?.status]);
+
+  function loadDetail(silent = false) {
+    if (!silent) setLoading(true);
+    api.get<RepairRequestDetail>(`/repair-requests/${id}`, { bypassCache: true })
       .then((res) => {
         setDetail(res.data);
         setError(null);
         if (id && (res.data.request.status === 'AWAITING_ACCEPTANCE' || res.data.request.status === 'COMPLETED')) {
-          api.get<{ rating: number; comment: string } | null>(`/repair-requests/${id}/review`)
+          api.get<{ rating: number; comment: string } | null>(`/repair-requests/${id}/review`, { bypassCache: true })
             .then((review) => {
               if (review.data) {
                 setReviewRating(review.data.rating);
@@ -153,9 +178,13 @@ export default function RepairRequestDetailPage() {
         }
       })
       .catch((err) => {
-        setError(err instanceof ApiError ? err.message : 'Không tải được chi tiết yêu cầu.');
+        if (!silent) {
+          setError(err instanceof ApiError ? err.message : 'Không tải được chi tiết yêu cầu.');
+        }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
 
     if (id) {
       fetchPayments(Number(id))
@@ -434,25 +463,31 @@ export default function RepairRequestDetailPage() {
   const otherQuotes = detail.quotations.filter((q) => q.technicianId !== req.technicianId && q.status === 'PENDING');
   const currentSelectedQuote = detail.quotations.find((q) => q.status === 'ACCEPTED' || q.technicianId === req.technicianId);
 
-  // 1. Ảnh do khách hàng tải lên ban đầu mô tả lỗi thiết bị (không tính ảnh thợ tải lên sau)
-  const customerPhotos: string[] = req.media && req.media.length > 0
-    ? req.media
-        .filter((m) => !m.uploadedBy || (req.customerId && Number(m.uploadedBy) === Number(req.customerId)))
-        .map((m) => m.url)
-    : req.mediaUrls || [];
+  // 1. Ảnh do khách hàng tải lên ban đầu mô tả lỗi thiết bị (không tính ảnh thợ tải lên sau, lọc trùng lặp)
+  const customerPhotos: string[] = Array.from(new Set(
+    (req.media && req.media.length > 0
+      ? req.media
+          .filter((m) => !m.uploadedBy || (req.customerId && Number(m.uploadedBy) === Number(req.customerId)))
+          .map((m) => m.url)
+      : req.mediaUrls || []
+    ).filter(Boolean)
+  ));
 
-  // 2. Ảnh bằng chứng do thợ tải lên tại hiện trường (phát sinh linh kiện/khảo sát)
-  const technicianProofPhotos: string[] = req.media && req.media.length > 0
-    ? req.media
-        .filter((m) => {
-          if (!m.uploadedBy) return false;
-          const uploader = Number(m.uploadedBy);
-          if (req.customerId && uploader === Number(req.customerId)) return false;
-          if (req.technicianId) return uploader === Number(req.technicianId);
-          return true;
-        })
-        .map((m) => m.url)
-    : [];
+  // 2. Ảnh bằng chứng do thợ tải lên tại hiện trường (phát sinh linh kiện/khảo sát, lọc trùng lặp)
+  const technicianProofPhotos: string[] = Array.from(new Set(
+    (req.media && req.media.length > 0
+      ? req.media
+          .filter((m) => {
+            if (!m.uploadedBy) return false;
+            const uploader = Number(m.uploadedBy);
+            if (req.customerId && uploader === Number(req.customerId)) return false;
+            if (req.technicianId) return uploader === Number(req.technicianId);
+            return true;
+          })
+          .map((m) => m.url)
+      : []
+    ).filter(Boolean)
+  ));
 
   return (
     <DashboardLayout
