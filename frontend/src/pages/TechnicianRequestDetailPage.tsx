@@ -36,6 +36,9 @@ export default function TechnicianRequestDetailPage() {
   const { user } = useAuth();
 
   const [detail, setDetail] = useState<RepairRequestDetail | null>(null);
+  const detailRef = useRef<RepairRequestDetail | null>(null);
+  const appointmentsRef = useRef<Appointment[]>([]);
+  const isPollingRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [techWalletBalance, setTechWalletBalance] = useState<number | null>(null);
@@ -187,23 +190,81 @@ export default function TechnicianRequestDetailPage() {
 
   const numericUserId = parseNumericUserId(user?.id);
 
+  useEffect(() => {
+    detailRef.current = detail;
+  }, [detail]);
+
+  useEffect(() => {
+    appointmentsRef.current = appointments;
+  }, [appointments]);
+
   async function loadDetail(silent = false) {
-    if (!silent) setLoading(true);
+    if (silent) {
+      if (isPollingRef.current) return;
+      isPollingRef.current = true;
+    } else {
+      setLoading(true);
+    }
+
     try {
       const res = await api.get<RepairRequestDetail>(`/repair-requests/${id}`, { bypassCache: true });
-      setDetail(res.data);
+      const next = res.data;
+      const prev = detailRef.current;
+
+      // So sánh dữ liệu trước khi setState để loại bỏ 100% re-render ảo
+      const hasDetailChanged = !prev ||
+        prev.request.status !== next.request.status ||
+        prev.request.agreedPrice !== next.request.agreedPrice ||
+        prev.request.updatedAt !== next.request.updatedAt ||
+        prev.request.technicianId !== next.request.technicianId ||
+        (prev.request.media?.length ?? 0) !== (next.request.media?.length ?? 0) ||
+        (prev.quotations?.length ?? 0) !== (next.quotations?.length ?? 0) ||
+        (prev.workProgress?.length ?? 0) !== (next.workProgress?.length ?? 0);
+
+      if (!silent || hasDetailChanged) {
+        setDetail(next);
+        detailRef.current = next;
+      }
       setError(null);
 
       // Chỉ điền sẵn dữ liệu vào form ở lần tải đầu tiên (không silent) để tránh đè khi thợ đang nhập
       if (!silent) {
-        const myQuote = res.data.quotations?.find(
+        const myQuote = next.quotations?.find(
           (q) => q.isMine || (numericUserId && q.technicianId === numericUserId)
         );
         if (myQuote && myQuote.status === 'PENDING') {
           setBidPrice(myQuote.totalPrice || myQuote.priceLaborVnd || 0);
         } else if (!myQuote) {
           // Mặc định giá báo là ngân sách khách đưa ra (nếu có)
-          setBidPrice(res.data.request.budgetRef || 0);
+          setBidPrice(next.request.budgetRef || 0);
+        }
+      }
+
+      if (id) {
+        // Chỉ tải lại lịch hẹn khi không silent hoặc khi dữ liệu yêu cầu thực sự thay đổi
+        if (!silent || hasDetailChanged) {
+          fetchAppointmentsForRequest(Number(id))
+            .then((apptsRes) => {
+              const newAppts = apptsRes.data || [];
+              const prevAppts = appointmentsRef.current;
+              const hasApptsChanged = newAppts.length !== prevAppts.length ||
+                newAppts.some((a, i) => !prevAppts[i] || a.id !== prevAppts[i].id || a.status !== prevAppts[i].status || a.scheduledDate !== prevAppts[i].scheduledDate || a.scheduledTime !== prevAppts[i].scheduledTime);
+              if (!silent || hasApptsChanged) {
+                setAppointments(newAppts);
+                appointmentsRef.current = newAppts;
+              }
+            })
+            .catch(() => setAppointments([]));
+        }
+
+        if (numericUserId && !silent) {
+          api.get<{ walletBalance?: number }>(`/technicians/${numericUserId}/profile`)
+            .then((res) => {
+              if (res.data && res.data.walletBalance !== undefined) {
+                setTechWalletBalance(res.data.walletBalance);
+              }
+            })
+            .catch(() => {});
         }
       }
     } catch (err) {
@@ -212,22 +273,7 @@ export default function TechnicianRequestDetailPage() {
       }
     } finally {
       if (!silent) setLoading(false);
-    }
-
-    if (id) {
-      fetchAppointmentsForRequest(Number(id))
-        .then((res) => setAppointments(res.data || []))
-        .catch(() => setAppointments([]));
-
-      if (numericUserId && !silent) {
-        api.get<{ walletBalance?: number }>(`/technicians/${numericUserId}/profile`)
-          .then((res) => {
-            if (res.data && res.data.walletBalance !== undefined) {
-              setTechWalletBalance(res.data.walletBalance);
-            }
-          })
-          .catch(() => {});
-      }
+      if (silent) isPollingRef.current = false;
     }
   }
 
@@ -235,18 +281,20 @@ export default function TechnicianRequestDetailPage() {
     loadDetail(false);
   }, [id]);
 
-  // Cập nhật API liên tục ngầm (mỗi 3s) để cả sàn đấu giá và vòng đời thi công luôn đồng bộ thời gian thực
+  // Cập nhật API liên tục ngầm (chu kỳ thích ứng 5s) khi tab đang hiển thị
   useEffect(() => {
     if (!id) return;
     const intervalId = setInterval(() => {
+      // Tự ngắt polling khi ẩn tab để tiết kiệm 100% CPU máy chủ
+      if (typeof document !== 'undefined' && document.hidden) return;
       // Đồng bộ ngầm khi đơn chưa kết thúc hoặc chưa bị hủy
-      if (!detail || (detail.request.status !== 'COMPLETED' && detail.request.status !== 'CANCELLED')) {
+      if (detailRef.current && detailRef.current.request.status !== 'COMPLETED' && detailRef.current.request.status !== 'CANCELLED') {
         loadDetail(true);
       }
-    }, 3000);
+    }, 5000);
 
     return () => clearInterval(intervalId);
-  }, [id, detail?.request?.status]);
+  }, [id]);
 
   function handleStartEditQuote(quote: Quotation) {
     setBidPrice(quote.totalPrice || quote.priceLaborVnd || 0);
