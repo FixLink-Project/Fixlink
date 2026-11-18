@@ -190,7 +190,7 @@ export default function TechnicianRequestDetailPage() {
   async function loadDetail(silent = false) {
     if (!silent) setLoading(true);
     try {
-      const res = await api.get<RepairRequestDetail>(`/repair-requests/${id}`);
+      const res = await api.get<RepairRequestDetail>(`/repair-requests/${id}`, { bypassCache: true });
       setDetail(res.data);
       setError(null);
 
@@ -214,12 +214,12 @@ export default function TechnicianRequestDetailPage() {
       if (!silent) setLoading(false);
     }
 
-    if (id && !silent) {
+    if (id) {
       fetchAppointmentsForRequest(Number(id))
         .then((res) => setAppointments(res.data || []))
         .catch(() => setAppointments([]));
 
-      if (numericUserId) {
+      if (numericUserId && !silent) {
         api.get<{ walletBalance?: number }>(`/technicians/${numericUserId}/profile`)
           .then((res) => {
             if (res.data && res.data.walletBalance !== undefined) {
@@ -235,15 +235,15 @@ export default function TechnicianRequestDetailPage() {
     loadDetail(false);
   }, [id]);
 
-  // Cập nhật API liên tục ngầm (mỗi 3.5s) để sàn đấu giá luôn đồng bộ dữ liệu mới nhất
+  // Cập nhật API liên tục ngầm (mỗi 3s) để cả sàn đấu giá và vòng đời thi công luôn đồng bộ thời gian thực
   useEffect(() => {
     if (!id) return;
     const intervalId = setInterval(() => {
-      // Chỉ đồng bộ ngầm khi yêu cầu đang mở nhận báo giá (đấu giá)
-      if (!detail || detail.request.status === 'OPEN' || detail.request.status === 'BIDDING_OPEN') {
+      // Đồng bộ ngầm khi đơn chưa kết thúc hoặc chưa bị hủy
+      if (!detail || (detail.request.status !== 'COMPLETED' && detail.request.status !== 'CANCELLED')) {
         loadDetail(true);
       }
-    }, 3500);
+    }, 3000);
 
     return () => clearInterval(intervalId);
   }, [id, detail?.request?.status]);

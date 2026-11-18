@@ -144,17 +144,30 @@ export default function RepairRequestDetailPage() {
   }
 
   useEffect(() => {
-    loadDetail();
+    loadDetail(false);
   }, [id]);
 
-  function loadDetail() {
-    setLoading(true);
-    api.get<RepairRequestDetail>(`/repair-requests/${id}`)
+  // Tự động đồng bộ ngầm thời gian thực (mỗi 3s) giữa Khách hàng và Thợ
+  useEffect(() => {
+    if (!id) return;
+    const intervalId = setInterval(() => {
+      // Chỉ đồng bộ ngầm khi đơn chưa kết thúc hoặc chưa bị hủy
+      if (detail && detail.request.status !== 'COMPLETED' && detail.request.status !== 'CANCELLED') {
+        loadDetail(true);
+      }
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [id, detail?.request?.status]);
+
+  function loadDetail(silent = false) {
+    if (!silent) setLoading(true);
+    api.get<RepairRequestDetail>(`/repair-requests/${id}`, { bypassCache: true })
       .then((res) => {
         setDetail(res.data);
         setError(null);
         if (id && (res.data.request.status === 'AWAITING_ACCEPTANCE' || res.data.request.status === 'COMPLETED')) {
-          api.get<{ rating: number; comment: string } | null>(`/repair-requests/${id}/review`)
+          api.get<{ rating: number; comment: string } | null>(`/repair-requests/${id}/review`, { bypassCache: true })
             .then((review) => {
               if (review.data) {
                 setReviewRating(review.data.rating);
@@ -165,9 +178,13 @@ export default function RepairRequestDetailPage() {
         }
       })
       .catch((err) => {
-        setError(err instanceof ApiError ? err.message : 'Không tải được chi tiết yêu cầu.');
+        if (!silent) {
+          setError(err instanceof ApiError ? err.message : 'Không tải được chi tiết yêu cầu.');
+        }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
 
     if (id) {
       fetchPayments(Number(id))
